@@ -36,5 +36,15 @@ for (const [tag, opts, dark, withPublic] of MODES) {
   await login(page);
   for (const u of DASH) await scan(u);
 }
+// صفحة المندوب (جوال)
+{
+  const courier = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "ar" })).newPage();
+  await login(courier, "0930000011");
+  await courier.goto(`${BASE}/dashboard/orders`);
+  await courier.waitForTimeout(800);
+  await courier.evaluate(axeSrc);
+  const r = await courier.evaluate(() => window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa", "best-practice"] }, resultTypes: ["violations"] }));
+  for (const v of r.violations) for (const n of v.nodes) failures.push(`مندوب /dashboard/orders ${v.id}: ${n.target.join(" ").slice(0, 90)}`);
+}
 check("axe: صفر مخالفات WCAG 2.2 AA", failures.length === 0, failures.slice(0, 10).join(" | "));
 await finish(browser);

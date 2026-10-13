@@ -35,7 +35,7 @@ export default async function DashboardHome() {
     { done: !!settings?.whatsapp, label: "حط رقم واتساب للتواصل", href: "/dashboard/settings?tab=contact" },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
-  const push = ctx.role !== "courier" && can(ctx.role, "orders") ? pushConfig() : null;
+  const push = can(ctx.role, "orders") ? pushConfig() : null;
 
   return (
     <div className="space-y-6">

@@ -4,7 +4,8 @@ import type { Db } from "@/db";
 import { cities, plans, stores, users, type PlanLimits } from "@/db/schema/platform";
 import { saveProduct } from "@/server/catalog/products";
 import { createOrder } from "@/server/orders/create";
-import { hasPushSubscription, isValidSubscription, notifyNewOrder, removePushSubscription, removeUserPushSubscriptions, savePushSubscription, type PushSender } from "@/server/push";
+import { hasPushSubscription, isValidSubscription, notifyCourierAssigned, notifyNewOrder, removePushSubscription, removeUserPushSubscriptions, savePushSubscription, type PushSender } from "@/server/push";
+import { addStaff } from "@/server/staff-service";
 import { createStoreForUser } from "@/server/store-service";
 import { forStore, t } from "@/server/tenant";
 import { makeTestDb } from "./helpers/db";
@@ -105,5 +106,51 @@ describe("إشعار الطلبية الجديدة", () => {
     await expect(place(s)).resolves.toBeTruthy();
     await removeUserPushSubscriptions(db, s.id, s.userId);
     expect(await forStore(db, s.id).count(t.pushSubscriptions)).toBe(0);
+  });
+});
+
+describe("إشعارات المندوب", () => {
+  async function withCourier(slug: string) {
+    const s = await shop(slug);
+    const r = await addStaff(db, s.id, s.userId, { name: "مندوب", phone: `0935${String(++n).padStart(6, "0")}`, password: "kalimat-sirr-1", role: "courier" }, { maxStaff: 5 });
+    if (!r.ok) throw new Error(r.error);
+    const [courier] = await forStore(db, s.id).from(t.couriers);
+    return { ...s, courierId: courier!.id, courierUserId: courier!.userId! };
+  }
+
+  it("الطلبية الجديدة ما توصلش للمندوب، بس للمالك", async () => {
+    const s = await withCourier("push-e");
+    await savePushSubscription(db, s.id, s.userId, sub("https://push.example.com/owner"), null);
+    await savePushSubscription(db, s.id, s.courierUserId, sub("https://push.example.com/courier"), null);
+    const got: string[] = [];
+    await notifyNewOrder(db, s.id, await place(s), async (x) => { got.push(x.endpoint); });
+    expect(got).toEqual(["https://push.example.com/owner"]);
+  });
+
+  it("التعيين يوصل للمندوب المعيّن بس، بنص فيه رقم الطلبية والزبون", async () => {
+    const s = await withCourier("push-f");
+    await savePushSubscription(db, s.id, s.userId, sub("https://push.example.com/owner2"), null);
+    await savePushSubscription(db, s.id, s.courierUserId, sub("https://push.example.com/courier2"), null);
+    const orderId = await place(s);
+    await forStore(db, s.id).update(t.orders, { courierId: s.courierId, status: "with_courier" }, eq(t.orders.id, orderId));
+    const got: { endpoint: string; payload: Record<string, string> }[] = [];
+    const r = await notifyCourierAssigned(db, s.id, [orderId], async (x, p) => { got.push({ endpoint: x.endpoint, payload: JSON.parse(p) }); });
+    expect(r.sent).toBe(1);
+    expect(got).toHaveLength(1);
+    expect(got[0]!.endpoint).toBe("https://push.example.com/courier2");
+    expect(got[0]!.payload.title).toMatch(/^طلبية معيّنة لك #\d+$/);
+    expect(got[0]!.payload.url).toBe(`/dashboard/orders/${orderId}`);
+  });
+
+  it("طلبية بدون مندوب أو مندوب بدون اشتراك: ما يبعث شي", async () => {
+    const s = await withCourier("push-g");
+    const orderId = await place(s);
+    const calls: string[] = [];
+    const send = async (x: { endpoint: string }) => { calls.push(x.endpoint); };
+    expect(await notifyCourierAssigned(db, s.id, [orderId], send)).toEqual({ sent: 0, removed: 0 });
+    await forStore(db, s.id).update(t.orders, { courierId: s.courierId }, eq(t.orders.id, orderId));
+    expect(await notifyCourierAssigned(db, s.id, [orderId], send)).toEqual({ sent: 0, removed: 0 });
+    expect(await notifyCourierAssigned(db, s.id, [], send)).toEqual({ sent: 0, removed: 0 });
+    expect(calls).toEqual([]);
   });
 });

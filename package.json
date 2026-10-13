@@ -65,10 +65,11 @@
     "check:env": "NODE_ENV=production STRICT_PRODUCTION=1 tsx --env-file-if-exists=.env scripts/check-env.ts",
     "e2e:a11y": "node e2e/a11y.mjs",
     "e2e:keyboard": "node e2e/keyboard.mjs",
-    "e2e": "pnpm e2e:a11y && pnpm e2e:keyboard && pnpm e2e:reset && pnpm e2e:push && pnpm e2e:cart",
+    "e2e": "pnpm e2e:a11y && pnpm e2e:keyboard && pnpm e2e:reset && pnpm e2e:push && pnpm e2e:cart && pnpm e2e:courier",
     "e2e:reset": "node e2e/password-reset.mjs",
     "push:keys": "tsx scripts/push-keys.ts",
     "e2e:push": "node e2e/push.mjs",
-    "e2e:cart": "node e2e/abandoned-cart.mjs"
+    "e2e:cart": "node e2e/abandoned-cart.mjs",
+    "e2e:courier": "node e2e/courier.mjs"
   }
 }

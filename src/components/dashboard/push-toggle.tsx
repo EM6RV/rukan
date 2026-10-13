@@ -16,7 +16,7 @@ const b64ToBytes = (b64: string) => {
 type State = "loading" | "unsupported" | "denied" | "off" | "on";
 
 /** بطاقة تفعيل إشعارات الطلبيات الجديدة على هذا الجهاز (تظهر بس لو المنصة فعّلت VAPID والمتصفح يدعم) */
-export function PushToggle({ publicKey }: { publicKey: string }) {
+export function PushToggle({ publicKey, courier = false }: { publicKey: string; courier?: boolean }) {
   const { toast } = useToast();
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
@@ -74,9 +74,9 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
       <div className="flex items-start gap-3">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gold/20 text-navy dark:text-gold">{state === "on" ? <Bell className="size-5" aria-hidden /> : <BellOff className="size-5" aria-hidden />}</span>
         <div>
-          <p className="font-semibold">{state === "on" ? "إشعارات الطلبيات شغالة على هذا الجهاز" : "فعّل إشعارات الطلبيات"}</p>
+          <p className="font-semibold">{state === "on" ? (courier ? "إشعارات طلبياتك شغالة على هذا الجهاز" : "إشعارات الطلبيات شغالة على هذا الجهاز") : (courier ? "فعّل إشعارات طلبياتك" : "فعّل إشعارات الطلبيات")}</p>
           <p className="text-sm text-muted">
-            {state === "denied" ? "الإشعارات محجوبة من إعدادات المتصفح. فعّلها من إعدادات الموقع وارجع جرّب." : state === "on" ? "تجيك رسالة على جوالك أول ما زبون يطلب، حتى لو اللوحة مقفولة." : "تجيك رسالة على جوالك أول ما زبون يطلب، حتى لو اللوحة مقفولة."}
+            {state === "denied" ? "الإشعارات محجوبة من إعدادات المتصفح. فعّلها من إعدادات الموقع وارجع جرّب." : courier ? "تجيك رسالة على جوالك أول ما تتعيّن لك طلبية، حتى لو اللوحة مقفولة." : "تجيك رسالة على جوالك أول ما زبون يطلب، حتى لو اللوحة مقفولة."}
           </p>
         </div>
       </div>

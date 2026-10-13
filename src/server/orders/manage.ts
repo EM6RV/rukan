@@ -323,7 +323,7 @@ function baseConditions(f: OrderFilters) {
 }
 
 export type OrderListItem = {
-  id: string; number: number; customerName: string; customerPhone: string; cityName: string; total: number;
+  id: string; number: number; customerName: string; customerPhone: string; cityName: string; address: string; total: number;
   status: OrderStatus; paymentMethod: string; paymentStatus: string; courierId: string | null; courierName: string | null;
   createdAt: number; flagged: boolean; itemCount: number;
 };
@@ -351,7 +351,7 @@ export async function listOrders(scope: StoreScope, f: OrderFilters = {}) {
     rows.length ? scope.from(t.orderItems, inArray(t.orderItems.orderId, rows.map((r) => r.id))) : [],
   ]);
   const items2: OrderListItem[] = rows.map((r) => ({
-    id: r.id, number: r.number, customerName: r.customerName, customerPhone: r.customerPhone, cityName: r.cityName, total: r.total,
+    id: r.id, number: r.number, customerName: r.customerName, customerPhone: r.customerPhone, cityName: r.cityName, address: r.address, total: r.total,
     status: r.status, paymentMethod: r.paymentMethod, paymentStatus: r.paymentStatus,
     courierId: r.courierId, courierName: couriers.find((c) => c.id === r.courierId)?.name ?? null,
     createdAt: r.createdAt.getTime(),

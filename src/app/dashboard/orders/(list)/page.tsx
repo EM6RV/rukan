@@ -13,7 +13,10 @@ import { listCouriers } from "@/server/orders/couriers";
 import { listOrders } from "@/server/orders/manage";
 import { TZ_OFFSET_MS } from "@/server/orders/stats";
 import { requireStoreContext } from "@/server/store-context";
+import { PushToggle } from "@/components/dashboard/push-toggle";
+import { pushConfig } from "@/server/push";
 import { OrderTable } from "../order-table";
+import { CourierOrders } from "./courier-orders";
 
 export const metadata: Metadata = { title: "الطلبيات" };
 
@@ -36,7 +39,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   } as const;
   const [result, couriers, delivery] = await Promise.all([
     listOrders(ctx.scope, filters),
-    isCourier ? [] : listCouriers(ctx.scope),
+    listCouriers(ctx.scope),
     isCourier ? { rows: [] } : getDeliveryConfig(getDb(), ctx.scope),
   ]);
 
@@ -46,11 +49,15 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     const s = p.toString();
     return `/dashboard/orders${s ? `?${s}` : ""}`;
   };
+  const mine = isCourier ? couriers.find((c) => c.id === restrict) : undefined;
+  const push = isCourier ? pushConfig() : null;
   const hasFilters = !!(sp.q || sp.city || sp.courier || sp.pay || sp.from || sp.to);
 
   return (
     <div className="space-y-5">
       <div><h1 className="text-2xl">الطلبيات</h1><p className="text-muted">{isCourier ? "الطلبيات المعيّنة لك." : "تابع طلبيات زباينك من أول ما توصل لين التوصيل."}</p></div>
+
+      {push && <PushToggle publicKey={push.publicKey} courier />}
 
       <nav aria-label="حالات الطلبيات" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {[{ key: undefined, label: "الكل", n: result.allCount }, ...ORDER_STATUSES.map((s) => ({ key: s as string | undefined, label: ORDER_STATUS_LABELS[s], n: result.counts[s] ?? 0 }))].map((tab) => (
@@ -89,7 +96,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           action={hasFilters || status ? <ButtonLink variant="outline" href="/dashboard/orders">عرض كل الطلبيات</ButtonLink> : isCourier ? undefined : <ButtonLink href="/dashboard#store-link">شارك رابط متجرك</ButtonLink>} />
       ) : (
         <>
-          <OrderTable rows={result.items} couriers={couriers.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))} canBulk={!isCourier && ctx.access.writable} />
+          {isCourier
+            ? <CourierOrders rows={result.items} summary={{ pendingOrders: mine?.pendingOrders ?? 0, pendingCash: mine?.pendingCash ?? 0, balance: mine?.balance ?? 0 }} writable={ctx.access.writable} />
+            : <OrderTable rows={result.items} couriers={couriers.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))} canBulk={ctx.access.writable} />}
           {result.pageCount > 1 && (
             <nav aria-label="الصفحات" className="flex items-center justify-center gap-3 text-sm">
               {result.page > 1 && <Link className="rounded-md border border-line px-3 py-2" href={href({ page: String(result.page - 1) })}>السابق</Link>}

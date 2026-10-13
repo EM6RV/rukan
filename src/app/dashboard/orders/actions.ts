@@ -6,6 +6,8 @@ import { ORDER_STATUSES, type OrderStatus } from "@/lib/constants";
 import type { Result } from "@/server/catalog/result";
 import { courierRestriction } from "@/server/orders/access";
 import { bulkAssignCourier, changeOrderStatus, registerReturn, reviewReceipt, setPaymentStatus, updateOrderDetails } from "@/server/orders/manage";
+import { getDb } from "@/db";
+import { notifyCourierAssigned } from "@/server/push";
 import { invalidateStore } from "@/server/storefront/data";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
@@ -35,9 +37,11 @@ const statusSchema = z.object({
 export async function changeStatusAction(input: unknown): Promise<Result<{ status: OrderStatus }>> {
   const p = statusSchema.safeParse(input);
   if (!p.success) return bad();
-  return run("orders", {}, (ctx, restrict) =>
-    changeOrderStatus(ctx.scope, { ...p.data, note: p.data.note ?? null, courierId: p.data.courierId ?? null, shipmentNumber: p.data.shipmentNumber ?? null, actorUserId: ctx.user.id, restrictCourierId: restrict }),
-  );
+  return run("orders", {}, async (ctx, restrict) => {
+    const r = await changeOrderStatus(ctx.scope, { ...p.data, note: p.data.note ?? null, courierId: p.data.courierId ?? null, shipmentNumber: p.data.shipmentNumber ?? null, actorUserId: ctx.user.id, restrictCourierId: restrict });
+    if (r.ok && p.data.to === "with_courier") void notifyCourierAssigned(getDb(), ctx.store.id, [p.data.orderId]); // إشعار للمندوب
+    return r;
+  });
 }
 
 export async function updateOrderAction(orderId: string, patch: unknown) {
@@ -48,7 +52,11 @@ export async function updateOrderAction(orderId: string, patch: unknown) {
 export async function bulkAssignAction(orderIds: unknown, courierId: unknown) {
   const p = z.object({ ids: z.array(z.string().min(1)).min(1).max(200), courierId: z.string().min(1).nullable() }).safeParse({ ids: orderIds, courierId });
   if (!p.success) return bad();
-  return run("orders", { staffOnly: true }, (ctx) => bulkAssignCourier(ctx.scope, p.data.ids, p.data.courierId, ctx.user.id));
+  return run("orders", { staffOnly: true }, async (ctx) => {
+    const r = await bulkAssignCourier(ctx.scope, p.data.ids, p.data.courierId, ctx.user.id);
+    if (r.ok && p.data.courierId) void notifyCourierAssigned(getDb(), ctx.store.id, p.data.ids);
+    return r;
+  });
 }
 
 export async function paymentStatusAction(orderId: string, status: unknown) {

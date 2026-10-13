@@ -82,7 +82,7 @@ export async function changeStaffRole(db: Db, storeId: string, actorUserId: stri
     if (r.data === "courier" && !linked) await s.insert(t.couriers, { name: m.name, phone: m.phone, kind: "person", userId: m.userId });
     if (r.data !== "courier" && linked) await s.update(t.couriers, { userId: null }, eq(t.couriers.id, linked.id));
   });
-  if (r.data === "courier") await removeUserPushSubscriptions(db, storeId, m.userId); // المندوب ما يستلم إشعارات الطلبيات
+  await removeUserPushSubscriptions(db, storeId, m.userId); // الدور تغيّر: يعيد التفعيل من جهازه حسب دوره الجديد
   await writeAudit(db, { actorUserId, storeId, action: "staff.role", entityType: "member", entityId: memberId, meta: { from: m.role, to: r.data } });
   return ok(undefined);
 }

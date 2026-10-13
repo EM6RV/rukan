@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   title: "رُكن — ركنك في السوق… أونلاين.",
   description: "افتح متجرك الإلكتروني في دقيقتين: دفع عند الاستلام، مندوبين، مرتجعات، ومدن ليبيا جاهزة.",
   applicationName: "رُكن",
+  appleWebApp: { capable: true, title: "رُكن", statusBarStyle: "default" },
+  icons: { apple: "/icons/icon-192.png" },
 };
 
 export const viewport: Viewport = {

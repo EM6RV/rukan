@@ -19,5 +19,5 @@ const courier = await (await browser.newContext({ locale: "ar" })).newPage();
 await login(courier, "0930000011"); // مندوب المتجر (seed:demo)
 await courier.goto(`${BASE}/dashboard/orders`);
 await courier.waitForTimeout(800);
-check("المندوب ما يشوف بطاقة الإشعارات", (await courier.locator("text=فعّل إشعارات الطلبيات").count()) === 0);
+check("المندوب يشوف بطاقة إشعارات طلبياته (مش «الطلبيات الجديدة»)", (await courier.locator("text=فعّل إشعارات طلبياتك").count()) === 1 && (await courier.locator("text=فعّل إشعارات الطلبيات").count()) === 0);
 await finish(browser);

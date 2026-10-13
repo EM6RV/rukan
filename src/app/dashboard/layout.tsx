@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { can } from "@/server/permissions";
 import { Announcements } from "@/components/dashboard/announcements";
 import { OfflineBanner } from "@/components/dashboard/offline-banner";
+import { PwaSetup } from "@/components/dashboard/pwa";
 import { OrdersWatcher } from "@/components/dashboard/orders-watcher";
 import { getDb } from "@/db";
 import { activeAnnouncementsFor } from "@/server/admin/announcements";
@@ -86,6 +87,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         )}
         <OfflineBanner />
+        <PwaSetup />
         <Announcements items={announcements} />
         <main id="main-content" tabIndex={-1} className="mx-auto max-w-5xl px-4 py-6 pb-28 outline-none lg:px-8 lg:py-8 lg:pb-10">{children}</main>
         <BottomNav items={items} />
