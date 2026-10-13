@@ -5,7 +5,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { listCategories } from "@/server/catalog/categories";
 import { listProducts, productQuota } from "@/server/catalog/products";
 import { requireStoreContext } from "@/server/store-context";
-import { ProductList } from "./product-list";
+import { ProductList } from "../product-list";
 
 export const metadata: Metadata = { title: "المنتجات" };
 

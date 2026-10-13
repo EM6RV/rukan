@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import type { OrderStatus } from "@/lib/constants";
 import { formatDateTime } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
+import { enterDelay, enterItem } from "@/components/ui/motion";
 import { bulkAssignAction } from "./actions";
 
 export type Row = {
@@ -30,7 +31,8 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
   function assign() {
     setError(null);
     start(async () => {
-      const r = await bulkAssignAction([...selected], courierId || null);
+      let r: Awaited<ReturnType<typeof bulkAssignAction>>;
+      try { r = await bulkAssignAction([...selected], courierId || null); } catch { return setError("ما قدرنا نوصل للسيرفر. تأكد من الإنترنت وجرّب مرة ثانية."); }
       if (!r.ok) return setError(r.error);
       toast(`تم تعيين المندوب لـ ${r.data.count} طلبية`);
       setSelected(new Set());
@@ -41,7 +43,7 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
   return (
     <div className="space-y-3">
       {canBulk && selected.size > 0 && (
-        <div className="sticky top-14 z-20 space-y-2 rounded-xl border border-gold/50 bg-surface p-3 shadow-lift lg:top-2">
+        <div className="sticky top-14 z-20 animate-[fade-up_0.2s_ease-out_both] space-y-2 rounded-xl border border-gold/50 bg-surface p-3 shadow-lift lg:top-2">
           <div className="flex flex-wrap items-end gap-2">
             <span className="pb-2.5 text-sm font-medium">{selected.size} محددة</span>
             <div className="min-w-40 flex-1">
@@ -57,8 +59,8 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
         </div>
       )}
       <ul className="space-y-2">
-        {rows.map((o) => (
-          <li key={o.id} className="flex items-stretch gap-2 rounded-xl border border-line bg-surface shadow-soft transition-colors hover:border-gold/60">
+        {rows.map((o, i) => (
+          <li key={o.id} style={enterDelay(i)} className={`${enterItem} flex items-stretch gap-2 rounded-2xl border bg-surface shadow-soft transition-colors hover:border-gold/60 ${selected.has(o.id) ? "border-gold bg-gold/5" : "border-line"}`}>
             {canBulk && (
               <label className="flex min-w-12 cursor-pointer items-center justify-center ps-1" aria-label={`تحديد الطلبية ${o.number}`}>
                 <input type="checkbox" className="size-5 accent-[var(--color-gold)]" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />

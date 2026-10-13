@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Inbox, Search } from "lucide-react";
 import { getDb } from "@/db";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/field";
 import { EmptyState } from "@/components/ui/feedback";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/constants";
@@ -13,7 +13,7 @@ import { listCouriers } from "@/server/orders/couriers";
 import { listOrders } from "@/server/orders/manage";
 import { TZ_OFFSET_MS } from "@/server/orders/stats";
 import { requireStoreContext } from "@/server/store-context";
-import { OrderTable } from "./order-table";
+import { OrderTable } from "../order-table";
 
 export const metadata: Metadata = { title: "الطلبيات" };
 
@@ -85,7 +85,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       </form>
 
       {result.items.length === 0 ? (
-        <EmptyState icon={<Inbox className="size-6" />} title={hasFilters || status ? "ما لقينا طلبيات بهذا الفلتر" : "ما فيش طلبيات لسا"} description={hasFilters || status ? "جرّب تغيّر البحث أو الفلاتر." : "أول ما زبون يطلب من متجرك تظهر الطلبية هنا."} />
+        <EmptyState icon={<Inbox className="size-6" />} title={hasFilters || status ? "ما لقينا طلبيات بهذا الفلتر" : "ما فيش طلبيات لسا"} description={hasFilters || status ? "جرّب تغيّر البحث أو الفلاتر." : "أول ما زبون يطلب من متجرك تظهر الطلبية هنا. شارك رابط متجرك في إنستغرام وتيك توك وواتساب."}
+          action={hasFilters || status ? <ButtonLink variant="outline" href="/dashboard/orders">عرض كل الطلبيات</ButtonLink> : isCourier ? undefined : <ButtonLink href="/dashboard#store-link">شارك رابط متجرك</ButtonLink>} />
       ) : (
         <>
           <OrderTable rows={result.items} couriers={couriers.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))} canBulk={!isCourier && ctx.access.writable} />

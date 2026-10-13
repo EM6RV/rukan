@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { can } from "@/server/permissions";
 import { Announcements } from "@/components/dashboard/announcements";
+import { OfflineBanner } from "@/components/dashboard/offline-banner";
 import { OrdersWatcher } from "@/components/dashboard/orders-watcher";
 import { getDb } from "@/db";
 import { activeAnnouncementsFor } from "@/server/admin/announcements";
@@ -81,6 +82,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             {can(ctx.role, "billing") && access.state !== "suspended" && <Link href="/dashboard/billing" className="shrink-0 rounded-md bg-fg px-3 py-1 text-xs font-semibold text-bg hover:opacity-90">جدّد الاشتراك</Link>}
           </div>
         )}
+        <OfflineBanner />
         <Announcements items={announcements} />
         <main className="mx-auto max-w-5xl px-4 py-6 pb-28 lg:px-8 lg:py-8 lg:pb-10">{children}</main>
         <BottomNav items={items} />

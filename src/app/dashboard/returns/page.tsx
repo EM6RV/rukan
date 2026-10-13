@@ -3,6 +3,7 @@ import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody } from "@/components/ui/card";
+import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
 import { formatDateTimeYear } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
@@ -21,7 +22,7 @@ export default async function ReturnsPage({ searchParams }: { searchParams: Prom
     <div className="space-y-5">
       <div><h1 className="text-2xl">المرتجعات</h1><p className="text-muted">كل المرتجعات وأسبابها وتكلفة التوصيل اللي ضاعت عليك. لتسجيل مرتجع افتح الطلبية واضغط «تسجيل مرتجع».</p></div>
       {r.total === 0 ? (
-        <EmptyState icon={<RotateCcw className="size-6" />} title="ما فيش مرتجعات" description="الحمد لله! لما ترجع طلبية بتظهر هنا." />
+        <EmptyState icon={<RotateCcw className="size-6" />} title="ما فيش مرتجعات" description="الحمد لله! لما ترجع طلبية بتظهر هنا." action={<ButtonLink variant="outline" href="/dashboard/orders">عرض الطلبيات</ButtonLink>} />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">

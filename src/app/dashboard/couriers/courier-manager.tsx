@@ -11,6 +11,7 @@ import { ConfirmModal } from "@/components/ui/confirm";
 import { Input, PhoneInput, Select, Textarea } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { enterDelay, enterItem } from "@/components/ui/motion";
 import { Toggle } from "@/components/ui/toggle";
 import { formatDateTimeYear } from "@/lib/datetime";
 import { formatMoney, inputToDirham } from "@/lib/money";
@@ -30,7 +31,8 @@ function useAct() {
   const act = (fn: () => Promise<Res>, success: string, onDone?: () => void) => {
     setError(null);
     start(async () => {
-      const r = await fn();
+      let r: Res;
+      try { r = await fn(); } catch { return setError("ما قدرنا نوصل للسيرفر. تأكد من الإنترنت وجرّب مرة ثانية."); }
       if (!r.ok) return setError(r.error ?? "صار خطأ");
       toast(success);
       onDone?.();
@@ -73,6 +75,14 @@ export function CashActions({ courier, writable }: { courier: Pick<CourierItem, 
           <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">الكاش عنده الحين: <b>{formatMoney(courier.balance)}</b></p>
           {mode === "adjust" && <Select label="نوع التعديل" value={sign} onChange={(e) => setSign(e.target.value as "+" | "-")}><option value="-">خصم من رصيده (مثلاً غرامة أو فرق)</option><option value="+">إضافة لرصيده</option></Select>}
           <Input label="المبلغ (د.ل)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} hint={mode === "settle" ? "لو سلّمك جزء، اكتب الجزء بس" : undefined} />
+          {mode === "settle" && (() => {
+            const v = inputToDirham(amount);
+            if (!v || v <= 0) return null;
+            const left = courier.balance - v;
+            return left < 0
+              ? <p role="status" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger-fg">المبلغ أكبر من الكاش اللي عنده ({formatMoney(courier.balance)}). راجع الرقم.</p>
+              : <p role="status" className="rounded-md bg-success/10 px-3 py-2 text-sm text-success-fg">الباقي عنده بعد التسوية: <b>{formatMoney(left)}</b></p>;
+          })()}
           <Textarea label={mode === "settle" ? "ملاحظة (اختياري)" : "السبب"} rows={2} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
           <ErrorLine error={localError ?? error} />
         </div>
@@ -116,8 +126,8 @@ export function CourierList({ couriers, writable }: { couriers: CourierItem[]; w
     <div className="space-y-4">
       <div className="flex justify-end"><Button disabled={!writable} onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden /> مندوب جديد</Button></div>
       <ul className="grid gap-4 md:grid-cols-2">
-        {couriers.map((c) => (
-          <li key={c.id}>
+        {couriers.map((c, i) => (
+          <li key={c.id} style={enterDelay(i)} className={enterItem}>
             <Card className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

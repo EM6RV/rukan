@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Copy, Eye, EyeOff, Package, Pencil, Percent, Star, Trash2, Boxes } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { enterDelay, enterItem } from "@/components/ui/motion";
 import { ConfirmModal } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/feedback";
 import { Input, Select } from "@/components/ui/field";
@@ -39,7 +40,8 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
   function exec(fn: () => Promise<{ ok: boolean; error?: string }>, success: string, closeDialog = true) {
     setError(null);
     startTransition(async () => {
-      const r = await fn();
+      let r: { ok: boolean; error?: string };
+      try { r = await fn(); } catch { r = { ok: false, error: "ما قدرنا نوصل للسيرفر. تأكد من الإنترنت وجرّب مرة ثانية." }; }
       if (!r.ok) { if (dialog) setError(r.error ?? "صار خطأ"); else toast(r.error ?? "صار خطأ", "error"); return; }
       toast(success);
       if (closeDialog) { setDialog(null); setValue(""); }
@@ -50,7 +52,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 
   if (items.length === 0) {
     return hasFilters
-      ? <EmptyState icon={<Package className="size-6" />} title="ما لقينا منتجات" description="جرّب تغيّر البحث أو الفلتر." />
+      ? <EmptyState icon={<Package className="size-6" />} title="ما لقينا منتجات" description="جرّب تغيّر البحث أو الفلتر." action={<Link href="/dashboard/products" className="inline-flex h-11 items-center rounded-md border border-line px-5 font-semibold hover:bg-surface-2">عرض كل المنتجات</Link>} />
       : <EmptyState icon={<Package className="size-6" />} title="ما عندكش منتجات لسا" description="أضف منتجك الأول، أو استورد قائمة منتجاتك من Excel."
           action={<Link href="/dashboard/products/new" className="inline-flex h-11 items-center rounded-md bg-gold px-5 font-semibold text-navy">أضف منتج</Link>} />;
   }
@@ -66,10 +68,10 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
       </div>
 
       <ul className="space-y-2">
-        {items.map((p) => {
+        {items.map((p, i) => {
           const low = p.stock === 0 ? "out" : p.stock <= 5 ? "low" : null;
           return (
-            <li key={p.id} className={cn("flex items-center gap-3 rounded-xl border bg-surface p-3 shadow-soft transition-colors", selected.has(p.id) ? "border-gold bg-gold/5" : "border-line", !p.isVisible && "opacity-75")}>
+            <li key={p.id} style={enterDelay(i)} className={cn(enterItem, "flex items-center gap-3 rounded-2xl border bg-surface p-3 shadow-soft transition-colors", selected.has(p.id) ? "border-gold bg-gold/5" : "border-line", !p.isVisible && "opacity-75")}>
               <label className="-mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" aria-label={`تحديد ${p.name}`} checked={selected.has(p.id)} onChange={() => toggle(p.id)} className="size-5 accent-[var(--color-gold)]" /></label>
               <Link href={`/dashboard/products/${p.id}`} className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
                 {p.thumbMediaId ? <img src={`/api/media/${p.thumbMediaId}`} alt="" loading="lazy" className="size-full object-cover" /> : <Package className="size-6 text-muted" />}

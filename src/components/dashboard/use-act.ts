@@ -15,7 +15,8 @@ export function useAct() {
   const act = (fn: () => Promise<ActResult>, success: string, onDone?: () => void) => {
     setError(null);
     start(async () => {
-      const r = await fn();
+      let r: ActResult;
+      try { r = await fn(); } catch { return setError("ما قدرنا نوصل للسيرفر. تأكد من الإنترنت وجرّب مرة ثانية."); }
       if (!r.ok) return setError(r.error ?? "صار خطأ");
       toast(success);
       onDone?.();

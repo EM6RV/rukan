@@ -76,7 +76,7 @@ export default async function DashboardHome() {
         </div>
       </section>
 
-      <Card>
+      <Card id="store-link" className="scroll-mt-20">
         <CardHeader title="رابط متجرك" description="شاركه في إنستغرام وتيك توك وواتساب." />
         <CardBody><StoreLinkCard url={storeUrl(store.slug, getEnv())} name={store.name} /></CardBody>
       </Card>

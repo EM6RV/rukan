@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/ui/feedback";
 import { formatMoney } from "@/lib/money";
 import { listCouriers } from "@/server/orders/couriers";
 import { requireStoreContext } from "@/server/store-context";
-import { CourierList } from "./courier-manager";
+import { CourierList } from "../courier-manager";
 
 export const metadata: Metadata = { title: "المندوبون والكاش" };
 
