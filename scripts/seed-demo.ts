@@ -8,6 +8,8 @@ import { hashPassword } from "../src/server/auth/password";
 import { saveCategory } from "../src/server/catalog/categories";
 import { saveProduct } from "../src/server/catalog/products";
 import { saveImage } from "../src/server/media";
+import { listHomeSections, saveHomeSections } from "../src/server/content-service";
+import { addStaff } from "../src/server/staff-service";
 import { saveCourier } from "../src/server/orders/couriers";
 import { createOrder } from "../src/server/orders/create";
 import { changeOrderStatus, registerReturn } from "../src/server/orders/manage";
@@ -108,6 +110,18 @@ async function buildStore(spec: {
   await db.update(stores).set({ onboardedAt: null }).where(eq(stores.id, storeId)); // completeOnboarding يرجّعه
   const done = await completeOnboarding(db, storeId);
   if (!done.ok) throw new Error(done.error);
+
+  // موظفين تجريبيين (نفس كلمة السر): موظف طلبيات ومندوب، وأقسام رئيسية فيها بانر ونص
+  const tail = spec.phone.slice(3);
+  must(await addStaff(db, storeId, owner.id, { name: "موظف الطلبيات", phone: `092${tail}`, password: PASSWORD, role: "orders_staff" }, limits), "staff");
+  must(await addStaff(db, storeId, owner.id, { name: "مندوب المتجر", phone: `093${tail}`, password: PASSWORD, role: "courier" }, limits), "courier staff");
+  const banner = await saveImage(db, adapters.turso, { storeId, buffer: await art(7, spec.primary, spec.accent, "box"), preset: { maxDimension: 1600, quality: 85 } });
+  const sections = await listHomeSections(scope);
+  must(await saveHomeSections(db, storeId, [
+    ...sections.map((x) => ({ id: x.id, type: x.type, isVisible: x.isVisible, config: x.config })),
+    { type: "banner", config: { imageMediaId: banner.id, title: spec.announcement, linkUrl: "/search" } },
+    { type: "text", config: { title: `عن ${spec.name}`, body: "نختار منتجاتنا بعناية ونوصلها لباب بيتك في كل ليبيا. الدفع عند الاستلام." } },
+  ]), "home sections");
 
   // طلبيات وهمية بحالات مختلفة
   const variants = await scope.from(t.productVariants);

@@ -24,7 +24,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <div><h1 className="text-2xl">الإعدادات</h1><p className="text-muted">معلومات متجرك وهويته وطرق الدفع.</p></div>
       <SettingsTabs
         writable={ctx.access.writable}
-        defaultTab={["general", "contact", "payment", "delivery", "whatsapp", "seo"].includes(tab ?? "") ? tab! : "general"}
+        defaultTab={["general", "contact", "payment", "delivery", "whatsapp", "pixels", "seo"].includes(tab ?? "") ? tab! : "general"}
         allTemplates={ctx.limits.allTemplates}
         storeLink={storeUrl(store.slug, getEnv())}
         general={{ name: store.name, businessType: store.businessType, template: store.template, primary: s?.primaryColor ?? "#0D263E", accent: s?.accentColor ?? "#C19E58", logo: media(store.logoMediaId) }}
@@ -32,6 +32,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         payment={{ bankTransfer: bank?.isEnabled ?? false, bankName: cfg.bankName ?? "", accountHolder: cfg.accountHolder ?? "", accountNumber: cfg.accountNumber ?? "", note: cfg.note ?? "" }}
         delivery={delivery}
         whatsapp={{ templates }}
+        pixels={{ metaPixelId: s?.metaPixelId ?? "", tiktokPixelId: s?.tiktokPixelId ?? "", allowed: ctx.limits.pixels }}
         seo={{ seoTitle: s?.seoTitle ?? "", seoDescription: s?.seoDescription ?? "", og: media(s?.ogMediaId) }}
       />
     </div>

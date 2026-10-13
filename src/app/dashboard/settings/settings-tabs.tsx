@@ -11,6 +11,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { BUSINESS_TYPES, BUSINESS_TYPE_LABELS, type BusinessType, type StoreTemplate } from "@/lib/constants";
 import { saveContactAction, saveGeneralAction, savePaymentAction, saveSeoAction } from "./actions";
 import { DeliveryTab, type DeliveryProps } from "./delivery-tab";
+import { PixelsTab, type PixelsProps } from "./pixels-tab";
 import { Footer, useSave } from "./settings-shared";
 import { WhatsappTab, type WhatsappProps } from "./whatsapp-tab";
 
@@ -23,6 +24,7 @@ type Props = {
   seo: { seoTitle: string; seoDescription: string; og: Media };
   delivery: DeliveryProps;
   whatsapp: WhatsappProps;
+  pixels: PixelsProps;
 };
 
 export function SettingsTabs(p: Props) {
@@ -35,6 +37,7 @@ export function SettingsTabs(p: Props) {
         { key: "payment", label: "الدفع", content: <Payment {...p} /> },
         { key: "delivery", label: "التوصيل", content: <DeliveryTab {...p.delivery} writable={p.writable} /> },
         { key: "whatsapp", label: "رسائل واتساب", content: <WhatsappTab {...p.whatsapp} writable={p.writable} /> },
+        { key: "pixels", label: "Pixels", content: <PixelsTab {...p.pixels} writable={p.writable} /> },
         { key: "seo", label: "جوجل SEO", content: <Seo {...p} /> },
       ]}
     />

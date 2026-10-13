@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { FolderTree, LayoutDashboard, MoreHorizontal, Package, RotateCcw, Settings, ShoppingBag, Truck, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, FolderTree, LayoutDashboard, MoreHorizontal, Package, Palette, PenLine, RotateCcw, Settings, ShoppingBag, Ticket, Truck, UserCog, Users, type LucideIcon } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 
-export type NavItem = { href: string; label: string; icon: "home" | "orders" | "products" | "categories" | "customers" | "couriers" | "returns" | "settings"; badge?: number };
+export type NavItem = { href: string; label: string; icon: "home" | "orders" | "products" | "categories" | "customers" | "couriers" | "returns" | "coupons" | "reports" | "content" | "design" | "staff" | "settings"; badge?: number };
 
 const ICONS: Record<NavItem["icon"], LucideIcon> = {
-  home: LayoutDashboard, orders: ShoppingBag, products: Package, categories: FolderTree, customers: Users, couriers: Truck, returns: RotateCcw, settings: Settings,
+  home: LayoutDashboard, orders: ShoppingBag, products: Package, categories: FolderTree, customers: Users, couriers: Truck, returns: RotateCcw, coupons: Ticket, reports: BarChart3, content: PenLine, design: Palette, staff: UserCog, settings: Settings,
 };
 
 const isActive = (pathname: string, href: string) => (href === "/dashboard" ? pathname === href : pathname.startsWith(href));

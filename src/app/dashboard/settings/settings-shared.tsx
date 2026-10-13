@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { notifyStoreSaved } from "@/lib/preview-signal";
 
 /** يحفظ فورم بزر وإشعار نجاح/خطأ */
 export function useSave(action: (input: unknown) => Promise<{ ok: boolean; error?: string }>) {
@@ -17,6 +18,7 @@ export function useSave(action: (input: unknown) => Promise<{ ok: boolean; error
       const r = await action(input);
       if (!r.ok) return setError(r.error ?? "صار خطأ");
       toast("تم الحفظ");
+      notifyStoreSaved();
       router.refresh();
     });
   };

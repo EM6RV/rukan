@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Store } from "lucide-react";
+import { ALL_FONT_VARIABLES, storeFontStyle } from "@/components/store/fonts";
 import { Pixels } from "@/components/store/pixels";
 import { CartProvider } from "@/components/store/cart-context";
 import { StoreProvider, type StoreInfo } from "@/components/store/store-context";
@@ -72,7 +73,7 @@ export default async function StoreLayout({ children, params }: Props) {
   };
 
   return (
-    <div data-theme="light" style={vars} className={`min-h-dvh ${kit.cls.page}`}>
+    <div data-theme="light" style={{ ...vars, ...storeFontStyle(s.fontKey) }} className={`min-h-dvh ${ALL_FONT_VARIABLES} ${kit.cls.page}`}>
       <StoreProvider info={info}>
         <CartProvider storeId={sf.id}>
           <kit.Header />

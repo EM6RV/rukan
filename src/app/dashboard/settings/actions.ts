@@ -5,7 +5,7 @@ import { getDb } from "@/db";
 import type { Result } from "@/server/catalog/result";
 import { saveDeliveryConfig } from "@/server/delivery-service";
 import { saveWhatsappTemplate } from "@/server/orders/whatsapp-templates";
-import { saveContactSettings, saveGeneralSettings, savePaymentSettings, saveSeoSettings } from "@/server/settings-service";
+import { saveContactSettings, saveDesignSettings, saveGeneralSettings, savePaymentSettings, savePixelSettings, saveSeoSettings } from "@/server/settings-service";
 import { invalidateStore } from "@/server/storefront/data";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
@@ -38,4 +38,12 @@ export async function saveDeliveryAction(input: unknown) {
 }
 export async function saveWhatsappTemplateAction(input: unknown) {
   return run((c) => saveWhatsappTemplate(c.scope, input));
+}
+
+export async function savePixelAction(input: unknown) {
+  return run((c) => savePixelSettings(getDb(), c.store.id, input, c.limits));
+}
+
+export async function saveDesignAction(input: unknown) {
+  return run((c) => saveDesignSettings(getDb(), c.store.id, input, c.limits));
 }

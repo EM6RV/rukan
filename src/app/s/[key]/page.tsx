@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getKit } from "@/components/store/templates";
 import { safeJsonLd } from "@/lib/text";
-import { mediaUrl } from "@/lib/media-url";
+import { mediaSrcSet, mediaUrl } from "@/lib/media-url";
 import { getCatalog } from "@/server/storefront/data";
 import { getRequestContext, loadStore } from "@/server/storefront/request";
 import { notFound } from "next/navigation";
@@ -52,6 +52,25 @@ export default async function StoreHome({ params }: Props) {
             <section key={sec.id} aria-label="منتجات مميزة">
               <kit.SectionTitle title={str(sec.config.title) ?? "منتجات مميزة"} href={href("/search")} />
               <div className={kit.cls.productGrid}>{featured.items.map((p, i) => <kit.ProductCard key={p.id} product={p} priority={i < 2} />)}</div>
+            </section>
+          );
+        }
+        if (sec.type === "banner" && typeof sec.config.imageMediaId === "string") {
+          const link = str(sec.config.linkUrl);
+          const to = link ? (link.startsWith("/") ? href(link) : link) : null;
+          const img = (
+            <div className={`${kit.cls.imageFrame} relative aspect-[16/9] w-full overflow-hidden sm:aspect-[21/9]`}>
+              <img src={mediaUrl(sec.config.imageMediaId, 960)} srcSet={mediaSrcSet(sec.config.imageMediaId, [640, 960, 1280])} sizes="(min-width: 1152px) 1152px, 100vw" alt={str(sec.config.title) ?? ""} loading="lazy" className="size-full object-cover" />
+              {str(sec.config.title) && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12 text-lg font-bold text-white md:p-6 md:text-2xl">{sec.config.title as string}</div>}
+            </div>
+          );
+          return <section key={sec.id} aria-label={str(sec.config.title) ?? "إعلان"}>{to ? (to.startsWith("http") ? <a href={to} target="_blank" rel="noopener noreferrer">{img}</a> : <Link href={to}>{img}</Link>) : img}</section>;
+        }
+        if (sec.type === "text" && str(sec.config.body)) {
+          return (
+            <section key={sec.id} aria-label={str(sec.config.title) ?? "نص"} className="mx-auto max-w-3xl text-center">
+              {str(sec.config.title) && <h2 className={`${kit.cls.heading} mb-3`}>{sec.config.title as string}</h2>}
+              <p className="whitespace-pre-line text-[17px] leading-8">{sec.config.body as string}</p>
             </section>
           );
         }

@@ -6,6 +6,8 @@ import { BASE_TEMPLATE } from "@/lib/plan-limits";
 import { BUSINESS_TYPES, STORE_TEMPLATES } from "@/lib/constants";
 import { normalizeLibyanPhone } from "@/lib/phone";
 import { normalizeSocial } from "@/lib/social";
+import { isStoreFont, STORE_FONTS } from "@/lib/store-fonts";
+import { validPixelId } from "@/lib/pixels";
 import { firstError, hexColorSchema, storeNameSchema } from "@/lib/validation";
 import { isFkViolation } from "./db-errors";
 import { fail, ok, type Result } from "./catalog/result";
@@ -121,5 +123,47 @@ export async function saveSeoSettings(db: Db, storeId: string, input: unknown): 
     if (isFkViolation(e)) return fail("الصورة غير صحيحة.");
     throw e;
   }
+  return ok(undefined);
+}
+
+// ===== Pixels (باقة احترافي) =====
+
+const pixelField = (label: string) =>
+  z.string().trim().nullish().transform((v, ctx) => {
+    if (!v) return null;
+    const id = validPixelId(v);
+    if (!id) { ctx.addIssue({ code: "custom", message: `${label}: المعرّف أرقام وحروف إنجليزية فقط (5 إلى 25)` }); return z.NEVER; }
+    return id;
+  });
+
+const pixelSchema = z.object({ metaPixelId: pixelField("Meta Pixel"), tiktokPixelId: pixelField("TikTok Pixel") });
+
+export async function savePixelSettings(db: Db, storeId: string, input: unknown, limits: Pick<PlanLimits, "pixels">): Promise<Result> {
+  if (!limits.pixels) return fail("Pixels متاحة في الباقة الاحترافية.");
+  const parsed = pixelSchema.safeParse(input);
+  if (!parsed.success) return fail(firstError(parsed.error));
+  await forStore(db, storeId).update(t.storeSettings, parsed.data);
+  return ok(undefined);
+}
+
+// ===== التصميم: قالب، ألوان، خط، لوجو =====
+
+const designSchema = z.object({
+  template: z.enum(STORE_TEMPLATES, { error: "اختار قالب" }),
+  primaryColor: hexColorSchema,
+  accentColor: hexColorSchema,
+  fontKey: z.enum(STORE_FONTS, { error: "اختار خط من القائمة" }),
+  logoMediaId: z.string().min(1).nullish().transform((v) => v ?? null),
+});
+
+export async function saveDesignSettings(db: Db, storeId: string, input: unknown, limits: PlanLimits): Promise<Result> {
+  const parsed = designSchema.safeParse(input);
+  if (!parsed.success) return fail(firstError(parsed.error));
+  const d = parsed.data;
+  if (!isStoreFont(d.fontKey)) return fail("اختار خط من القائمة");
+  if (!limits.allTemplates && d.template !== BASE_TEMPLATE) return fail("هذا القالب متاح في باقة «نمو» وما فوق.");
+  if (!(await validateOwnMedia(db, storeId, d.logoMediaId))) return fail("اللوجو غير صحيح، ارفعه من جديد.");
+  await db.update(stores).set({ template: d.template, logoMediaId: d.logoMediaId }).where(eq(stores.id, storeId));
+  await forStore(db, storeId).update(t.storeSettings, { primaryColor: d.primaryColor, accentColor: d.accentColor, fontKey: d.fontKey });
   return ok(undefined);
 }
