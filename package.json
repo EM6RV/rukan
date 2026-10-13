@@ -31,9 +31,11 @@
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "axe-core": "4.10.2",
     "drizzle-kit": "^0.31.11",
     "eslint": "^10.12.0",
     "eslint-config-next": "^16.4.0",
+    "playwright-core": "1.52.0",
     "postcss": "^8.5.30",
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
@@ -58,6 +60,9 @@
     "icons": "tsx scripts/make-icons.ts",
     "db:seed:demo": "tsx --env-file-if-exists=.env scripts/seed-demo.ts",
     "start:prod": "pnpm db:migrate && pnpm db:seed && next start",
-    "check:env": "NODE_ENV=production STRICT_PRODUCTION=1 tsx --env-file-if-exists=.env scripts/check-env.ts"
+    "check:env": "NODE_ENV=production STRICT_PRODUCTION=1 tsx --env-file-if-exists=.env scripts/check-env.ts",
+    "e2e:a11y": "node e2e/a11y.mjs",
+    "e2e:keyboard": "node e2e/keyboard.mjs",
+    "e2e": "pnpm e2e:a11y && pnpm e2e:keyboard"
   }
 }
