@@ -1,4 +1,4 @@
-import { and, count, eq, type SQL, type SQLWrapper } from "drizzle-orm";
+import { and, count, eq, gte, inArray, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { isTable, getTableName } from "drizzle-orm";
 import { writeTransaction, type Db } from "@/db";
 import * as tenantSchema from "@/db/schema/tenant";
@@ -81,4 +81,26 @@ export function forStore(db: Db, storeId: string): StoreScope {
     ...createScope(db, storeId),
     transaction: (fn) => writeTransaction(db, async (tx) => fn(createScope(tx as unknown as Db, storeId))),
   };
+}
+
+// ===== قراءات تجميعية عبر المتاجر (للأدمن فقط) =====
+// استثناء مقصود من قاعدة العزل: أرقام مجمعة فقط (عدّادات ومجاميع) بدون أي بيانات زبائن أو طلبيات تفصيلية.
+// لازم يناديها كود تأكد إن المستخدم أدمن (requireAdmin / adminContext).
+
+/** عدد الطلبيات ومجموعها لكل متجر منذ تاريخ معين (بدون الملغي والمرتجع) */
+export async function platformOrderTotals(db: Db, sinceMs: number): Promise<{ storeId: string; orders: number; total: number }[]> {
+  const o = tenantSchema.orders;
+  const rows = await db
+    .select({ storeId: o.storeId, orders: count(), total: sql<number>`coalesce(sum(${o.total}), 0)` })
+    .from(o)
+    .where(and(inArray(o.status, ["new", "confirmed", "with_courier", "delivered"]), gte(o.createdAt, new Date(sinceMs))))
+    .groupBy(o.storeId);
+  return rows;
+}
+
+/** عدّادات متجر واحد (منتجات، طلبيات، زبائن) لصفحة تفاصيل المتجر عند الأدمن */
+export async function platformStoreCounts(db: Db, storeId: string): Promise<{ products: number; orders: number; customers: number }> {
+  const s = forStore(db, storeId);
+  const [products, orders, customers] = await Promise.all([s.count(tenantSchema.products), s.count(tenantSchema.orders), s.count(tenantSchema.customers)]);
+  return { products, orders, customers };
 }

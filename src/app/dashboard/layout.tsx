@@ -6,7 +6,10 @@ import { BottomNav, SidebarNav, type NavItem } from "@/components/dashboard/nav"
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { can } from "@/server/permissions";
+import { Announcements } from "@/components/dashboard/announcements";
 import { OrdersWatcher } from "@/components/dashboard/orders-watcher";
+import { getDb } from "@/db";
+import { activeAnnouncementsFor } from "@/server/admin/announcements";
 import { getOrdersPulse } from "@/server/orders/pulse";
 import { requireStoreContext } from "@/server/store-context";
 import { logoutAction } from "../(auth)/actions";
@@ -24,6 +27,7 @@ const ALL_ITEMS: (NavItem & { permission: Parameters<typeof can>[1] })[] = [
   { href: "/dashboard/content", label: "محتوى المتجر", icon: "content", permission: "settings" },
   { href: "/dashboard/design", label: "التصميم", icon: "design", permission: "settings" },
   { href: "/dashboard/staff", label: "الموظفين", icon: "staff", permission: "staff" },
+  { href: "/dashboard/billing", label: "الاشتراك", icon: "billing", permission: "billing" },
   { href: "/dashboard/settings", label: "الإعدادات", icon: "settings", permission: "settings" },
 ];
 
@@ -35,6 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const pulse = can(ctx.role, "orders") && ctx.role !== "courier" ? await getOrdersPulse(ctx.scope) : null;
   const items = ALL_ITEMS.filter((i) => can(ctx.role, i.permission)).map((i): NavItem => ({ href: i.href, label: i.label, icon: i.icon, badge: i.icon === "orders" ? pulse?.newCount : undefined }));
   const { access } = ctx;
+  const announcements = await activeAnnouncementsFor(getDb(), ctx.user.id);
 
   const banner =
     access.state === "suspended" ? { tone: "danger", text: "متجرك موقوف. تواصل مع الدعم لإعادة تفعيله." }
@@ -71,9 +76,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </header>
         {banner && (
           <div role="status" className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium ${banner.tone === "danger" ? "bg-danger/15 text-danger-fg" : "bg-gold/20"}`}>
-            <TriangleAlert className="size-4 shrink-0" aria-hidden /> {banner.text}
+            <TriangleAlert className="size-4 shrink-0" aria-hidden /> <span className="min-w-0 flex-1">{banner.text}</span>
+            {can(ctx.role, "billing") && access.state !== "suspended" && <Link href="/dashboard/billing" className="shrink-0 rounded-md bg-fg px-3 py-1 text-xs font-semibold text-bg hover:opacity-90">جدّد الاشتراك</Link>}
           </div>
         )}
+        <Announcements items={announcements} />
         <main className="mx-auto max-w-5xl px-4 py-6 pb-28 lg:px-8 lg:py-8 lg:pb-10">{children}</main>
         <BottomNav items={items} />
         {pulse && <OrdersWatcher initialLatestId={pulse.latest?.id ?? null} />}

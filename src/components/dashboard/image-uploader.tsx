@@ -13,10 +13,12 @@ type Props = {
   onChange: (v: { id: string; url: string } | null) => void;
   shape?: "square" | "wide";
   className?: string;
+  /** لإيصالات الأدمن: المتجر اللي الإيصال يتبعه */
+  storeId?: string;
 };
 
 /** رفع صورة واحدة (لوجو، صورة قسم…) مع معاينة وحذف. */
-export function ImageUploader({ label, hint, kind, value, onChange, shape = "square", className }: Props) {
+export function ImageUploader({ label, hint, kind, value, onChange, shape = "square", className, storeId }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export function ImageUploader({ label, hint, kind, value, onChange, shape = "squ
     setBusy(true);
     setError(null);
     try {
-      const up = await uploadImage(file, kind);
+      const up = await uploadImage(file, kind, { storeId });
       onChange({ id: up.id, url: up.url });
     } catch (e) {
       setError((e as Error).message);
