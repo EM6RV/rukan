@@ -96,3 +96,12 @@ describe("توجيه الدومينات", () => {
     expect(r("")).toEqual({ type: "platform" });
   });
 });
+
+describe("روابط المتاجر حسب الدومين", () => {
+  it("دومين حقيقي = ساب دومين، وlocalhost وonrender.com = مسار /s/slug", async () => {
+    const { storeUrl } = await import("@/lib/store-url");
+    expect(storeUrl("nada", { ROOT_DOMAIN: "rukn.ly", APP_URL: "https://rukn.ly" })).toBe("https://nada.rukn.ly");
+    expect(storeUrl("nada", { ROOT_DOMAIN: "localhost:3000", APP_URL: "http://localhost:3000" })).toBe("http://localhost:3000/s/nada");
+    expect(storeUrl("nada", { ROOT_DOMAIN: "rukn-abc.onrender.com", APP_URL: "https://rukn-abc.onrender.com/" })).toBe("https://rukn-abc.onrender.com/s/nada");
+  });
+});
