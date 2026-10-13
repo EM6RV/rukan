@@ -1,7 +1,6 @@
 import { and, count, eq, type SQL } from "drizzle-orm";
 import { isTable, getTableName } from "drizzle-orm";
-import type { Db } from "@/db";
-import { retryBusy } from "../db-errors";
+import { writeTransaction, type Db } from "@/db";
 import * as tenantSchema from "@/db/schema/tenant";
 
 export * as t from "@/db/schema/tenant";
@@ -70,6 +69,6 @@ export type StoreScope = StoreScopeCore & {
 export function forStore(db: Db, storeId: string): StoreScope {
   return {
     ...createScope(db, storeId),
-    transaction: (fn) => retryBusy(() => db.transaction(async (tx) => fn(createScope(tx as unknown as Db, storeId)))),
+    transaction: (fn) => writeTransaction(db, async (tx) => fn(createScope(tx as unknown as Db, storeId))),
   };
 }

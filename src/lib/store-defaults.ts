@@ -20,8 +20,9 @@ export const defaultPages = (storeName: string) => [
   { slug: "contact", title: "تواصل معانا", body: "تواصل معانا على واتساب أو الهاتف، ونرد عليك في أقرب وقت.", sortOrder: 4 },
 ];
 
-export const defaultHomeSections = (storeName: string) => [
-  { type: "hero", position: 0, config: { title: storeName, subtitle: "تسوّق بسهولة وادفع عند الاستلام" } },
+export const defaultHomeSections = () => [
+  // العنوان فاضي عمداً: الواجهة تستعمل اسم المتجر الحالي (يتغير لو البياع غيّر الاسم)
+  { type: "hero", position: 0, config: { subtitle: "تسوّق بسهولة وادفع عند الاستلام" } },
   { type: "categories", position: 1, config: { title: "تسوّق حسب القسم" } },
   { type: "featured", position: 2, config: { title: "منتجات مميزة" } },
 ];

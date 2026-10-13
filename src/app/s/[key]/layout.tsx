@@ -1,20 +1,87 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getStoreByKey } from "@/server/stores";
+import { Store } from "lucide-react";
+import { Pixels } from "@/components/store/pixels";
+import { CartProvider } from "@/components/store/cart-context";
+import { StoreProvider, type StoreInfo } from "@/components/store/store-context";
+import { getKit } from "@/components/store/templates";
+import { WhatsAppFloat } from "@/components/store/whatsapp-float";
+import { toWhatsappNumber } from "@/lib/phone";
+import { storeThemeVars } from "@/lib/store-theme";
+import { mediaUrl } from "@/lib/media-url";
+import { getRequestContext, isStoreOpen, loadStore } from "@/server/storefront/request";
 
-export async function generateMetadata({ params }: { params: Promise<{ key: string }> }): Promise<Metadata> {
-  const found = await getStoreByKey((await params).key);
-  if (!found) return { title: { absolute: "متجر غير موجود" } };
+type Props = { children: React.ReactNode; params: Promise<{ key: string }> };
+
+export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
+  const { key } = await params;
+  const sf = await loadStore(key);
+  if (!sf) return { title: { absolute: "متجر غير موجود" }, robots: { index: false } };
+  const { origin } = await getRequestContext(key);
+  const title = sf.settings.seoTitle || sf.name;
   return {
-    // absolute: عنوان المتجر ما يتأثر بقالب "| رُكن" الخاص بالمنصة
-    title: { absolute: found.settings?.seoTitle || found.store.name },
-    description: found.settings?.seoDescription ?? undefined,
+    metadataBase: new URL(origin),
+    title: { default: title, template: `%s | ${sf.name}` },
+    description: sf.settings.seoDescription ?? undefined,
+    applicationName: sf.name,
+    robots: isStoreOpen(sf) ? undefined : { index: false, follow: false },
+    openGraph: {
+      type: "website", siteName: sf.name, locale: "ar_LY", title,
+      description: sf.settings.seoDescription ?? undefined,
+      images: sf.settings.ogMediaId ? [mediaUrl(sf.settings.ogMediaId, 1280)] : sf.logoMediaId ? [mediaUrl(sf.logoMediaId, 640)] : undefined,
+    },
+    // أيقونة التبويب: شعار المتجر لو موجود (بدل أيقونة رُكن)
+    icons: sf.logoMediaId ? { icon: mediaUrl(sf.logoMediaId, 160) } : undefined,
   };
 }
 
-export default async function StoreLayout({ children, params }: { children: React.ReactNode; params: Promise<{ key: string }> }) {
-  const found = await getStoreByKey((await params).key);
-  if (!found) notFound();
-  // واجهات المتاجر فاتحة دايماً (الوضع الداكن للوحات التحكم فقط)
-  return <div data-theme="light" className="min-h-dvh bg-bg text-fg">{children}</div>;
+export default async function StoreLayout({ children, params }: Props) {
+  const { key } = await params;
+  const sf = await loadStore(key);
+  if (!sf) notFound();
+
+  const vars = storeThemeVars(sf.settings.primaryColor, sf.settings.accentColor) as React.CSSProperties;
+
+  if (!isStoreOpen(sf)) {
+    return (
+      <div data-theme="light" style={vars} className="flex min-h-dvh items-center justify-center bg-white px-4 text-center text-(--sp)">
+        <div className="max-w-sm space-y-3">
+          <Store className="mx-auto size-12 text-(--sp-muted)" />
+          <h1 className="text-2xl font-bold">{sf.name}</h1>
+          <p className="text-(--sp-muted)">هذا المتجر غير متاح حالياً. رجّع زيارتنا قريب بإذن الله.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { base } = await getRequestContext(key);
+  const template = sf.limits.allTemplates ? sf.template : "simple"; // لو نزلت الباقة، القوالب الإضافية ترجع للبسيط
+  const kit = getKit(template);
+  const s = sf.settings;
+  const info: StoreInfo = {
+    id: sf.id, key: sf.slug, name: sf.name, template, logoMediaId: sf.logoMediaId, base,
+    whatsapp: s.whatsapp ? toWhatsappNumber(s.whatsapp) : null,
+    currency: "د.ل", announcementBar: s.announcementBar,
+    categories: sf.categories.map((c) => ({ slug: c.slug, name: c.name })),
+    pages: sf.pages,
+    social: { instagram: s.instagram, tiktok: s.tiktok, facebook: s.facebook, snapchat: s.snapchat },
+    contact: { phone: s.contactPhone, email: s.email, address: s.address },
+    footerText: s.footerText, showBranding: !sf.limits.removeBranding,
+    pixels: { meta: sf.limits.pixels ? s.metaPixelId : null, tiktok: sf.limits.pixels ? s.tiktokPixelId : null },
+    freeDeliveryOver: s.freeDeliveryOver,
+  };
+
+  return (
+    <div data-theme="light" style={vars} className={`min-h-dvh ${kit.cls.page}`}>
+      <StoreProvider info={info}>
+        <CartProvider storeId={sf.id}>
+          <kit.Header />
+          <main>{children}</main>
+          <kit.Footer />
+          <WhatsAppFloat />
+        </CartProvider>
+        <Pixels meta={info.pixels.meta} tiktok={info.pixels.tiktok} />
+      </StoreProvider>
+    </div>
+  );
 }

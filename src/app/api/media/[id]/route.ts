@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import { storeMembers } from "@/db/schema/platform";
 import { getCurrentUser } from "@/server/auth/current";
 import { readMedia } from "@/server/media";
+import { parseWidth, resizedWebp } from "@/server/media-resize";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +31,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!allowed) return notFound();
   }
 
-  const etag = `"${row.id}"`;
+  // ?w=320 → نسخة مصغرة (للصور العامة فقط). العروض المسموحة محدودة علشان ما حد يملا الكاش.
+  const width = row.isPrivate ? null : parseWidth(new URL(request.url).searchParams.get("w"));
+  const body = width ? await resizedWebp(row.id, buffer, width).catch(() => buffer) : buffer;
+
+  const etag = `"${row.id}${width ? `-${width}` : ""}"`;
   const headers: Record<string, string> = {
     "Content-Type": row.mime,
-    "Content-Length": String(buffer.length),
+    "Content-Length": String(body.length),
     ETag: etag,
     "X-Content-Type-Options": "nosniff",
     "Cache-Control": row.isPrivate ? "private, no-store" : "public, max-age=31536000, immutable",
@@ -41,6 +46,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!row.isPrivate && request.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers: { ETag: etag } });
   }
-  return new Response(new Uint8Array(buffer), { headers });
+  return new Response(new Uint8Array(body), { headers });
 }
 

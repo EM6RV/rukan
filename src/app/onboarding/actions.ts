@@ -6,6 +6,7 @@ import { BUSINESS_TYPES, STORE_TEMPLATES, type BusinessType } from "@/lib/consta
 import { dinarAmountSchema, firstError, hexColorSchema, slugSchema, storeNameSchema } from "@/lib/validation";
 import { getCurrentUser } from "@/server/auth/current";
 import { hitRateLimit } from "@/server/ratelimit";
+import { invalidateStore } from "@/server/storefront/data";
 import { actionContext } from "@/server/store-context";
 import {
   checkSlugAvailable, completeOnboarding, createStoreForUser, saveBusinessType, saveDelivery, saveIdentity, saveStoreBasics, type Result,
@@ -90,5 +91,7 @@ export async function saveDeliveryAction(input: unknown): Promise<Result> {
 export async function finishOnboardingAction(): Promise<Result> {
   const auth = await actionContext("settings", { write: true, allowUnfinishedOnboarding: true });
   if (!auth.ok) return auth;
-  return completeOnboarding(getDb(), auth.ctx.store.id);
+  const r = await completeOnboarding(getDb(), auth.ctx.store.id);
+  if (r.ok) invalidateStore(auth.ctx.store);
+  return r;
 }

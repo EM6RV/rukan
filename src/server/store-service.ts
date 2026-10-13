@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import type { Db } from "@/db";
+import { writeTransaction, type Db } from "@/db";
 import { cities, media, plans, storeMembers, stores, type PlanLimits } from "@/db/schema/platform";
 import { BUSINESS_PRESETS } from "@/lib/business-presets";
 import { BASE_TEMPLATE } from "@/lib/plan-limits";
@@ -7,7 +7,7 @@ import { DEFAULT_TRIAL_DAYS, type BusinessType, type StoreTemplate } from "@/lib
 import { DEFAULT_FOOTER_TEXT, DEFAULT_THANKS_MESSAGE, defaultHomeSections, defaultPages } from "@/lib/store-defaults";
 import { DEFAULT_WHATSAPP_TEMPLATES } from "@/lib/whatsapp-defaults";
 import { firstError, slugSchema, storeNameSchema } from "@/lib/validation";
-import { isUniqueViolation, retryBusy } from "./db-errors";
+import { isUniqueViolation } from "./db-errors";
 import { getPlatformSetting } from "./platform-settings";
 import { forStore, t } from "./tenant";
 
@@ -42,7 +42,7 @@ export async function createStoreForUser(db: Db, input: { userId: string; name: 
   const plan = await db.select({ id: plans.id }).from(plans).where(eq(plans.slug, planSlug)).get();
 
   try {
-    return await retryBusy(() => db.transaction(async (tx) => {
+    return await writeTransaction(db, async (tx) => {
       const db2 = tx as unknown as Db;
       const [store] = await db2
         .insert(stores)
@@ -61,7 +61,7 @@ export async function createStoreForUser(db: Db, input: { userId: string; name: 
       const s = forStore(db2, storeId);
       await s.insert(t.storeSettings, { thanksMessage: DEFAULT_THANKS_MESSAGE, footerText: DEFAULT_FOOTER_TEXT });
       await s.insert(t.storePages, defaultPages(name.data));
-      await s.insert(t.storeHomeSections, defaultHomeSections(name.data));
+      await s.insert(t.storeHomeSections, defaultHomeSections());
       await s.insert(t.storePaymentMethods, [
         { method: "cod", isEnabled: true, sortOrder: 0 },
         { method: "bank_transfer", isEnabled: false, sortOrder: 1 },
@@ -71,7 +71,7 @@ export async function createStoreForUser(db: Db, input: { userId: string; name: 
         Object.entries(DEFAULT_WHATSAPP_TEMPLATES).map(([key, body]) => ({ key, body })),
       );
       return { ok: true as const, data: { storeId } };
-    }));
+    });
   } catch (e) {
     if (isUniqueViolation(e)) return fail("هذا الرابط مستعمل، جرّب اسم ثاني.");
     throw e;
@@ -145,7 +145,7 @@ export async function saveDelivery(
   if (!city) return fail("اختار مدينتك.");
   const allCities = await db.select({ id: cities.id }).from(cities);
 
-  await retryBusy(() => db.transaction(async (tx) => {
+  await writeTransaction(db, async (tx) => {
     const s = forStore(tx as unknown as Db, storeId);
     await s.delete(t.deliveryRates);
     await s.insert(
@@ -163,7 +163,7 @@ export async function saveDelivery(
       },
       eq(t.storePaymentMethods.method, "bank_transfer"),
     );
-  }));
+  });
   await bumpStep(db, storeId, 5);
   return { ok: true, data: undefined };
 }

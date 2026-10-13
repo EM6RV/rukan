@@ -12,7 +12,7 @@ const plex = IBM_Plex_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: { default: "رُكن — ركنك في السوق… أونلاين.", template: "%s | رُكن" },
+  title: "رُكن — ركنك في السوق… أونلاين.",
   description: "افتح متجرك الإلكتروني في دقيقتين: دفع عند الاستلام، مندوبين، مرتجعات، ومدن ليبيا جاهزة.",
   applicationName: "رُكن",
 };

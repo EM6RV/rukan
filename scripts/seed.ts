@@ -66,6 +66,7 @@ if (process.env.SEED_DEMO === "1") {
     const [store] = await db.insert(stores).values({
       slug: "demo", name: "متجر تجريبي", ownerUserId: demoUser!.id, planId: growth?.id, template: "elegant",
       trialEndsAt: new Date(Date.now() + DEFAULT_TRIAL_DAYS * 86_400_000),
+      onboardedAt: new Date(), onboardingStep: 6,
     }).returning();
     await db.insert(storeMembers).values({ storeId: store!.id, userId: demoUser!.id, role: "owner" });
     await db.insert(storeSettings).values({ storeId: store!.id });

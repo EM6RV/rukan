@@ -9,6 +9,7 @@ import { cities, plans, stores, users } from "@/db/schema/platform";
 export async function makeTestDb() {
   const dir = mkdtempSync(join(tmpdir(), "rukn-test-"));
   const { db, client } = createDb(`file:${join(dir, "test.db")}`);
+  await client.execute("PRAGMA journal_mode = WAL");
   await client.execute("PRAGMA foreign_keys = ON");
   await migrate(db, { migrationsFolder: "./src/db/migrations" });
   return {

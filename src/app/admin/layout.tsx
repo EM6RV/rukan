@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { requireAdmin } from "@/server/auth/current";
+
+export const metadata: Metadata = { title: { template: "%s | رُكن", default: "رُكن" } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();

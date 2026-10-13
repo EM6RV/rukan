@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { getCurrentUser } from "@/server/auth/current";
+
+export const metadata: Metadata = { title: { template: "%s | رُكن", default: "رُكن" } };
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   if (await getCurrentUser()) redirect("/dashboard");

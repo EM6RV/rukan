@@ -4,13 +4,17 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/db";
 import type { Result } from "@/server/catalog/result";
 import { saveContactSettings, saveGeneralSettings, savePaymentSettings, saveSeoSettings } from "@/server/settings-service";
+import { invalidateStore } from "@/server/storefront/data";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
 async function run(fn: (ctx: StoreContext) => Promise<Result>): Promise<Result> {
   const auth = await actionContext("settings", { write: true });
   if (!auth.ok) return auth;
   const r = await fn(auth.ctx);
-  if (r.ok) { revalidatePath("/dashboard", "layout"); }
+  if (r.ok) {
+    revalidatePath("/dashboard", "layout");
+    invalidateStore(auth.ctx.store);
+  }
   return r;
 }
 

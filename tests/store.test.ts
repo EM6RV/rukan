@@ -254,6 +254,7 @@ describe("أدوات صغيرة", () => {
     expect(normalizeSocial("")).toBeNull();
     expect(normalizeSocial("https://instagram.com/x")).toBe("https://instagram.com/x");
     expect(normalizeSocial("JavaScript:alert(1)")).toBeUndefined();
+    expect(normalizeSocial("my-page.name")).toBe("my-page.name"); // الشرطة مسموحة (صفحات فيسبوك)
     expect(normalizeSocial("a b")).toBeUndefined();
     expect(socialUrl("instagram", "sara")).toBe("https://instagram.com/sara");
     expect(socialUrl("tiktok", "sara")).toBe("https://www.tiktok.com/@sara");

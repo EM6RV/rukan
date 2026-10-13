@@ -10,6 +10,7 @@ import { ImportError, MAX_IMPORT_BYTES, importProducts, parseProductRows, readRo
 import { fail, ok, type Result } from "@/server/catalog/result";
 import { hitRateLimit } from "@/server/ratelimit";
 import { getDb } from "@/db";
+import { invalidateStore } from "@/server/storefront/data";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
 async function run<T>(fn: (ctx: StoreContext) => Promise<Result<T>>): Promise<Result<T>> {
@@ -19,6 +20,7 @@ async function run<T>(fn: (ctx: StoreContext) => Promise<Result<T>>): Promise<Re
   if (result.ok) {
     revalidatePath("/dashboard/products");
     revalidatePath("/dashboard");
+    invalidateStore(auth.ctx.store);
   }
   return result;
 }
@@ -116,6 +118,7 @@ export async function runImportAction(formData: FormData): Promise<Result<Import
     revalidatePath("/dashboard/products");
     revalidatePath("/dashboard/categories");
     revalidatePath("/dashboard");
+    invalidateStore(ctx.store);
     return ok(report);
   } catch (e) {
     if (e instanceof ImportError) return fail(e.message);

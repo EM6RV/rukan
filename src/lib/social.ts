@@ -15,7 +15,7 @@ export function normalizeSocial(input: string): string | null | undefined {
     }
   }
   const handle = v.replace(/^@/, "");
-  return /^[\w.]{1,60}$/.test(handle) ? handle : undefined;
+  return /^[\w.-]{1,60}$/.test(handle) ? handle : undefined;
 }
 
 export function socialUrl(platform: "instagram" | "tiktok" | "facebook" | "snapchat", value: string): string {

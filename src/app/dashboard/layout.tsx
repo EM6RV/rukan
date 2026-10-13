@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { LogOut, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -14,6 +15,8 @@ const ALL_ITEMS: (NavItem & { permission: Parameters<typeof can>[1] })[] = [
   { href: "/dashboard/categories", label: "الأقسام", icon: "categories", permission: "categories" },
   { href: "/dashboard/settings", label: "الإعدادات", icon: "settings", permission: "settings" },
 ];
+
+export const metadata: Metadata = { title: { template: "%s | رُكن", default: "رُكن" } };
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireStoreContext(null);

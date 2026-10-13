@@ -3,13 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { deleteCategory, reorderCategories, saveCategory } from "@/server/catalog/categories";
 import type { Result } from "@/server/catalog/result";
+import { invalidateStore } from "@/server/storefront/data";
 import { actionContext } from "@/server/store-context";
 
 async function run<T>(fn: (ctx: Extract<Awaited<ReturnType<typeof actionContext>>, { ok: true }>["ctx"]) => Promise<Result<T>>): Promise<Result<T>> {
   const auth = await actionContext("categories", { write: true });
   if (!auth.ok) return auth;
   const result = await fn(auth.ctx);
-  if (result.ok) revalidatePath("/dashboard/categories");
+  if (result.ok) {
+    revalidatePath("/dashboard/categories");
+    invalidateStore(auth.ctx.store);
+  }
   return result;
 }
 

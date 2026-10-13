@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { Db } from "@/db";
+import { retryBusy } from "./db-errors";
 import { rateLimits } from "@/db/schema/platform";
 
 export type RateLimitResult = { allowed: boolean; remaining: number; retryAfterSeconds: number };
@@ -15,7 +16,7 @@ export async function hitRateLimit(
   now = Date.now(),
 ): Promise<RateLimitResult> {
   const expired = sql`${rateLimits.windowStart} < ${now - opts.windowMs}`;
-  const [row] = await db
+  const [row] = await retryBusy(() => db
     .insert(rateLimits)
     .values({ key, count: 1, windowStart: new Date(now) })
     .onConflictDoUpdate({
@@ -25,7 +26,7 @@ export async function hitRateLimit(
         windowStart: sql`CASE WHEN ${expired} THEN ${now} ELSE ${rateLimits.windowStart} END`,
       },
     })
-    .returning({ count: rateLimits.count, windowStart: rateLimits.windowStart });
+    .returning({ count: rateLimits.count, windowStart: rateLimits.windowStart }));
 
   const count = row?.count ?? 1;
   const windowEnd = (row?.windowStart.getTime() ?? now) + opts.windowMs;
