@@ -1,0 +1,50 @@
+# Render Blueprint لمنصة رُكن (Web Service واحد). الشرح الكامل في README.md
+services:
+  - type: web
+    name: rukn
+    runtime: node
+    region: frankfurt # الأقرب لليبيا
+    plan: starter # الخطة المجانية تنام بعد خمول، ومناسبة للتجربة فقط
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm build
+    startCommand: pnpm start:prod # يطبّق الـ migrations والبيانات المرجعية ثم يشغّل التطبيق
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # --- الدومين (غيّرها لدومينك) ---
+      - key: APP_URL
+        value: https://rukn.ly
+      - key: ROOT_DOMAIN
+        value: rukn.ly
+      # --- قاعدة البيانات: Turso ---
+      - key: DATABASE_URL
+        sync: false # libsql://اسم-القاعدة-اسمك.turso.io
+      - key: DATABASE_AUTH_TOKEN
+        sync: false
+      # --- الصور: turso (داخل القاعدة) أو r2 ---
+      - key: STORAGE_DRIVER
+        value: turso
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      # --- حساب الأدمن (يُنشأ مرة وحدة؛ احذف ADMIN_PASSWORD بعد أول تشغيل) ---
+      - key: ADMIN_NAME
+        value: مدير رُكن
+      - key: ADMIN_PHONE
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # --- خلف البروكسي ---
+      - key: TRUSTED_PROXY_HOPS
+        value: "1" # Render = بروكسي واحد. لو Cloudflare قدامه: TRUST_CLOUDFLARE=1
+      # الدومينات الخاصة للبياعين تشاور على هذا الهدف (اسم خدمة Render)
+      - key: CUSTOM_DOMAIN_TARGET
+        sync: false # مثال: rukn.onrender.com

@@ -3,9 +3,9 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { getDb } from "@/db";
 import { forStore } from "../tenant";
 import {
-  loadPage, loadStorefront, queryDeliveryRates, queryProductDetail, queryProducts, queryRelated, querySitemap,
+  loadPage, loadStorefront, queryDeliveryRates, resolveDomainSlug, queryProductDetail, queryProducts, queryRelated, querySitemap,
 } from "./queries";
-import type { CatalogQuery } from "./types";
+import type { CatalogQuery, Storefront } from "./types";
 
 /**
  * كاش واجهات المتاجر (Next data cache). كل الدوال تتوسم بـ store:<id> وتتفرغ لما البياع يعدل شي.
@@ -20,10 +20,23 @@ export const keyTag = (key: string) => `key:${key.toLowerCase()}`;
 export function invalidateStore(store: { id: string; slug: string }) {
   revalidateTag(storeTag(store.id), { expire: 0 });
   revalidateTag(keyTag(store.slug), { expire: 0 });
+  revalidateTag(DOMAINS_TAG, { expire: 0 }); // خريطة الدومينات الخاصة (تحقق/حذف/نزول باقة)
 }
 
-export const getStorefront = (key: string) =>
-  unstable_cache(async () => loadStorefront(getDb(), key), ["storefront", key.toLowerCase()], { tags: [keyTag(key)], revalidate: 120 })();
+const DOMAINS_TAG = "domains";
+
+/** الدومين الخاص يتحول لـ slug أول (كاش قصير يتفرغ مع أي تعديل متجر)، فكاش المتجر نفسه واحد ويتفرغ بوسم slug. */
+const domainSlug = (host: string) =>
+  unstable_cache(async () => resolveDomainSlug(getDb(), host), ["domain-slug", host], { tags: [DOMAINS_TAG], revalidate: 60 })();
+
+export async function getStorefront(key: string): Promise<Storefront | null> {
+  const k = key.toLowerCase();
+  if (k.includes(".")) {
+    const slug = await domainSlug(k);
+    return slug ? getStorefront(slug) : null;
+  }
+  return unstable_cache(async () => loadStorefront(getDb(), k), ["storefront", k], { tags: [keyTag(k)], revalidate: 120 })();
+}
 
 // الدوال التالية تاخذ storeId وتوسم نفسها بـ storeTag
 

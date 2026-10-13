@@ -32,7 +32,8 @@ export function parseCsv(input: string): string[][] {
 /** يكتب CSV (UTF-8 مع BOM علشان Excel يقرا العربي صح) */
 export function toCsv(rows: (string | number)[][]): string {
   const esc = (v: string | number) => {
-    const s = String(v);
+    // حماية من حقن الصيغ في Excel: النص اللي يبدا بـ = + - @ يتحول لنص عادي (الأرقام الحقيقية ما تتأثرش)
+    const s = typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : String(v);
     return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return "﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n") + "\r\n";

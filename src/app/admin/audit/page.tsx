@@ -16,6 +16,8 @@ const ACTIONS: Record<string, string> = {
   "subscription.payment": "تسجيل دفعة", "store.extend_trial": "تمديد التجربة", "store.suspend": "إيقاف متجر", "store.unsuspend": "تفعيل متجر", "store.change_plan": "تغيير باقة متجر",
   "plan.create": "إنشاء باقة", "plan.update": "تعديل باقة", "announcement.create": "إنشاء إعلان", "announcement.update": "تعديل إعلان", "announcement.delete": "حذف إعلان",
   "site.content": "تعديل محتوى الموقع", "site.content_reset": "إعادة محتوى الموقع للأصل", "platform.settings": "تعديل إعدادات المنصة",
+  "domain.add": "إضافة دومين خاص", "domain.verify": "تحقق دومين خاص", "domain.remove": "حذف دومين خاص", "domain.admin_status": "اعتماد دومين يدوياً",
+  "user.reset_password": "إعادة تعيين كلمة سر",
   "staff.add": "إضافة موظف", "staff.remove": "حذف موظف", "staff.role": "تغيير صلاحية موظف", "staff.password": "تغيير كلمة سر موظف",
 };
 

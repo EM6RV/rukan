@@ -15,6 +15,9 @@ import { storeUrl } from "@/lib/store-url";
 import { waLink } from "@/lib/whatsapp";
 import { listPlans } from "@/server/admin/plans";
 import { getStoreDetail } from "@/server/admin/stores";
+import { getStoreDomain } from "@/server/domains";
+import { DomainAdmin } from "./domain-admin";
+import { ResetOwnerPassword } from "./reset-password";
 import { StoreActions } from "./store-actions";
 
 export const metadata: Metadata = { title: "تفاصيل المتجر" };
@@ -28,7 +31,7 @@ const ACTION_LABEL: Record<string, string> = {
 export default async function StoreDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = getDb();
-  const [d, plans] = await Promise.all([getStoreDetail(db, id), listPlans(db)]);
+  const [d, plans, domain] = await Promise.all([getStoreDetail(db, id), listPlans(db), getStoreDomain(db, id)]);
   if (!d) notFound();
   const { store, access } = d;
   const end = store.status === "trial" ? store.trialEndsAt : store.currentPeriodEnd;
@@ -66,6 +69,10 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
           plans={plans.filter((p) => p.isActive || p.id === store.planId).map((p) => ({ id: p.id, name: p.nameAr, priceMonthly: p.priceMonthly, priceYearly: p.priceYearly }))}
         />
       </div>
+
+      <ResetOwnerPassword userId={store.ownerUserId} storeId={store.id} ownerName={d.ownerName} />
+
+      {domain && <DomainAdmin id={domain.id} domain={domain.domain} status={domain.status} />}
 
       <Card>
         <CardHeader title="الدفعات" description="سجل الاشتراكات اللي اتسجلت" />

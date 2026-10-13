@@ -12,20 +12,30 @@ const ms = (d: Date | null | undefined) => (d ? d.getTime() : null);
 
 // ===== المتجر نفسه =====
 
+/** slug المتجر صاحب دومين خاص: متحقق منه وباقته تسمح بدومين خاص، وإلا null */
+export async function resolveDomainSlug(db: Db, host: string): Promise<string | null> {
+  const row = (
+    await db
+      .select({ slug: stores.slug, plan: plans })
+      .from(storeDomains)
+      .innerJoin(stores, eq(stores.id, storeDomains.storeId))
+      .leftJoin(plans, eq(plans.id, stores.planId))
+      .where(and(eq(storeDomains.domain, host.toLowerCase()), eq(storeDomains.status, "verified")))
+      .limit(1)
+  )[0];
+  // الدومين الخاص ميزة باقة: لو نزلت الباقة، الدومين يتوقف (المتجر يبقى على الساب دومين)
+  return row && (row.plan?.limits ?? FALLBACK_LIMITS).customDomain ? row.slug : null;
+}
+
 /** يحل مفتاح (slug أو دومين خاص متحقق منه) إلى بيانات المتجر العامة كاملة. */
 export async function loadStorefront(db: Db, rawKey: string): Promise<Storefront | null> {
-  const key = rawKey.toLowerCase();
-  const found = key.includes(".")
-    ? (
-        await db
-          .select({ store: stores, plan: plans })
-          .from(storeDomains)
-          .innerJoin(stores, eq(stores.id, storeDomains.storeId))
-          .leftJoin(plans, eq(plans.id, stores.planId))
-          .where(and(eq(storeDomains.domain, key), eq(storeDomains.status, "verified")))
-          .limit(1)
-      )[0]
-    : (await db.select({ store: stores, plan: plans }).from(stores).leftJoin(plans, eq(plans.id, stores.planId)).where(eq(stores.slug, key)).limit(1))[0];
+  let key = rawKey.toLowerCase();
+  if (key.includes(".")) {
+    const slug = await resolveDomainSlug(db, key);
+    if (!slug) return null;
+    key = slug;
+  }
+  const found = (await db.select({ store: stores, plan: plans }).from(stores).leftJoin(plans, eq(plans.id, stores.planId)).where(eq(stores.slug, key)).limit(1))[0];
   if (!found || !found.store.onboardedAt) return null;
   const { store, plan } = found;
   const scope = forStore(db, store.id);

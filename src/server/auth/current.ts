@@ -3,6 +3,7 @@ import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
+import { clientIpFrom } from "@/lib/client-ip";
 import { getEnv } from "@/lib/env";
 import { createSession, destroySession, validateSession, type SessionUser } from "./session";
 
@@ -29,7 +30,8 @@ export async function requireAdmin(): Promise<SessionUser> {
 
 export async function getClientIp(): Promise<string | null> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
+  const env = getEnv();
+  return clientIpFrom((n) => h.get(n), { hops: env.TRUSTED_PROXY_HOPS, cloudflare: env.TRUST_CLOUDFLARE === "1" });
 }
 
 export async function startSession(userId: string) {

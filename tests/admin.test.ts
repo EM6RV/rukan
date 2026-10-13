@@ -405,3 +405,26 @@ describe("إعدادات المنصة وسجل النشاط", () => {
     expect((await listAudit(db, { storeId: s.id })).items.map((a) => a.action)).toEqual(["subscription.payment"]);
   });
 });
+
+describe("إعادة تعيين كلمة سر المالك", () => {
+  it("تغيّر الكلمة وتلغي الجلسات وتتسجل، وترفض الأدمن والمقفول والضعيف", async () => {
+    const { adminResetPassword } = await import("@/server/admin/users");
+    const { authenticate } = await import("@/server/auth/service");
+    const { createSession } = await import("@/server/auth/session");
+    const { hashPassword } = await import("@/server/auth/password");
+    const { sessions } = await import("@/db/schema/platform");
+    const s = await shop("rp-1");
+    await db.update(users).set({ passwordHash: await hashPassword("old-password-1") }).where(eq(users.id, s.ownerId));
+    await createSession(db, s.ownerId);
+    expect(await adminResetPassword(db, s.ownerId, "short", actor())).toMatchObject({ ok: false });
+    expect(await adminResetPassword(db, s.ownerId, "new-password-9", actor(), s.id)).toEqual({ ok: true, data: undefined });
+    expect(await db.select().from(sessions).where(eq(sessions.userId, s.ownerId))).toHaveLength(0);
+    expect(await authenticate(db, { phone: s.phone, password: "old-password-1" }, "9.9.9.1")).toMatchObject({ ok: false });
+    expect(await authenticate(db, { phone: s.phone, password: "new-password-9" }, "9.9.9.1")).toMatchObject({ ok: true });
+    expect((await db.select().from(auditLogs).where(eq(auditLogs.storeId, s.id))).map((a) => a.action)).toContain("user.reset_password");
+    expect(await adminResetPassword(db, adminId, "new-password-9", actor())).toEqual({ ok: false, error: expect.stringContaining("أدمن") });
+    await db.update(users).set({ status: "blocked" }).where(eq(users.id, s.ownerId));
+    expect(await adminResetPassword(db, s.ownerId, "new-password-9", actor())).toEqual({ ok: false, error: expect.stringContaining("مقفول") });
+    expect((await adminResetPassword(db, "ghost", "new-password-9", actor())).ok).toBe(false);
+  });
+});

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { cities, platformSettings, plans, storeMembers, stores, users } from "../src/db/schema/platform";
 import { storeSettings } from "../src/db/schema/tenant";
-import { getEnv } from "../src/lib/env";
+import { getEnv, isDeployed } from "../src/lib/env";
 import { LIBYA_CITIES } from "../src/lib/libya-cities";
 import { DEFAULT_TRIAL_DAYS } from "../src/lib/constants";
 import { hashPassword } from "../src/server/auth/password";
@@ -45,6 +45,9 @@ if (env.ADMIN_PHONE && env.ADMIN_PASSWORD) {
   if (!phone) throw new Error("ADMIN_PHONE مش رقم ليبي صحيح");
   const existing = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).get();
   if (!existing) {
+    if (isDeployed(env) && (env.ADMIN_PASSWORD.length < 12 || /غيّر|change|password|12345/i.test(env.ADMIN_PASSWORD))) {
+      throw new Error("ADMIN_PASSWORD ضعيفة أو افتراضية. استعمل كلمة سر قوية (12 حرف على الأقل) قبل إنشاء الأدمن في الإنتاج.");
+    }
     await db.insert(users).values({
       phone, name: env.ADMIN_NAME, passwordHash: await hashPassword(env.ADMIN_PASSWORD), platformRole: "admin",
     });

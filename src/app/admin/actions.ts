@@ -8,6 +8,8 @@ import { SITE_TAG } from "@/server/admin/site-cache";
 import { savePlatformConfig } from "@/server/admin/settings";
 import { resetSiteContent, saveSiteContent } from "@/server/admin/site-content";
 import { changePlan, extendTrial, recordPayment, setSuspended, type TouchedStore } from "@/server/admin/subscriptions";
+import { adminResetPassword } from "@/server/admin/users";
+import { adminSetDomainStatus } from "@/server/domains";
 import { adminContext } from "@/server/auth/admin-action";
 import type { Result } from "@/server/catalog/result";
 import { invalidateStore } from "@/server/storefront/data";
@@ -75,3 +77,17 @@ export async function savePlatformConfigAction(input: unknown) {
   return run(({ db, userId }) => savePlatformConfig(db, input, userId), refreshSite);
 }
 
+
+// ===== الدومين الخاص (اعتماد يدوي للدعم) =====
+export async function adminDomainStatusAction(domainId: unknown, status: unknown) {
+  const p = z.object({ domainId: id, status: z.enum(["verified", "failed"]) }).safeParse({ domainId, status });
+  if (!p.success) return bad();
+  return run(({ db, userId }) => adminSetDomainStatus(db, p.data.domainId, p.data.status, userId), (d) => { touch({ id: d.storeId, slug: d.domain }); });
+}
+
+// ===== كلمة سر المالك (نسيها) =====
+export async function adminResetPasswordAction(userId: unknown, storeId: unknown, password: unknown) {
+  const p = z.object({ userId: id, storeId: id.nullish() }).safeParse({ userId, storeId });
+  if (!p.success) return bad();
+  return run(({ db, userId: actor }) => adminResetPassword(db, p.data.userId, password, { id: actor }, p.data.storeId ?? null));
+}

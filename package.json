@@ -56,6 +56,8 @@
     "db:seed": "tsx --env-file-if-exists=.env scripts/seed.ts",
     "db:setup": "pnpm db:migrate && pnpm db:seed",
     "icons": "tsx scripts/make-icons.ts",
-    "db:seed:demo": "tsx --env-file-if-exists=.env scripts/seed-demo.ts"
+    "db:seed:demo": "tsx --env-file-if-exists=.env scripts/seed-demo.ts",
+    "start:prod": "pnpm db:migrate && pnpm db:seed && next start",
+    "check:env": "NODE_ENV=production STRICT_PRODUCTION=1 tsx --env-file-if-exists=.env scripts/check-env.ts"
   }
 }

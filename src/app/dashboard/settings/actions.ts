@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db";
+import { getEnv } from "@/lib/env";
+import { addDomain, removeDomain, verifyDomain } from "@/server/domains";
 import type { Result } from "@/server/catalog/result";
 import { saveDeliveryConfig } from "@/server/delivery-service";
 import { saveWhatsappTemplate } from "@/server/orders/whatsapp-templates";
@@ -46,4 +48,29 @@ export async function savePixelAction(input: unknown) {
 
 export async function saveDesignAction(input: unknown) {
   return run((c) => saveDesignSettings(getDb(), c.store.id, input, c.limits));
+}
+
+// ===== الدومين الخاص (المالك فقط: صلاحية billing) =====
+async function runOwner<T>(fn: (ctx: StoreContext) => Promise<Result<T>>, touchedDomain: (d: T) => string | null): Promise<Result<T>> {
+  const auth = await actionContext("billing", { write: true });
+  if (!auth.ok) return auth;
+  const r = await fn(auth.ctx);
+  if (r.ok) {
+    revalidatePath("/dashboard/settings");
+    invalidateStore(auth.ctx.store);
+    const d = touchedDomain(r.data);
+    if (d) invalidateStore({ id: auth.ctx.store.id, slug: d }); // كاش الواجهة بمفتاح الدومين
+  }
+  return r;
+}
+const targetHost = () => { const e = getEnv(); return (e.CUSTOM_DOMAIN_TARGET || `cname.${e.ROOT_DOMAIN}`).toLowerCase(); };
+
+export async function addDomainAction(input: unknown) {
+  return runOwner((c) => addDomain(getDb(), c.store.id, input, c.limits, getEnv().ROOT_DOMAIN, c.user.id), () => null);
+}
+export async function verifyDomainAction() {
+  return runOwner((c) => verifyDomain(getDb(), c.store.id, targetHost(), c.user.id), (d) => (d.verified ? d.domain : null));
+}
+export async function removeDomainAction() {
+  return runOwner((c) => removeDomain(getDb(), c.store.id, c.user.id), (d) => d.domain);
 }

@@ -15,9 +15,32 @@ const schema = z.object({
   ADMIN_NAME: z.string().default("مدير رُكن"),
   ADMIN_PHONE: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
+  // خلف البروكسي: عدد البروكسيات الموثوقة (Render = 1). TRUST_CLOUDFLARE=1 لو Cloudflare قدام Render.
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
+  TRUST_CLOUDFLARE: z.enum(["1", "0"]).optional(),
+  // هدف CNAME للدومينات الخاصة (مثلاً rukn-web.onrender.com). الافتراضي: cname.ROOT_DOMAIN
+  CUSTOM_DOMAIN_TARGET: z.string().optional(),
+  // استثناءات الإنتاج المقصودة
+  ALLOW_LOCAL_DB: z.enum(["1", "0"]).optional(),
+  STRICT_PRODUCTION: z.enum(["1", "0"]).optional(),
 });
 
 export type Env = z.infer<typeof schema>;
+
+/** الإنتاج الفعلي: على Render (RENDER=true) أو بتفعيل STRICT_PRODUCTION=1 */
+export const isDeployed = (env: Pick<Env, "NODE_ENV" | "STRICT_PRODUCTION">, raw: Record<string, string | undefined> = process.env) =>
+  env.NODE_ENV === "production" && (raw.RENDER === "true" || env.STRICT_PRODUCTION === "1");
+
+/** مشاكل إعداد خطيرة في الإنتاج الفعلي (يوقف التشغيل برسالة واضحة بدل ما يشتغل غلط بصمت) */
+export function productionProblems(env: Env, raw: Record<string, string | undefined> = process.env): string[] {
+  if (!isDeployed(env, raw)) return [];
+  const p: string[] = [];
+  if (!env.APP_URL.startsWith("https://")) p.push("APP_URL لازم يبدأ بـ https:// في الإنتاج");
+  if (/^(localhost|127\.|0\.0\.0\.0)/.test(env.ROOT_DOMAIN) || env.ROOT_DOMAIN.includes(":")) p.push("ROOT_DOMAIN لازم يكون دومين حقيقي بدون منفذ (مثال: rukn.ly)");
+  if (env.DATABASE_URL.startsWith("file:") && env.ALLOW_LOCAL_DB !== "1") p.push("DATABASE_URL ملف محلي: قرص Render يتمسح مع كل نشر! استعمل Turso (libsql://…) أو ALLOW_LOCAL_DB=1 لو عندك قرص دائم");
+  if (env.DATABASE_URL.startsWith("libsql://") && !env.DATABASE_AUTH_TOKEN) p.push("DATABASE_AUTH_TOKEN مطلوب مع قاعدة Turso");
+  return p;
+}
 
 let cached: Env | undefined;
 
@@ -39,6 +62,8 @@ export function getEnv(): Env {
     );
     if (missing.length) throw new Error(`STORAGE_DRIVER=r2 يحتاج: ${missing.join(", ")}`);
   }
+  const problems = productionProblems(env);
+  if (problems.length) throw new Error(`إعدادات الإنتاج غير آمنة:\n${problems.map((x) => `- ${x}`).join("\n")}`);
   cached = env;
   return env;
 }

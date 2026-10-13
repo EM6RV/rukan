@@ -332,7 +332,7 @@ describe("التتبع", () => {
 
 describe("استعلامات الواجهة", () => {
   it("المتجر: slug ودومين خاص متحقق وغير مكتمل الإعداد", async () => {
-    const s = await makeShop("shop-sf");
+    const s = await makeShop("shop-sf", { planLimits: { ...GROWTH, customDomain: true } });
     const sf = (await loadStorefront(db, "SHOP-SF"))!;
     expect(sf).toMatchObject({ id: s.id, name: "shop-sf", status: "trial", template: "simple" });
     expect(sf.pages.map((p) => p.slug)).toContain("about");
