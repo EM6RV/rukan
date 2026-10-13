@@ -15,6 +15,9 @@ import { getMarketingData } from "@/server/admin/site-cache";
 
 const ICONS: Record<FeatureIcon, LucideIcon> = { truck: Truck, banknote: Banknote, rotate: RotateCcw, map: MapPin, message: MessageCircle, shield: ShieldCheck, palette: Palette, chart: BarChart3, smartphone: Smartphone, zap: Zap, store: Store, users: Users };
 
+// ديناميكية: الصفحة تقرا القاعدة (محتوى وأسعار)، والقاعدة وقت البناء على Render لسا فاضية (الـ migrations تشتغل عند التشغيل). الكاش داخل getMarketingData.
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const { content } = await getMarketingData();
   return { title: { absolute: content.seo.title }, description: content.seo.description, openGraph: { title: content.seo.title, description: content.seo.description, locale: "ar_LY", type: "website", siteName: "رُكن" }, alternates: { canonical: "/" } };
