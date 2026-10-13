@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validPixelId } from "@/lib/pixels";
 import { mediaSrcSet, mediaUrl } from "@/lib/media-url";
-import { contrastRatio } from "@/lib/contrast";
+import { contrastRatio, readableOn } from "@/lib/contrast";
 import { storeThemeVars } from "@/lib/store-theme";
 import { excerpt, safeJsonLd } from "@/lib/text";
 import { orderConfirmMessage, waLink } from "@/lib/whatsapp";
@@ -34,6 +34,12 @@ describe("ثيم المتجر", () => {
     const light = storeThemeVars("#F5F5F5", "#FFEE88");
     expect(light["--sp-fg"]).toBe("#0D263E");
     expect(light["--sa-text"]).not.toBe("#FFEE88"); // لون خفيف: نص التمييز يتغمّق علشان يقرا على الأبيض
+  });
+});
+
+describe("لون النص فوق ألوان البياع", () => {
+  it.each(["#E4572E", "#FF6B35", "#C19E58", "#0D263E", "#F5F5F5", "#087C86", "#FFEE88", "#22AA55"])("يوصل 4.5:1 على الأقل فوق %s", (bg) => {
+    expect(contrastRatio(readableOn(bg), bg)).toBeGreaterThanOrEqual(4.5);
   });
 });
 

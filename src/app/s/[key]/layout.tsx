@@ -1,3 +1,4 @@
+import { SkipLink } from "@/components/ui/skip-link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Store } from "lucide-react";
@@ -76,8 +77,9 @@ export default async function StoreLayout({ children, params }: Props) {
     <div data-theme="light" style={{ ...vars, ...storeFontStyle(s.fontKey) }} className={`min-h-dvh ${ALL_FONT_VARIABLES} ${kit.cls.page}`}>
       <StoreProvider info={info}>
         <CartProvider storeId={sf.id}>
+          <SkipLink />
           <kit.Header />
-          <main>{children}</main>
+          <main id="main-content" tabIndex={-1} className="outline-none">{children}</main>
           <kit.Footer />
           <WhatsAppFloat />
         </CartProvider>

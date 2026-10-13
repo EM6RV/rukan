@@ -47,7 +47,7 @@ export function EmptyState({
   return (
     <div className={cn("flex animate-[fade-up_0.35s_ease-out_both] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-surface/40 px-6 py-14 text-center", className)}>
       {icon && <div className="flex size-14 items-center justify-center rounded-full bg-gold/15 text-navy ring-8 ring-gold/10 dark:text-gold">{icon}</div>}
-      <h3 className="text-lg">{title}</h3>
+      <h2 className="text-lg">{title}</h2>
       {description && <p className="max-w-sm text-sm leading-7 text-muted">{description}</p>}
       {action && <div className="mt-1">{action}</div>}
     </div>

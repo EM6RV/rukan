@@ -19,8 +19,8 @@ function Frame({ slug, path, device }: { slug: string; path: string; device: "mo
     return () => window.removeEventListener(STORE_SAVED_EVENT, reload);
   }, []);
   return (
-    <div className="relative">
-      <button type="button" onClick={() => setVersion((v) => v + 1)} aria-label="تحديث المعاينة" className="absolute -top-9 end-0 flex items-center gap-1 text-xs text-muted hover:text-fg"><RefreshCw className="size-3.5" aria-hidden /> تحديث</button>
+    <div>
+      <div className="mb-1 flex justify-end"><button type="button" onClick={() => setVersion((v) => v + 1)} aria-label="تحديث المعاينة" className="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-muted hover:text-fg"><RefreshCw className="size-3.5" aria-hidden /> تحديث</button></div>
       <iframe
         key={version} title="معاينة المتجر" src={`/s/${encodeURIComponent(slug)}${path}`}
         className={cn("mx-auto block h-[34rem] max-h-[70vh] rounded-xl border border-line bg-white shadow-soft", device === "mobile" ? "w-[22rem] max-w-full" : "w-full")}

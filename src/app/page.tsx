@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/logo";
 import { MockStore } from "@/components/marketing/mock-store";
 import { Pricing } from "@/components/marketing/pricing";
 import { ButtonLink } from "@/components/ui/button";
+import { SkipLink } from "@/components/ui/skip-link";
 import { FadeIn } from "@/components/ui/motion";
 import type { FeatureIcon } from "@/lib/site-content";
 import { toWhatsappNumber } from "@/lib/phone";
@@ -47,6 +48,7 @@ export default async function Home() {
         { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: c.faq.items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
       ]) }} />
 
+      <SkipLink />
       <header className="sticky top-0 z-40 border-b border-line bg-surface/85 backdrop-blur-md supports-[backdrop-filter]:bg-surface/75">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
           <Link href="/" aria-label="رُكن"><Logo className="h-9" priority /></Link>
@@ -60,8 +62,8 @@ export default async function Home() {
         </div>
       </header>
 
-      <main>
-        <section className="relative isolate overflow-hidden bg-navy text-white">
+      <main id="main-content" tabIndex={-1} className="outline-none">
+        <section className="relative isolate overflow-hidden bg-navy text-white [--focus:#e3c487] [--focus-halo:transparent]">
           {/* خلفية: توهّج ذهبي وتركوازي + شبكة نقاط خفيفة (زينة فقط) */}
           <div aria-hidden className="pointer-events-none absolute -top-40 -start-40 -z-10 size-[34rem] rounded-full bg-gold/25 blur-3xl" />
           <div aria-hidden className="pointer-events-none absolute -bottom-48 -end-32 -z-10 size-[30rem] rounded-full bg-teal/30 blur-3xl" />
@@ -162,7 +164,7 @@ export default async function Home() {
         </section>
 
         <section className="px-4 pb-16">
-          <div className="relative isolate mx-auto max-w-4xl overflow-hidden rounded-3xl bg-navy px-6 py-14 text-center text-white shadow-lift md:py-16">
+          <div className="relative isolate mx-auto max-w-4xl overflow-hidden rounded-3xl bg-navy px-6 py-14 text-center text-white shadow-lift [--focus:#e3c487] [--focus-halo:transparent] md:py-16">
             <div aria-hidden className="pointer-events-none absolute -top-24 start-1/2 -z-10 size-80 -translate-x-1/2 rounded-full bg-gold/25 blur-3xl" />
             <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-[0.07] [background-image:radial-gradient(#fff_1px,transparent_1px)] [background-size:22px_22px]" />
             <h2 className="text-balance text-3xl tracking-tight text-white md:text-4xl">{c.cta.title}</h2><p className="mx-auto mt-3 max-w-lg text-lg text-white/80">{c.cta.subtitle}</p>

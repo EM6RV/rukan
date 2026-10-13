@@ -74,14 +74,14 @@ export function BottomNav({ items }: { items: NavItem[] }) {
 
   return (
     <>
-      <nav aria-label="التنقل الرئيسي" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      <nav aria-label="التنقل السفلي" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         <ul className="mx-auto flex max-w-md">
           {shown.map((it) => {
             const Icon = ICONS[it.icon];
             const active = isActive(pathname, it.href);
             return (
               <li key={it.href} className="flex-1">
-                <Link href={it.href} aria-current={active ? "page" : undefined} className={cn("flex flex-col items-center gap-0.5 py-2 text-center text-xs font-medium leading-tight", active ? "text-fg" : "text-muted")}>
+                <Link href={it.href} aria-current={active ? "page" : undefined} className={cn("flex min-h-14 flex-col items-center justify-center gap-0.5 py-2 text-center text-xs font-medium leading-tight", active ? "text-fg" : "text-muted")}>
                   {tab(active, <Icon className="size-5" aria-hidden />, it.label, it.badge)}
                 </Link>
               </li>
@@ -89,7 +89,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
           })}
           {overflow && (
             <li className="flex-1">
-              <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className={cn("flex w-full flex-col items-center gap-0.5 py-2 text-center text-xs font-medium leading-tight", restActive ? "text-fg" : "text-muted")}>
+              <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className={cn("flex min-h-14 w-full flex-col items-center justify-center gap-0.5 py-2 text-center text-xs font-medium leading-tight", restActive ? "text-fg" : "text-muted")}>
                 {tab(restActive, <MoreHorizontal className="size-5" aria-hidden />, "المزيد", restBadge)}
               </button>
             </li>

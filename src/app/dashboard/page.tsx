@@ -106,7 +106,7 @@ export default async function DashboardHome() {
 
 const TONES = {
   gold: { tile: "bg-gold/20 text-navy dark:text-gold", edge: "before:bg-gold" },
-  teal: { tile: "bg-teal/15 text-teal dark:text-link", edge: "before:bg-teal" },
+  teal: { tile: "bg-teal/15 text-link-strong", edge: "before:bg-teal" },
   danger: { tile: "bg-danger/15 text-danger-fg", edge: "before:bg-danger" },
 } as const;
 type Tone = keyof typeof TONES;

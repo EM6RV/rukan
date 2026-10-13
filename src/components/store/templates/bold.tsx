@@ -12,9 +12,10 @@ import type { Kit } from "./types";
 function Header() {
   const { href, categories, announcementBar } = useStore();
   return (
-    <header className="sticky top-0 z-30 border-b-4 border-(--sa) bg-(--sp) text-(--sp-fg)">
+    <header className="sticky top-0 z-30 border-b-4 border-(--sa) bg-(--sp) text-(--sp-fg) [--focus:var(--sp-fg)] [--focus-halo:transparent]">
       {announcementBar && (
-        <div className="overflow-hidden border-b-2 border-(--sp-fg)/20 bg-(--sa) py-1.5 text-(--sa-fg)" aria-label={announcementBar}>
+        <div className="overflow-hidden border-b-2 border-(--sp-fg)/20 bg-(--sa) py-1.5 text-(--sa-fg)">
+          <p className="sr-only">{announcementBar}</p>
           <div className="flex w-max animate-[marquee_28s_linear_infinite] gap-10 motion-reduce:animate-none hover:[animation-play-state:paused] active:[animation-play-state:paused] whitespace-nowrap text-sm font-black" aria-hidden>
             {Array.from({ length: 8 }).map((_, i) => <span key={i}>★ {announcementBar}</span>)}
           </div>
@@ -37,10 +38,10 @@ function Header() {
 function Footer() {
   const { name } = useStore();
   return (
-    <footer className="mt-20 border-t-4 border-(--sa) bg-(--sp) text-(--sp-fg)">
+    <footer className="mt-20 border-t-4 border-(--sa) bg-(--sp) text-(--sp-fg) [--focus:var(--sp-fg)] [--focus-halo:transparent]">
       <div className="mx-auto max-w-6xl overflow-hidden px-4 pt-12">
         <p aria-hidden className="select-none text-center text-[clamp(3rem,16vw,9rem)] font-black leading-none text-(--sa)/90">{name}</p>
-        <div className="mt-10 grid gap-8 sm:grid-cols-2 [&_h3]:font-black">
+        <div className="mt-10 grid gap-8 sm:grid-cols-2 [&_h2]:font-black">
           <FooterColumns linkClass="font-medium opacity-90 hover:text-(--sa) hover:opacity-100" />
         </div>
       </div>
@@ -87,7 +88,7 @@ const CategoryTile: Kit["CategoryTile"] = ({ name, href, imageMediaId }) => (
 const SectionTitle: Kit["SectionTitle"] = ({ title, href, linkLabel }) => (
   <div className="mb-6 flex items-end justify-between gap-3 border-b-4 border-(--sp) pb-2">
     <h2 className="text-3xl font-black md:text-4xl">{title}</h2>
-    {href && <Link href={href} className="border-2 border-(--sp) px-3 py-1 text-sm font-black transition-colors hover:bg-(--sp) hover:text-(--sp-fg)">{linkLabel ?? "الكل"} ←</Link>}
+    {href && <Link href={href} className="inline-flex min-h-10 items-center border-2 border-(--sp) px-3 text-sm font-black transition-colors hover:bg-(--sp) hover:text-(--sp-fg)">{linkLabel ?? "الكل"} ←</Link>}
   </div>
 );
 

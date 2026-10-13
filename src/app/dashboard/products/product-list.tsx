@@ -73,11 +73,11 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
           return (
             <li key={p.id} style={enterDelay(i)} className={cn(enterItem, "flex items-center gap-3 rounded-2xl border bg-surface p-3 shadow-soft transition-colors", selected.has(p.id) ? "border-gold bg-gold/5" : "border-line", !p.isVisible && "opacity-75")}>
               <label className="-mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" aria-label={`تحديد ${p.name}`} checked={selected.has(p.id)} onChange={() => toggle(p.id)} className="size-5 accent-[var(--color-gold)]" /></label>
-              <Link href={`/dashboard/products/${p.id}`} className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
+              <Link href={`/dashboard/products/${p.id}`} aria-label={p.name} className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
                 {p.thumbMediaId ? <img src={`/api/media/${p.thumbMediaId}`} alt="" loading="lazy" className="size-full object-cover" /> : <Package className="size-6 text-muted" />}
               </Link>
               <div className="min-w-0 flex-1 space-y-0.5">
-                <Link href={`/dashboard/products/${p.id}`} className="block truncate font-semibold hover:underline">{p.name}</Link>
+                <Link href={`/dashboard/products/${p.id}`} className="block truncate py-2 font-semibold hover:underline">{p.name}</Link>
                 <p className="text-sm">
                   <span className="font-semibold">{formatMoney(p.price)}</span>
                   {p.compareAtPrice !== null && <span className="ms-2 text-muted line-through">{formatMoney(p.compareAtPrice)}</span>}

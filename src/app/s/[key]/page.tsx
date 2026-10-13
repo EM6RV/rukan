@@ -61,7 +61,7 @@ export default async function StoreHome({ params }: Props) {
           const to = link ? (link.startsWith("/") ? href(link) : link) : null;
           const img = (
             <div className={`${kit.cls.imageFrame} relative aspect-[16/9] w-full overflow-hidden sm:aspect-[21/9]`}>
-              <img src={mediaUrl(sec.config.imageMediaId, 960)} srcSet={mediaSrcSet(sec.config.imageMediaId, [640, 960, 1280])} sizes="(min-width: 1152px) 1152px, 100vw" alt={str(sec.config.title) ?? ""} loading="lazy" className="size-full object-cover" />
+              <img src={mediaUrl(sec.config.imageMediaId, 960)} srcSet={mediaSrcSet(sec.config.imageMediaId, [640, 960, 1280])} sizes="(min-width: 1152px) 1152px, 100vw" alt="" loading="lazy" className="size-full object-cover" />
               {str(sec.config.title) && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12 text-lg font-bold text-white md:p-6 md:text-2xl">{sec.config.title as string}</div>}
             </div>
           );

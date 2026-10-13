@@ -28,7 +28,7 @@ export function Pricing({ plans, cta }: { plans: Plan[]; cta: string }) {
           const price = yearly ? p.priceYearly : p.priceMonthly;
           const save = p.priceMonthly > 0 ? Math.round((1 - p.priceYearly / (p.priceMonthly * 12)) * 100) : 0;
           return (
-            <li key={p.id} className={cn("relative flex flex-col rounded-2xl border p-7 transition-shadow", p.id === featured ? "border-navy bg-navy text-white shadow-lift ring-1 ring-gold/50 lg:-translate-y-3" : "border-line bg-surface shadow-soft hover:shadow-lift")}>
+            <li key={p.id} className={cn("relative flex flex-col rounded-2xl border p-7 transition-shadow", p.id === featured ? "border-navy bg-navy text-white shadow-lift ring-1 ring-gold/50 [--focus:#e3c487] [--focus-halo:transparent] lg:-translate-y-3" : "border-line bg-surface shadow-soft hover:shadow-lift")}>
               {p.id === featured && <span className="absolute -top-3 start-1/2 -translate-x-1/2 rounded-full bg-gold px-3.5 py-1 text-xs font-bold text-navy shadow-soft rtl:translate-x-1/2">الأكثر طلباً</span>}
               <h3 className={cn("text-xl", p.id === featured && "text-white")}>{p.name}</h3>
               {p.description && <p className={cn("mt-1 min-h-10 text-sm", p.id === featured ? "text-white/70" : "text-muted")}>{p.description}</p>}

@@ -56,14 +56,14 @@ export function FooterColumns({ linkClass, headingClass }: { linkClass?: string;
   return (
     <>
       <div>
-        <h3 className={cn("mb-3 text-base font-bold", headingClass)}>معلومات</h3>
+        <h2 className={cn("mb-3 text-base font-bold", headingClass)}>معلومات</h2>
         <ul className="space-y-0.5 text-sm [&_a]:inline-flex [&_a]:min-h-10 [&_a]:items-center">
           {pages.map((p) => <li key={p.slug}><Link className={linkClass} href={href(`/page/${p.slug}`)}>{p.title}</Link></li>)}
           <li><Link className={linkClass} href={href("/track")}>تتبع طلبيتك</Link></li>
         </ul>
       </div>
       <div>
-        <h3 className={cn("mb-3 text-base font-bold", headingClass)}>تواصل معنا</h3>
+        <h2 className={cn("mb-3 text-base font-bold", headingClass)}>تواصل معنا</h2>
         <ul className="space-y-0.5 text-sm [&_a]:min-h-10 [&_a]:items-center">
           {whatsapp && <li><a className={cn("flex items-center gap-2", linkClass)} href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer"><Phone className="size-4" /> واتساب</a></li>}
           {contact.phone && <li><a className={cn("flex items-center gap-2", linkClass)} href={`tel:${contact.phone}`}><Phone className="size-4" /> <bdi dir="ltr">{contact.phone}</bdi></a></li>}
@@ -81,7 +81,7 @@ export function Copyright({ className }: { className?: string }) {
   return (
     <div className={cn("flex flex-wrap items-center justify-between gap-2 text-sm", className)}>
       <span>© {new Date().getFullYear()} {name}{footerText ? ` · ${footerText}` : ""}</span>
-      {showBranding && <a href="https://rukn.ly" target="_blank" rel="noopener" className="inline-flex min-h-8 items-center underline-offset-2 hover:underline">مدعوم من رُكن</a>}
+      {showBranding && <a href="https://rukn.ly" target="_blank" rel="noopener" className="inline-flex min-h-10 items-center underline-offset-2 hover:underline">مدعوم من رُكن</a>}
     </div>
   );
 }

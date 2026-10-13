@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { Logo } from "@/components/brand/logo";
+import { SkipLink } from "@/components/ui/skip-link";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { requireAdmin } from "@/server/auth/current";
@@ -14,6 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await requireAdmin();
   return (
     <div className="min-h-dvh bg-bg">
+      <SkipLink />
       <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
@@ -30,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </header>
       <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:py-8">
         <aside className="lg:sticky lg:top-24 lg:self-start"><AdminNav /></aside>
-        <main className="min-w-0 space-y-5">{children}</main>
+        <main id="main-content" tabIndex={-1} className="min-w-0 space-y-5 outline-none">{children}</main>
       </div>
     </div>
   );

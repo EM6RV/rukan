@@ -131,8 +131,8 @@ export function CourierList({ couriers, writable }: { couriers: CourierItem[]; w
             <Card className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <Link href={`/dashboard/couriers/${c.id}`} className="flex items-center gap-2 font-semibold hover:underline">{c.kind === "company" ? <Building2 className="size-4 shrink-0 text-muted" aria-hidden /> : <User className="size-4 shrink-0 text-muted" aria-hidden />}<span className="truncate">{c.name}</span></Link>
-                  {c.phone && <a dir="ltr" href={`tel:${c.phone}`} className="mt-0.5 inline-flex items-center gap-1 text-sm text-link"><Phone className="size-3.5" aria-hidden />{c.phone}</a>}
+                  <Link href={`/dashboard/couriers/${c.id}`} className="flex min-h-10 items-center gap-2 font-semibold hover:underline">{c.kind === "company" ? <Building2 className="size-4 shrink-0 text-muted" aria-hidden /> : <User className="size-4 shrink-0 text-muted" aria-hidden />}<span className="truncate">{c.name}</span></Link>
+                  {c.phone && <a dir="ltr" href={`tel:${c.phone}`} className="inline-flex min-h-10 items-center gap-1 text-sm text-link"><Phone className="size-3.5" aria-hidden />{c.phone}</a>}
                 </div>
                 <div className="flex items-center gap-1">{!c.isActive && <Badge>موقوف</Badge>}<Button size="sm" variant="ghost" disabled={!writable} onClick={() => setEditing(c)}>تعديل</Button></div>
               </div>
