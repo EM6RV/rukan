@@ -30,7 +30,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
         return (
           <Link
             key={it.href} href={it.href} aria-current={active ? "page" : undefined}
-            className={cn("flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] font-medium transition-colors", active ? "bg-gold/20 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg")}
+            className={cn("flex items-center gap-3 rounded-md px-3 py-2.5 text-[15px] font-medium transition-colors", "relative", active ? "bg-gold/15 text-fg before:absolute before:inset-y-2 before:start-0 before:w-1 before:rounded-full before:bg-gold" : "text-muted hover:bg-surface-2 hover:text-fg")}
           >
             <Icon className="size-5" aria-hidden />
             {it.label}
@@ -81,7 +81,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
             const active = isActive(pathname, it.href);
             return (
               <li key={it.href} className="flex-1">
-                <Link href={it.href} aria-current={active ? "page" : undefined} className={cn("flex flex-col items-center gap-0.5 py-2 text-xs font-medium", active ? "text-fg" : "text-muted")}>
+                <Link href={it.href} aria-current={active ? "page" : undefined} className={cn("flex flex-col items-center gap-0.5 py-2 text-center text-xs font-medium leading-tight", active ? "text-fg" : "text-muted")}>
                   {tab(active, <Icon className="size-5" aria-hidden />, it.label, it.badge)}
                 </Link>
               </li>
@@ -89,7 +89,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
           })}
           {overflow && (
             <li className="flex-1">
-              <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className={cn("flex w-full flex-col items-center gap-0.5 py-2 text-xs font-medium", restActive ? "text-fg" : "text-muted")}>
+              <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className={cn("flex w-full flex-col items-center gap-0.5 py-2 text-center text-xs font-medium leading-tight", restActive ? "text-fg" : "text-muted")}>
                 {tab(restActive, <MoreHorizontal className="size-5" aria-hidden />, "المزيد", restBadge)}
               </button>
             </li>
