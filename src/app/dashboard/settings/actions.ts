@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db";
 import type { Result } from "@/server/catalog/result";
+import { saveDeliveryConfig } from "@/server/delivery-service";
+import { saveWhatsappTemplate } from "@/server/orders/whatsapp-templates";
 import { saveContactSettings, saveGeneralSettings, savePaymentSettings, saveSeoSettings } from "@/server/settings-service";
 import { invalidateStore } from "@/server/storefront/data";
 import { actionContext, type StoreContext } from "@/server/store-context";
@@ -29,4 +31,11 @@ export async function savePaymentAction(input: unknown) {
 }
 export async function saveSeoAction(input: unknown) {
   return run((c) => saveSeoSettings(getDb(), c.store.id, input));
+}
+
+export async function saveDeliveryAction(input: unknown) {
+  return run((c) => saveDeliveryConfig(getDb(), c.store.id, input));
+}
+export async function saveWhatsappTemplateAction(input: unknown) {
+  return run((c) => saveWhatsappTemplate(c.scope, input));
 }

@@ -1,14 +1,16 @@
 // متاجر تجريبية (براندات وهمية من تصميمنا) لتجربة القوالب الثلاثة: pnpm db:seed:demo
 import sharp from "sharp";
 import { eq } from "drizzle-orm";
-import { createDb, writeTransaction } from "../src/db";
+import { createDb } from "../src/db";
 import { plans, stores, users } from "../src/db/schema/platform";
 import { getEnv } from "../src/lib/env";
 import { hashPassword } from "../src/server/auth/password";
 import { saveCategory } from "../src/server/catalog/categories";
 import { saveProduct } from "../src/server/catalog/products";
 import { saveImage } from "../src/server/media";
+import { saveCourier } from "../src/server/orders/couriers";
 import { createOrder } from "../src/server/orders/create";
+import { changeOrderStatus, registerReturn } from "../src/server/orders/manage";
 import { adapters } from "../src/server/storage";
 import { completeOnboarding, createStoreForUser, saveBusinessType, saveDelivery, saveIdentity } from "../src/server/store-service";
 import { saveContactSettings, savePaymentSettings } from "../src/server/settings-service";
@@ -110,18 +112,27 @@ async function buildStore(spec: {
   // طلبيات وهمية بحالات مختلفة
   const variants = await scope.from(t.productVariants);
   const people: [string, string][] = [["أحمد المصراتي", "0912000111"], ["مريم الزاوي", "0921000222"], ["سالم البرعصي", "0931000333"], ["فاطمة الورفلي", "0941000444"], ["يوسف التاجوري", "0951000555"]];
-  const statuses = ["new", "new", "confirmed", "with_courier", "delivered", "delivered", "returned", "cancelled"] as const;
+  const statuses = ["new", "new", "confirmed", "with_courier", "delivered", "delivered", "returned", "cancelled", "delivered", "with_courier"] as const;
+  const couriers: string[] = [];
+  for (const c of [{ name: "علي المندوب", kind: "person" as const, phone: "0913334444" }, { name: "شركة السريع للتوصيل", kind: "company" as const, phone: "0923334444" }]) {
+    const r = await saveCourier(scope, c);
+    if (r.ok) couriers.push(r.data.id);
+  }
   for (let i = 0; i < statuses.length; i++) {
     const v = variants[(i * 3) % variants.length]!;
     const [name, phone] = people[i % people.length]!;
     const o = await createOrder(db, storeId, { items: [{ variantId: v.id, quantity: 1 + (i % 2) }], name, phone, cityId: city.id, address: "حي الأندلس، شارع الجمهورية", paymentMethod: "cod" });
     if (!o.ok) { console.log(`  ! طلبية ${i}: ${o.error}`); continue; }
-    if (statuses[i] !== "new") {
-      await writeTransaction(db, async (tx) => {
-        const sc = forStore(tx as never, storeId);
-        await sc.update(t.orders, { status: statuses[i]! }, eq(t.orders.id, o.data.orderId));
-        await sc.insert(t.orderStatusHistory, { orderId: o.data.orderId, fromStatus: "new", toStatus: statuses[i]!, note: "بيانات تجريبية" });
-      });
+    // نمر على نفس خدمات اللوحة علشان الكاش والمخزون والزبائن تتحدث صح
+    const st = statuses[i]!;
+    const go = (to: "confirmed" | "with_courier" | "delivered" | "cancelled", extra: { courierId?: string } = {}) =>
+      changeOrderStatus(scope, { orderId: o.data.orderId, to, actorUserId: null, note: "بيانات تجريبية", ...extra });
+    if (st === "cancelled") await go("cancelled");
+    if (st !== "new" && st !== "cancelled") {
+      await go("confirmed");
+      if (st !== "confirmed") await go("with_courier", { courierId: couriers[i % couriers.length]! });
+      if (st === "delivered") await go("delivered");
+      if (st === "returned") await registerReturn(scope, { orderId: o.data.orderId, reason: "refused", reasonNote: "الزبون رفض الاستلام", shippingLoss: 10_000 }, null);
     }
   }
   console.log(`✓ ${spec.name}  →  /s/${spec.slug}   (دخول: ${spec.phone} / ${PASSWORD})`);

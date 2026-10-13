@@ -6,13 +6,19 @@ import { BottomNav, SidebarNav, type NavItem } from "@/components/dashboard/nav"
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { can } from "@/server/permissions";
+import { OrdersWatcher } from "@/components/dashboard/orders-watcher";
+import { getOrdersPulse } from "@/server/orders/pulse";
 import { requireStoreContext } from "@/server/store-context";
 import { logoutAction } from "../(auth)/actions";
 
 const ALL_ITEMS: (NavItem & { permission: Parameters<typeof can>[1] })[] = [
   { href: "/dashboard", label: "الرئيسية", icon: "home", permission: "dashboard" },
+  { href: "/dashboard/orders", label: "الطلبيات", icon: "orders", permission: "orders" },
   { href: "/dashboard/products", label: "المنتجات", icon: "products", permission: "products" },
   { href: "/dashboard/categories", label: "الأقسام", icon: "categories", permission: "categories" },
+  { href: "/dashboard/customers", label: "الزبائن", icon: "customers", permission: "customers" },
+  { href: "/dashboard/couriers", label: "المندوبون والكاش", icon: "couriers", permission: "couriers" },
+  { href: "/dashboard/returns", label: "المرتجعات", icon: "returns", permission: "returns" },
   { href: "/dashboard/settings", label: "الإعدادات", icon: "settings", permission: "settings" },
 ];
 
@@ -20,7 +26,9 @@ export const metadata: Metadata = { title: { template: "%s | رُكن", default:
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireStoreContext(null);
-  const items = ALL_ITEMS.filter((i) => can(ctx.role, i.permission)).map((i): NavItem => ({ href: i.href, label: i.label, icon: i.icon }));
+  // المندوب ما يشوف تنبيهات الطلبيات الجديدة (يشوف طلبياته بس)
+  const pulse = can(ctx.role, "orders") && ctx.role !== "courier" ? await getOrdersPulse(ctx.scope) : null;
+  const items = ALL_ITEMS.filter((i) => can(ctx.role, i.permission)).map((i): NavItem => ({ href: i.href, label: i.label, icon: i.icon, badge: i.icon === "orders" ? pulse?.newCount : undefined }));
   const { access } = ctx;
 
   const banner =
@@ -63,6 +71,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         )}
         <main className="mx-auto max-w-5xl px-4 py-6 pb-28 lg:px-8 lg:py-8 lg:pb-10">{children}</main>
         <BottomNav items={items} />
+        {pulse && <OrdersWatcher initialLatestId={pulse.latest?.id ?? null} />}
       </div>
     </div>
   );

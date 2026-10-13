@@ -58,6 +58,7 @@ export type BillingCycle = (typeof BILLING_CYCLES)[number];
 
 export const LIBYA_REGIONS = ["west", "east", "south", "center"] as const;
 export type LibyaRegion = (typeof LIBYA_REGIONS)[number];
+export const REGION_LABELS: Record<LibyaRegion, string> = { west: "الغرب", east: "الشرق", south: "الجنوب", center: "الوسط" };
 
 export const DEFAULT_TRIAL_DAYS = 14;
 export const SESSION_DAYS = 30;

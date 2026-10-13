@@ -14,7 +14,11 @@ const writeQueues = new WeakMap<object, Promise<unknown>>();
 export function createDb(url: string, authToken?: string): { db: Db; client: Client } {
   const client = createClient({ url, authToken });
   const db = drizzle(client, { schema });
-  if (url.startsWith("file:")) localDbs.add(db);
+  if (url.startsWith("file:")) {
+    localDbs.add(db);
+    // WAL: القارئ ما يمنعش الكاتب بين الاتصالات/العمليات (بدونه نشوف SQLITE_BUSY في التطوير والاختبارات)
+    void client.execute("PRAGMA journal_mode = WAL").catch(() => undefined);
+  }
   return { db, client };
 }
 

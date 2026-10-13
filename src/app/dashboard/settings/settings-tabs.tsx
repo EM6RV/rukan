@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { IdentityPicker } from "@/components/dashboard/identity-picker";
 import { ImageUploader } from "@/components/dashboard/image-uploader";
-import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { Input, PhoneInput, Select, Textarea } from "@/components/ui/field";
 import { Tabs } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/toast";
 import { Toggle } from "@/components/ui/toggle";
 import { BUSINESS_TYPES, BUSINESS_TYPE_LABELS, type BusinessType, type StoreTemplate } from "@/lib/constants";
 import { saveContactAction, saveGeneralAction, savePaymentAction, saveSeoAction } from "./actions";
+import { DeliveryTab, type DeliveryProps } from "./delivery-tab";
+import { Footer, useSave } from "./settings-shared";
+import { WhatsappTab, type WhatsappProps } from "./whatsapp-tab";
 
 type Media = { id: string; url: string } | null;
 type Props = {
@@ -21,34 +21,9 @@ type Props = {
   contact: Record<"contactPhone" | "whatsapp" | "email" | "address" | "instagram" | "tiktok" | "facebook" | "snapchat", string>;
   payment: { bankTransfer: boolean; bankName: string; accountHolder: string; accountNumber: string; note: string };
   seo: { seoTitle: string; seoDescription: string; og: Media };
+  delivery: DeliveryProps;
+  whatsapp: WhatsappProps;
 };
-
-/** يحفظ فورم بزر وإشعار نجاح/خطأ */
-function useSave(action: (input: unknown) => Promise<{ ok: boolean; error?: string }>) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const save = (input: unknown) => {
-    setError(null);
-    start(async () => {
-      const r = await action(input);
-      if (!r.ok) return setError(r.error ?? "صار خطأ");
-      toast("تم الحفظ");
-      router.refresh();
-    });
-  };
-  return { save, pending, error };
-}
-
-function Footer({ pending, error, disabled }: { pending: boolean; error: string | null; disabled: boolean }) {
-  return (
-    <div className="space-y-3 border-t border-line pt-4">
-      {error && <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger-fg">{error}</p>}
-      <Button type="submit" loading={pending} disabled={disabled}>حفظ</Button>
-    </div>
-  );
-}
 
 export function SettingsTabs(p: Props) {
   return (
@@ -58,6 +33,8 @@ export function SettingsTabs(p: Props) {
         { key: "general", label: "عام وهوية", content: <General {...p} /> },
         { key: "contact", label: "التواصل", content: <Contact {...p} /> },
         { key: "payment", label: "الدفع", content: <Payment {...p} /> },
+        { key: "delivery", label: "التوصيل", content: <DeliveryTab {...p.delivery} writable={p.writable} /> },
+        { key: "whatsapp", label: "رسائل واتساب", content: <WhatsappTab {...p.whatsapp} writable={p.writable} /> },
         { key: "seo", label: "جوجل SEO", content: <Seo {...p} /> },
       ]}
     />

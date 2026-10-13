@@ -1,4 +1,4 @@
-import { and, count, eq, type SQL } from "drizzle-orm";
+import { and, count, eq, type SQL, type SQLWrapper } from "drizzle-orm";
 import { isTable, getTableName } from "drizzle-orm";
 import { writeTransaction, type Db } from "@/db";
 import * as tenantSchema from "@/db/schema/tenant";
@@ -40,6 +40,16 @@ function createScope(db: Db, storeId: string) {
     async count(table: TenantTable, where?: SQL): Promise<number> {
       const [row] = await db.select({ n: count() }).from(table).where(scope(table, where));
       return row?.n ?? 0;
+    },
+
+    /**
+     * استعلام تجميعي (sum/count/group by) مفلتر بالمتجر. fields: أعمدة أو تعبيرات SQL.
+     * مثال: scope.aggregate(t.orders, { status: t.orders.status, n: count() }, { groupBy: [t.orders.status] })
+     */
+    aggregate<F extends Record<string, SQLWrapper>>(table: TenantTable, fields: F, opts: { where?: SQL; groupBy?: SQLWrapper[] } = {}) {
+      let q = db.select(fields as never).from(table).where(scope(table, opts.where)).$dynamic();
+      if (opts.groupBy?.length) q = q.groupBy(...(opts.groupBy as never[]));
+      return q as unknown as Promise<{ [K in keyof F]: F[K] extends { _: { data: infer D } } ? D : any }[]>; // eslint-disable-line @typescript-eslint/no-explicit-any
     },
 
     async insert<T extends TenantTable>(table: T, values: Insertable<T> | Insertable<T>[]) {

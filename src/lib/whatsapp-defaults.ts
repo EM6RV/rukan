@@ -8,3 +8,22 @@ export const DEFAULT_WHATSAPP_TEMPLATES: Record<string, string> = {
   returned: "{name}، طلبيتك رقم {order} رجعت لنا. لو صار عندك أي استفسار كلمنا.",
   cancelled: "{name}، تم إلغاء طلبيتك رقم {order}. لو تبي تعيد الطلب نحن موجودين.",
 };
+
+export const WHATSAPP_VARIABLES = ["name", "order", "total", "store", "courier"] as const;
+export type WhatsappVariable = (typeof WHATSAPP_VARIABLES)[number];
+
+export const WHATSAPP_KEY_LABELS: Record<string, string> = {
+  new_order_confirm: "تأكيد الطلبية (للزبون بعد الطلب)",
+  new: "طلبية جديدة",
+  confirmed: "تم التأكيد",
+  with_courier: "مع المندوب",
+  delivered: "تم التوصيل",
+  returned: "مرتجعة",
+  cancelled: "ملغية",
+};
+export const WHATSAPP_KEYS = Object.keys(DEFAULT_WHATSAPP_TEMPLATES);
+
+/** يستبدل {name} {order}... بقيمها؛ المتغير غير المعروف أو الفاضي يتساب كما هو/فاضي */
+export function renderWhatsapp(body: string, vars: Partial<Record<WhatsappVariable, string>>): string {
+  return body.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? (vars[k as WhatsappVariable] ?? "") : m)).replace(/ {2,}/g, " ").trim();
+}
