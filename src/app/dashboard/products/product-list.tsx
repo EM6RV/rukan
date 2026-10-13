@@ -58,7 +58,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 px-1 text-sm">
-        <label className="flex cursor-pointer items-center gap-2 font-medium">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 font-medium">
           <input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)))} className="size-4 accent-[var(--color-gold)]" />
           تحديد الكل
         </label>
@@ -70,7 +70,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
           const low = p.stock === 0 ? "out" : p.stock <= 5 ? "low" : null;
           return (
             <li key={p.id} className={cn("flex items-center gap-3 rounded-xl border bg-surface p-3 shadow-soft transition-colors", selected.has(p.id) ? "border-gold bg-gold/5" : "border-line", !p.isVisible && "opacity-75")}>
-              <input type="checkbox" aria-label={`تحديد ${p.name}`} checked={selected.has(p.id)} onChange={() => toggle(p.id)} className="size-4 shrink-0 accent-[var(--color-gold)]" />
+              <label className="-mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" aria-label={`تحديد ${p.name}`} checked={selected.has(p.id)} onChange={() => toggle(p.id)} className="size-5 accent-[var(--color-gold)]" /></label>
               <Link href={`/dashboard/products/${p.id}`} className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
                 {p.thumbMediaId ? <img src={`/api/media/${p.thumbMediaId}`} alt="" loading="lazy" className="size-full object-cover" /> : <Package className="size-6 text-muted" />}
               </Link>
@@ -94,7 +94,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
                   {p.isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Icon>
                 <Icon label="نسخ" disabled={!writable || pending} onClick={() => exec(() => duplicateProductAction(p.id), "تم نسخ المنتج (مخفي، عدّله وأظهره)", false)}><Copy className="size-4" /></Icon>
-                <Link href={`/dashboard/products/${p.id}`} aria-label="تعديل" title="تعديل" className="flex size-9 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"><Pencil className="size-4" /></Link>
+                <Link href={`/dashboard/products/${p.id}`} aria-label="تعديل" title="تعديل" className="flex size-9 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg pointer-coarse:size-11"><Pencil className="size-4" /></Link>
               </div>
             </li>
           );
@@ -155,7 +155,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 function Icon({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled}
-      className="flex size-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:opacity-40">
+      className="flex size-9 items-center justify-center rounded-md text-muted transition-colors pointer-coarse:size-11 hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:opacity-40">
       {children}
     </button>
   );

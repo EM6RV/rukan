@@ -15,7 +15,7 @@ function Header() {
     <header className="sticky top-0 z-30 border-b-4 border-(--sa) bg-(--sp) text-(--sp-fg)">
       {announcementBar && (
         <div className="overflow-hidden border-b-2 border-(--sp-fg)/20 bg-(--sa) py-1.5 text-(--sa-fg)" aria-label={announcementBar}>
-          <div className="flex w-max animate-[marquee_28s_linear_infinite] gap-10 whitespace-nowrap text-sm font-black" aria-hidden>
+          <div className="flex w-max animate-[marquee_28s_linear_infinite] gap-10 motion-reduce:animate-none hover:[animation-play-state:paused] active:[animation-play-state:paused] whitespace-nowrap text-sm font-black" aria-hidden>
             {Array.from({ length: 8 }).map((_, i) => <span key={i}>★ {announcementBar}</span>)}
           </div>
         </div>

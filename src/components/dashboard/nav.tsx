@@ -42,14 +42,23 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
   );
 }
 
-const BOTTOM_VISIBLE = 4; // لو العناصر أكثر من 5: 3 + «المزيد»
+// الشريط السفلي: الأهم للبياع (رئيسية، طلبيات، منتجات، مندوبين وكاش) + «المزيد»
+const BOTTOM_PINNED: NavItem["icon"][] = ["home", "orders", "products", "couriers"];
+const BOTTOM_VISIBLE = 5; // لو العناصر أكثر من 5: 4 + «المزيد»
+
+const MORE_GROUPS: { title: string; icons: NavItem["icon"][] }[] = [
+  { title: "التشغيل", icons: ["couriers", "returns", "customers"] },
+  { title: "المتجر والتسويق", icons: ["categories", "coupons", "content", "design"] },
+  { title: "الحساب", icons: ["reports", "staff", "billing", "settings"] },
+];
 
 export function BottomNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   const [more, setMore] = useState(false);
   const overflow = items.length > BOTTOM_VISIBLE + 1;
-  const shown = overflow ? items.slice(0, BOTTOM_VISIBLE - 1) : items;
-  const rest = overflow ? items.slice(BOTTOM_VISIBLE - 1) : [];
+  const pinned = BOTTOM_PINNED.map((i) => items.find((it) => it.icon === i)).filter(Boolean) as NavItem[];
+  const shown = overflow ? [...pinned, ...items.filter((it) => !pinned.includes(it))].slice(0, BOTTOM_VISIBLE - 1) : items;
+  const rest = overflow ? items.filter((it) => !shown.includes(it)) : [];
   const restActive = rest.some((it) => isActive(pathname, it.href));
   const restBadge = rest.reduce((s, it) => s + (it.badge ?? 0), 0);
 
@@ -89,18 +98,27 @@ export function BottomNav({ items }: { items: NavItem[] }) {
       </nav>
       {overflow && (
         <Modal open={more} onClose={() => setMore(false)} title="المزيد">
-          <ul className="grid grid-cols-2 gap-3">
-            {rest.map((it) => {
-              const Icon = ICONS[it.icon];
-              return (
-                <li key={it.href}>
-                  <Link href={it.href} onClick={() => setMore(false)} aria-current={isActive(pathname, it.href) ? "page" : undefined} className={cn("flex items-center gap-3 rounded-lg border border-line p-3 font-medium", isActive(pathname, it.href) && "border-gold bg-gold/15")}>
-                    <Icon className="size-5" aria-hidden />{it.label}<Badge n={it.badge} />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="space-y-5">
+            {[...MORE_GROUPS.map((g) => ({ title: g.title, list: rest.filter((it) => g.icons.includes(it.icon)) })), { title: "أخرى", list: rest.filter((it) => !MORE_GROUPS.some((g) => g.icons.includes(it.icon))) }]
+              .filter((g) => g.list.length > 0)
+              .map((g) => (
+                <section key={g.title} aria-label={g.title}>
+                  <h3 className="mb-2 text-sm font-semibold text-muted">{g.title}</h3>
+                  <ul className="grid grid-cols-2 gap-3">
+                    {g.list.map((it) => {
+                      const Icon = ICONS[it.icon];
+                      return (
+                        <li key={it.href}>
+                          <Link href={it.href} onClick={() => setMore(false)} aria-current={isActive(pathname, it.href) ? "page" : undefined} className={cn("flex min-h-12 items-center gap-3 rounded-lg border border-line p-3 font-medium", isActive(pathname, it.href) && "border-gold bg-gold/15")}>
+                            <Icon className="size-5" aria-hidden />{it.label}<Badge n={it.badge} />
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ))}
+          </div>
         </Modal>
       )}
     </>

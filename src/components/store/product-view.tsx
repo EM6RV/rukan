@@ -116,6 +116,17 @@ export function ProductView({ product }: { product: ProductDetail }) {
     } catch {}
   }
 
+  // الشريط اللاصق يظهر بس لما يطلع زر الشراء الأصلي من الشاشة (بدل ما يكرره ويغطيه)
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const [ctaVisible, setCtaVisible] = useState(true);
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setCtaVisible(!!e?.isIntersecting), { threshold: 0.1 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const pct = discountPercent(price, compareAt);
 
   return (
@@ -159,7 +170,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
         {variant && stock > 0 && stock <= 5 && <p className="text-sm font-semibold text-(--sa-text)">باقي {stock} فقط!</p>}
         {(!variant || stock <= 0) && <p role="status" className="text-sm font-semibold text-red-700">{variant ? "نفد من المخزون" : "هذا الاختيار غير متوفر"}</p>}
 
-        <div className="flex items-center gap-3">
+        <div ref={ctaRef} className="flex items-center gap-3">
           <div className="flex h-13 items-center border border-(--sp-line)" role="group" aria-label="الكمية">
             <button type="button" aria-label="نقص" disabled={qty <= 1} onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex size-12 items-center justify-center disabled:opacity-30"><Minus className="size-4" /></button>
             <span className="w-8 text-center font-semibold" aria-live="polite">{qty}</span>
@@ -187,7 +198,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
       </div>
 
       {/* شريط الشراء الثابت على الموبايل */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-(--sp-line) bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+      <div className={cn("fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-(--sp-line) bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur transition-transform lg:hidden", ctaVisible && "pointer-events-none translate-y-full")} aria-hidden={ctaVisible}>
         <div className="min-w-0 flex-1"><Price price={price} compareAt={compareAt} size="md" /></div>
         <button type="button" onClick={() => addToCart(false)} disabled={!canBuy} className={cn(kit.cls.btn, "!h-11 shrink-0 !px-6")}>{canBuy ? "أضف للسلة" : "نفد"}</button>
       </div>

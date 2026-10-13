@@ -60,7 +60,7 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
         {rows.map((o) => (
           <li key={o.id} className="flex items-stretch gap-2 rounded-xl border border-line bg-surface shadow-soft transition-colors hover:border-gold/60">
             {canBulk && (
-              <label className="flex items-center ps-3" aria-label={`تحديد الطلبية ${o.number}`}>
+              <label className="flex min-w-12 cursor-pointer items-center justify-center ps-1" aria-label={`تحديد الطلبية ${o.number}`}>
                 <input type="checkbox" className="size-5 accent-[var(--color-gold)]" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
               </label>
             )}

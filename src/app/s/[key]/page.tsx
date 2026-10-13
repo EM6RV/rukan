@@ -41,8 +41,9 @@ export default async function StoreHome({ params }: Props) {
           return (
             <section key={sec.id} aria-label="الأقسام">
               <kit.SectionTitle title={str(sec.config.title) ?? "تسوّق حسب القسم"} />
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {sf.categories.slice(0, 8).map((c) => <kit.CategoryTile key={c.id} name={c.name} href={href(`/category/${encodeURIComponent(c.slug)}`)} imageMediaId={c.imageMediaId} />)}
+              {/* بالموبايل: صف أفقي قابل للسحب (بدل شبكة عمودين تترك خانة فاضية لما العدد فردي) */}
+              <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
+                {sf.categories.slice(0, 8).map((c) => <div key={c.id} className="w-[42%] shrink-0 snap-start sm:w-auto"><kit.CategoryTile name={c.name} href={href(`/category/${encodeURIComponent(c.slug)}`)} imageMediaId={c.imageMediaId} /></div>)}
               </div>
             </section>
           );
