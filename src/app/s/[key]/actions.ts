@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { z } from "zod";
 import { phoneSchema } from "@/lib/validation";
 import { getClientIp } from "@/server/auth/current";
+import { captureCart } from "@/server/marketing/abandoned-carts";
 import { checkCoupon, createOrder, trackOrder, type CreatedOrder, type TrackedOrder } from "@/server/orders/create";
 import { hitRateLimit } from "@/server/ratelimit";
 import { invalidateStore } from "@/server/storefront/data";
@@ -81,4 +82,23 @@ export async function trackOrderAction(key: string, orderNumber: string, rawPhon
   if (!Number.isInteger(number) || number <= 0) return NOT_FOUND;
   const order = await trackOrder(forStore(getDb(), sf.id), number, rawPhone);
   return order ? { ok: true, order } : NOT_FOUND;
+}
+
+/**
+ * يحفظ سلة الزبون لما يكتب رقمه (علشان البياع يذكّره لو ما كمّل). عام لكن محمي: حد لكل IP وحد لكل رقم،
+ * ونتجاهل الأخطاء بصمت علشان ما نزعجش الزبون. الأسعار تتحسب من القاعدة.
+ */
+export async function captureCartAction(key: string, input: unknown): Promise<{ ok: boolean }> {
+  const sf = await openStore(key);
+  const parsed = z.object({ phone: z.string(), name: z.string().max(80).nullish(), items: cartItems }).safeParse(input);
+  if (!sf || !parsed.success) return { ok: false };
+  const db = getDb();
+  const ip = (await getClientIp()) ?? "unknown";
+  const byIp = await hitRateLimit(db, `cart:ip:${sf.id}:${ip}`, { limit: 30, windowMs: 60 * 60_000 });
+  const phone = phoneSchema.safeParse(parsed.data.phone);
+  if (!byIp.allowed || !phone.success) return { ok: false };
+  const byPhone = await hitRateLimit(db, `cart:phone:${sf.id}:${phone.data}`, { limit: 12, windowMs: 60 * 60_000 });
+  if (!byPhone.allowed) return { ok: false };
+  const r = await captureCart(forStore(db, sf.id), { ...parsed.data, phone: phone.data });
+  return { ok: r.ok };
 }

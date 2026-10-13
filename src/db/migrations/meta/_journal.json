@@ -29,6 +29,13 @@
       "when": 1791925074068,
       "tag": "0003_purple_betty_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791925487557,
+      "tag": "0004_melted_argent",
+      "breakpoints": true
     }
   ]
 }

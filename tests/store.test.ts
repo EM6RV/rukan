@@ -49,7 +49,7 @@ describe("إنشاء المتجر", () => {
     const s = forStore(db, store.id);
     expect((await s.from(t.storePages)).map((p) => p.slug).sort()).toEqual(["about", "contact", "privacy", "returns", "shipping"]);
     expect((await s.from(t.storeHomeSections)).map((x) => x.type)).toEqual(["hero", "categories", "featured"]);
-    expect((await s.from(t.whatsappTemplates)).length).toBe(7);
+    expect((await s.from(t.whatsappTemplates)).length).toBe(8);
     const pm = await s.from(t.storePaymentMethods);
     expect(pm.find((m) => m.method === "cod")!.isEnabled).toBe(true);
     expect(pm.find((m) => m.method === "bank_transfer")!.isEnabled).toBe(false);

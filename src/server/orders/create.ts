@@ -1,3 +1,4 @@
+import { markCartRecovered } from "../marketing/abandoned-carts";
 import { notifyNewOrder } from "../push";
 import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -157,6 +158,7 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
     subtotal, discount, deliveryFee, total, couponId: coupon?.id ?? null, couponCode: coupon?.code ?? null, source: input.source,
   });
   const orderId = order!.id;
+  await markCartRecovered(scope, input.phone); // لو كانت سلته متروكة: تنقفل
 
   await scope.insert(t.orderItems, lines.map((l) => ({
     orderId, productId: l.p.id, variantId: l.v.id, name: l.p.name, variantLabel: l.label, unitPrice: l.price,

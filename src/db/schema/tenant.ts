@@ -76,6 +76,29 @@ export const storePaymentMethods = sqliteTable(
   (t) => [uniqueIndex("store_payment_methods_uq").on(t.storeId, t.method)],
 );
 
+/**
+ * سلات متروكة: الزبون كتب رقم هاتفه في صفحة إتمام الطلب وما كمّل. سلة مفتوحة وحدة لكل رقم (تتحدّث).
+ * تتمسح بعد 30 يوم. البياع يذكّر الزبون على واتساب، وتنقفل (recoveredAt) لما الزبون يطلب.
+ */
+export const abandonedCarts = sqliteTable(
+  "abandoned_carts",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    phone: text("phone").notNull(),
+    name: text("name"),
+    items: text("items", { mode: "json" }).$type<{ name: string; variantLabel: string | null; quantity: number; price: number }[]>().notNull(),
+    itemCount: integer("item_count").notNull(),
+    total: integer("total").notNull(), // بالدرهم (1 د.ل = 1000)
+    remindedAt: integer("reminded_at", { mode: "timestamp_ms" }),
+    recoveredAt: integer("recovered_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+    // آخر نشاط للزبون (ما نستعملش updatedAt التلقائي: التذكير والإغلاق ما يلزم يصفّروا مؤقت الخمول)
+    lastActivityAt: integer("last_activity_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex("abandoned_carts_phone_uq").on(t.storeId, t.phone), index("abandoned_carts_activity_idx").on(t.storeId, t.lastActivityAt)],
+);
+
 /** اشتراكات Web Push لأجهزة البياع والموظفين (إشعار الطلبية الجديدة). المفتاح (store_id, endpoint). */
 export const pushSubscriptions = sqliteTable(
   "push_subscriptions",

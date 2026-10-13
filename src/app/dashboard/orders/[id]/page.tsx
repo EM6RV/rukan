@@ -39,7 +39,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   const waNumber = toWhatsappNumber(order.customerPhone);
   const vars = { name: order.customerName, order: `#${order.number}`, total: formatMoney(order.total), store: ctx.store.name, courier: d.courier?.name ?? "" };
-  const keys = isCourier ? [] : [order.status, "new_order_confirm", ...Object.keys(templates)].filter((k, i, a) => templates[k] && a.indexOf(k) === i);
+  const keys = isCourier ? [] : [order.status, "new_order_confirm", ...Object.keys(templates)].filter((k, i, a) => k !== "abandoned_cart" && templates[k] && a.indexOf(k) === i);
   const messages = waNumber ? keys.map((k) => ({ key: k, label: WHATSAPP_KEY_LABELS[k] ?? k, href: waLink(waNumber, renderWhatsapp(templates[k]!.body, vars)) })) : [];
 
   const statuses = nextStatuses(order.status).filter((s) => !isCourier || (s === "delivered" && order.status === "with_courier"));

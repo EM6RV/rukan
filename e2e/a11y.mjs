@@ -10,7 +10,7 @@ const orderId = (await c.execute("select o.id from orders o join stores s on s.i
 c.close();
 
 const PUBLIC = ["/", "/login", "/register", "/forgot-password", "/s/nada-perfume", "/s/street-218", "/s/lamsa", "/s/nada-perfume/cart", "/s/nada-perfume/checkout", "/s/nada-perfume/track"];
-const DASH = ["/dashboard", "/dashboard/orders", `/dashboard/orders/${orderId}`, "/dashboard/products", "/dashboard/products/new", "/dashboard/couriers", "/dashboard/customers", "/dashboard/returns", "/dashboard/coupons", "/dashboard/design", "/dashboard/content", "/dashboard/settings", "/dashboard/reports", "/dashboard/staff", "/dashboard/billing"];
+const DASH = ["/dashboard", "/dashboard/orders", `/dashboard/orders/${orderId}`, "/dashboard/products", "/dashboard/products/new", "/dashboard/couriers", "/dashboard/customers", "/dashboard/abandoned-carts", "/dashboard/returns", "/dashboard/coupons", "/dashboard/design", "/dashboard/content", "/dashboard/settings", "/dashboard/reports", "/dashboard/staff", "/dashboard/billing"];
 const MODES = [
   ["جوال فاتح", { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, false, true],
   ["ديسكتوب فاتح", { viewport: { width: 1280, height: 800 } }, false, true],
