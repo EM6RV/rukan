@@ -31,7 +31,7 @@ export async function registerAction(_: FormState, formData: FormData): Promise<
     return { error: result.error, values: { name: str(formData.get("name")), phone: str(formData.get("phone")) } };
   }
   await startSession(result.data.userId);
-  redirect("/dashboard");
+  redirect("/onboarding");
 }
 
 export async function logoutAction() {

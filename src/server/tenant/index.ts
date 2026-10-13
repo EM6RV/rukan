@@ -1,6 +1,7 @@
-import { and, eq, type SQL } from "drizzle-orm";
+import { and, count, eq, type SQL } from "drizzle-orm";
 import { isTable, getTableName } from "drizzle-orm";
 import type { Db } from "@/db";
+import { retryBusy } from "../db-errors";
 import * as tenantSchema from "@/db/schema/tenant";
 
 export * as t from "@/db/schema/tenant";
@@ -36,6 +37,12 @@ function createScope(db: Db, storeId: string) {
       return query as Omit<typeof query, "where">;
     },
 
+    /** عدد صفوف المتجر في الجدول (مع شرط اختياري). */
+    async count(table: TenantTable, where?: SQL): Promise<number> {
+      const [row] = await db.select({ n: count() }).from(table).where(scope(table, where));
+      return row?.n ?? 0;
+    },
+
     async insert<T extends TenantTable>(table: T, values: Insertable<T> | Insertable<T>[]) {
       const rows = (Array.isArray(values) ? values : [values]).map((v) => ({ ...v, storeId }));
       if (rows.length === 0) return [];
@@ -63,6 +70,6 @@ export type StoreScope = StoreScopeCore & {
 export function forStore(db: Db, storeId: string): StoreScope {
   return {
     ...createScope(db, storeId),
-    transaction: (fn) => db.transaction(async (tx) => fn(createScope(tx as unknown as Db, storeId))),
+    transaction: (fn) => retryBusy(() => db.transaction(async (tx) => fn(createScope(tx as unknown as Db, storeId)))),
   };
 }

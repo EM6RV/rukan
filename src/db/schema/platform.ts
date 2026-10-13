@@ -77,6 +77,9 @@ export const stores = sqliteTable(
     currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }),
     nextOrderNumber: integer("next_order_number").notNull().default(1001),
     logoMediaId: text("logo_media_id"),
+    // معالج الإعداد: آخر خطوة تم حفظها، و onboardedAt لما يخلص المعالج
+    onboardingStep: integer("onboarding_step").notNull().default(0),
+    onboardedAt: integer("onboarded_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

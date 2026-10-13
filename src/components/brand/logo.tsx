@@ -10,9 +10,9 @@ export function Logo({ variant = "full", className }: Props) {
   const common = cn(ratio, "h-10 w-auto select-none", className);
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {}
       <img src={`/brand/${base}.svg`} alt="رُكن RUKN" className={cn("logo-light", common)} draggable={false} />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {}
       <img src={`/brand/${base}-dark.svg`} alt="" aria-hidden className={cn("logo-dark", common)} draggable={false} />
     </>
   );

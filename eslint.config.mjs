@@ -5,6 +5,10 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    // صورنا أصلاً WebP مضغوطة من /api/media، فما نحتاجش next/image
+    rules: { "@next/next/no-img-element": "off" },
+  },
   globalIgnores([".next/**", "out/**", "next-env.d.ts", "src/db/migrations/**"]),
   {
     // عزل المتاجر: جداول المتجر (T) ما تتستورد إلا من طبقة src/server/tenant

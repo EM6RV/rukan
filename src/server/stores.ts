@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { storeDomains, stores } from "@/db/schema/platform";
 import { forStore, t } from "@/server/tenant";
+import { computeStoreAccess, isStoreOpenToCustomers } from "./store-access";
 
 /**
  * يحل مفتاح المتجر القادم من الـ proxy: slug عادي، أو دومين خاص (فيه نقطة) لازم يكون متحقق منه.
@@ -29,5 +30,6 @@ export const getStoreByKey = cache(async (key: string) => {
   return { store, settings: settings ?? null };
 });
 
-/** المتجر متاح للزباين فقط لو تجريبي أو نشط (مش موقوف ولا منتهي). */
-export const isStorePublic = (status: string) => status === "trial" || status === "active";
+/** المتجر متاح للزباين فقط لو تجريبي أو نشط وفترته سارية (مش موقوف ولا منتهي). */
+export const isStorePublic = (store: Parameters<typeof computeStoreAccess>[0]) =>
+  isStoreOpenToCustomers(computeStoreAccess(store));

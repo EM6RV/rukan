@@ -8,6 +8,13 @@
       "when": 1791856045133,
       "tag": "0000_zippy_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791857108516,
+      "tag": "0001_fat_zarda",
+      "breakpoints": true
     }
   ]
 }

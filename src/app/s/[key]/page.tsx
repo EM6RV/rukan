@@ -8,7 +8,7 @@ export default async function StoreHome({ params }: { params: Promise<{ key: str
   if (!found) notFound();
   const { store, settings } = found;
 
-  if (!isStorePublic(store.status)) {
+  if (!isStorePublic(store)) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md items-center px-4">
         <EmptyState icon={<Store className="size-6" />} title="هذا المتجر غير متاح حالياً" description="رجّع زيارتنا قريب بإذن الله." className="w-full" />

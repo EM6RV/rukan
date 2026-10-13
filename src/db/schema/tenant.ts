@@ -11,6 +11,7 @@ const storeIdCol = () =>
 
 export const storeSettings = sqliteTable("store_settings", {
   storeId: text("store_id").primaryKey().references(() => stores.id, { onDelete: "cascade" }),
+  cityId: text("city_id").references(() => cities.id), // مدينة البياع الرئيسية
   contactPhone: text("contact_phone"),
   whatsapp: text("whatsapp"),
   email: text("email"),
