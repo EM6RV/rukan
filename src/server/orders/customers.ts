@@ -35,5 +35,5 @@ export async function getCustomerDetail(scope: StoreScope, id: string) {
 export async function setCustomerFlag(scope: StoreScope, id: string, flag: "none" | "problematic", notes: string | null): Promise<Result> {
   if (flag !== "none" && flag !== "problematic") return fail("قيمة غير صحيحة.");
   const [row] = await scope.update(t.customers, { flag, notes: notes?.trim().slice(0, 300) || null }, eq(t.customers.id, id));
-  return row ? ok(undefined) : fail("الزبون غير موجود.");
+  return row ? ok(undefined) : fail("ما لقينا الزبون. يمكن انحذف، حدّث الصفحة.");
 }

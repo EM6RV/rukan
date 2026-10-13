@@ -41,7 +41,7 @@ function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void })
 
   return (
     <Modal open onClose={onClose} title={initial ? `تعديل باقة ${initial.nameAr}` : "باقة جديدة"} className="max-w-xl"
-      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} onClick={submit}>حفظ</Button></>}>
+      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={submit}>حفظ</Button></>}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           {!initial && <Input label="الرمز (إنجليزي)" dir="ltr" className="text-right" value={v.slug} maxLength={24} onChange={(e) => setV({ ...v, slug: e.target.value.toLowerCase() })} hint="مثال: pro" />}

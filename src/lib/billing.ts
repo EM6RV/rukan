@@ -21,12 +21,12 @@ export const monthKey = (ms: number) => new Date(ms + LIBYA_OFFSET).toISOString(
 /** رسالة واتساب جاهزة من الأدمن لصاحب المتجر قبل انتهاء الاشتراك */
 export function renewalMessage(o: { ownerName: string; storeName: string; daysLeft: number; endDate: string; planName?: string | null }): string {
   const when = o.daysLeft <= 0 ? "انتهى" : o.daysLeft === 1 ? "ينتهي بكرة" : `ينتهي بعد ${o.daysLeft} أيام`;
-  return `السلام عليكم ${o.ownerName}، اشتراك متجرك «${o.storeName}» في رُكن${o.planName ? ` (باقة ${o.planName})` : ""} ${when} (${o.endDate}). للتجديد تواصل معانا وحنفعّل لك الاشتراك فوراً بعد الدفع. شكراً لثقتك!`;
+  return `السلام عليكم ${o.ownerName}، اشتراك متجرك «${o.storeName}» في رُكن${o.planName ? ` (باقة ${o.planName})` : ""} ${when} (${o.endDate}). للتجديد كلمنا وحنفعّل اشتراكك أول ما يوصلنا الدفع. شكراً لثقتك!`;
 }
 
 /** رسالة من البياع للدعم لطلب ترقية/تجديد */
 export function upgradeRequestMessage(o: { storeName: string; slug: string; planName?: string | null; wantedPlan?: string }): string {
-  return `السلام عليكم، أنا صاحب متجر «${o.storeName}» (${o.slug}) في رُكن${o.planName ? ` وباقتي الحالية ${o.planName}` : ""}. أبي ${o.wantedPlan ? `أرقّي/أجدد على باقة ${o.wantedPlan}` : "أجدد اشتراكي"}. كيف أدفع؟`;
+  return `السلام عليكم، أنا صاحب متجر «${o.storeName}» (${o.slug}) في رُكن${o.planName ? ` وباقتي الحالية ${o.planName}` : ""}. نبي ${o.wantedPlan ? `نرقّي/نجدد على باقة ${o.wantedPlan}` : "نجدد اشتراكي"}. كيف ندفع؟`;
 }
 
 export const daysBetween = (from: number, to: number) => Math.ceil((to - from) / DAY);

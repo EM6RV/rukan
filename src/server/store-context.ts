@@ -67,9 +67,9 @@ export async function actionContext(
   opts: { write?: boolean; allowUnfinishedOnboarding?: boolean } = {},
 ): Promise<ActionContextResult> {
   const ctx = await loadStoreContext();
-  if (!ctx) return { ok: false, error: "سجّل دخولك من جديد." };
+  if (!ctx) return { ok: false, error: "انتهت الجلسة. سجّل دخولك من جديد." };
   if (!opts.allowUnfinishedOnboarding && !ctx.store.onboardedAt) return { ok: false, error: "كمّل إعداد متجرك أول." };
-  if (!can(ctx.role, permission)) return { ok: false, error: "ما عندكش صلاحية لهذا الإجراء." };
+  if (!can(ctx.role, permission)) return { ok: false, error: "ما عندكش صلاحية للإجراء هذا. كلّم مدير المتجر." };
   if (opts.write && !ctx.access.writable) {
     return {
       ok: false,

@@ -24,9 +24,9 @@ async function attempt<T>(fn: () => Promise<T>): Promise<Result<T>> {
 
 async function loadOrder(tx: Tx, id: string, restrictCourierId?: string | null): Promise<Order> {
   const [o] = await tx.from(t.orders, eq(t.orders.id, id)).limit(1);
-  if (!o) throw new OrderOpError("الطلبية غير موجودة.");
+  if (!o) throw new OrderOpError("ما لقينا الطلبية. يمكن انحذف، حدّث الصفحة.");
   // المندوب يشوف ويتعامل مع طلبياته بس
-  if (restrictCourierId !== undefined && restrictCourierId !== null && o.courierId !== restrictCourierId) throw new OrderOpError("الطلبية غير موجودة.");
+  if (restrictCourierId !== undefined && restrictCourierId !== null && o.courierId !== restrictCourierId) throw new OrderOpError("ما لقينا الطلبية. يمكن انحذف، حدّث الصفحة.");
   return o;
 }
 
@@ -119,7 +119,7 @@ export function changeOrderStatus(scope: StoreScope, input: StatusInput): Promis
 // ===== تعديل بيانات الطلبية =====
 
 const detailsSchema = z.object({
-  customerName: z.string().trim().min(2, "الاسم قصير").max(80, "الاسم طويل").optional(),
+  customerName: z.string().trim().min(2, "اكتب اسمك (حرفين على الأقل)").max(80, "الاسم طويل").optional(),
   customerPhone: z.string().trim().optional(),
   address: z.string().trim().min(3, "العنوان قصير").max(200, "العنوان طويل").optional(),
   notes: z.string().trim().max(300).nullish(),
@@ -276,7 +276,7 @@ export function reviewReceipt(scope: StoreScope, receiptId: string, decision: "a
   return attempt(() =>
     scope.transaction(async (tx) => {
       const [r] = await tx.from(t.paymentReceipts, eq(t.paymentReceipts.id, receiptId)).limit(1);
-      if (!r) throw new OrderOpError("الإيصال غير موجود.");
+      if (!r) throw new OrderOpError("ما لقينا الإيصال. يمكن انحذف، حدّث الصفحة.");
       const order = await loadOrder(tx, r.orderId);
       await tx.update(t.paymentReceipts, { status: decision }, eq(t.paymentReceipts.id, r.id));
       if (decision === "approved") await tx.update(t.orders, { paymentStatus: "paid" }, eq(t.orders.id, order.id));

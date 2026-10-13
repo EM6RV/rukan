@@ -41,8 +41,9 @@ export default async function StoreHome({ params }: Props) {
           return (
             <section key={sec.id} aria-label="الأقسام">
               <kit.SectionTitle title={str(sec.config.title) ?? "تسوّق حسب القسم"} />
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {sf.categories.slice(0, 8).map((c) => <kit.CategoryTile key={c.id} name={c.name} href={href(`/category/${encodeURIComponent(c.slug)}`)} imageMediaId={c.imageMediaId} />)}
+              {/* بالموبايل: صف أفقي قابل للسحب (بدل شبكة عمودين تترك خانة فاضية لما العدد فردي) */}
+              <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
+                {sf.categories.slice(0, 8).map((c) => <div key={c.id} className="w-[42%] shrink-0 snap-start sm:w-auto"><kit.CategoryTile name={c.name} href={href(`/category/${encodeURIComponent(c.slug)}`)} imageMediaId={c.imageMediaId} /></div>)}
               </div>
             </section>
           );
@@ -60,7 +61,7 @@ export default async function StoreHome({ params }: Props) {
           const to = link ? (link.startsWith("/") ? href(link) : link) : null;
           const img = (
             <div className={`${kit.cls.imageFrame} relative aspect-[16/9] w-full overflow-hidden sm:aspect-[21/9]`}>
-              <img src={mediaUrl(sec.config.imageMediaId, 960)} srcSet={mediaSrcSet(sec.config.imageMediaId, [640, 960, 1280])} sizes="(min-width: 1152px) 1152px, 100vw" alt={str(sec.config.title) ?? ""} loading="lazy" className="size-full object-cover" />
+              <img src={mediaUrl(sec.config.imageMediaId, 960)} srcSet={mediaSrcSet(sec.config.imageMediaId, [640, 960, 1280])} sizes="(min-width: 1152px) 1152px, 100vw" alt="" loading="lazy" className="size-full object-cover" />
               {str(sec.config.title) && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12 text-lg font-bold text-white md:p-6 md:text-2xl">{sec.config.title as string}</div>}
             </div>
           );

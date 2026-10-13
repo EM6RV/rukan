@@ -28,18 +28,18 @@ export function Pricing({ plans, cta }: { plans: Plan[]; cta: string }) {
           const price = yearly ? p.priceYearly : p.priceMonthly;
           const save = p.priceMonthly > 0 ? Math.round((1 - p.priceYearly / (p.priceMonthly * 12)) * 100) : 0;
           return (
-            <li key={p.id} className={cn("relative flex flex-col rounded-2xl border bg-surface p-6 shadow-soft", p.id === featured ? "border-gold ring-2 ring-gold/40 lg:-translate-y-2" : "border-line")}>
-              {p.id === featured && <span className="absolute -top-3 start-1/2 -translate-x-1/2 rounded-full bg-gold px-3 py-0.5 text-xs font-bold text-navy rtl:translate-x-1/2">الأكثر طلباً</span>}
-              <h3 className="text-xl">{p.name}</h3>
-              {p.description && <p className="mt-1 min-h-10 text-sm text-muted">{p.description}</p>}
-              <p className="mt-4 text-4xl font-bold">{formatMoney(price)}<span className="text-base font-normal text-muted"> / {yearly ? "سنة" : "شهر"}</span></p>
-              <p className="mt-1 h-5 text-sm text-success-fg">{yearly && save > 0 ? `وفّر ${save}% مقارنة بالشهري` : ""}</p>
-              <ul className="my-5 flex-1 space-y-2.5 text-[15px]">
-                <li className="flex items-center gap-2"><Check className="size-4.5 text-success-fg" aria-hidden />{p.limits.maxProducts === null ? "منتجات غير محدودة" : `${p.limits.maxProducts} منتج`}</li>
-                <li className="flex items-center gap-2"><Check className="size-4.5 text-success-fg" aria-hidden />{p.limits.maxStaff === null ? "موظفين غير محدودين" : `${p.limits.maxStaff} ${p.limits.maxStaff === 1 ? "موظف" : "موظفين"}`}</li>
-                {FLAGS.map(([k, l]) => <li key={k} className={cn("flex items-center gap-2", !p.limits[k] && "text-muted line-through decoration-muted/50")}>{p.limits[k] ? <Check className="size-4.5 text-success-fg" aria-hidden /> : <X className="size-4.5" aria-hidden />}{l}</li>)}
+            <li key={p.id} className={cn("relative flex flex-col rounded-2xl border p-7 transition-shadow", p.id === featured ? "border-navy bg-navy text-white shadow-lift ring-1 ring-gold/50 [--focus:#e3c487] [--focus-halo:transparent] lg:-translate-y-3" : "border-line bg-surface shadow-soft hover:shadow-lift")}>
+              {p.id === featured && <span className="absolute -top-3 start-1/2 -translate-x-1/2 rounded-full bg-gold px-3.5 py-1 text-xs font-bold text-navy shadow-soft rtl:translate-x-1/2">الأكثر طلباً</span>}
+              <h3 className={cn("text-xl", p.id === featured && "text-white")}>{p.name}</h3>
+              {p.description && <p className={cn("mt-1 min-h-10 text-sm", p.id === featured ? "text-white/70" : "text-muted")}>{p.description}</p>}
+              <p className={cn("mt-4 text-4xl font-bold tabular-nums tracking-tight", p.id === featured && "text-gold")}>{formatMoney(price)}<span className={cn("text-base font-normal", p.id === featured ? "text-white/70" : "text-muted")}> / {yearly ? "سنة" : "شهر"}</span></p>
+              <p className={cn("mt-1 h-5 text-sm", p.id === featured ? "text-gold" : "text-success-fg")}>{yearly && save > 0 ? `وفّر ${save}% مقارنة بالشهري` : ""}</p>
+              <ul className="my-6 flex-1 space-y-3 border-t border-current/10 pt-6 text-[15px]">
+                <li className="flex items-center gap-2"><Check className={cn("size-4.5", p.id === featured ? "text-gold" : "text-success-fg")} aria-hidden />{p.limits.maxProducts === null ? "منتجات غير محدودة" : `${p.limits.maxProducts} منتج`}</li>
+                <li className="flex items-center gap-2"><Check className={cn("size-4.5", p.id === featured ? "text-gold" : "text-success-fg")} aria-hidden />{p.limits.maxStaff === null ? "موظفين غير محدودين" : `${p.limits.maxStaff} ${p.limits.maxStaff === 1 ? "موظف" : "موظفين"}`}</li>
+                {FLAGS.map(([k, l]) => <li key={k} className={cn("flex items-center gap-2", !p.limits[k] && (p.id === featured ? "text-white/50 line-through" : "text-muted line-through decoration-muted/50"))}>{p.limits[k] ? <Check className={cn("size-4.5", p.id === featured ? "text-gold" : "text-success-fg")} aria-hidden /> : <X className="size-4.5" aria-hidden />}{l}</li>)}
               </ul>
-              <Link href="/register" className={cn("inline-flex h-12 items-center justify-center rounded-md font-semibold transition-all hover:brightness-95", p.id === featured ? "bg-gold text-navy" : "border border-line hover:bg-surface-2")}>{cta}</Link>
+              <Link href="/register" className={cn("inline-flex h-12 items-center justify-center rounded-md font-semibold transition-all duration-200", p.id === featured ? "bg-gold text-navy shadow-soft hover:brightness-95" : "border border-line hover:border-navy hover:bg-surface-2")}>{cta}</Link>
             </li>
           );
         })}

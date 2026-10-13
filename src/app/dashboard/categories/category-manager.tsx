@@ -123,7 +123,7 @@ export function CategoryManager({ initial, writable }: { initial: Category[]; wr
       <ConfirmModal
         open={!!toDelete} onClose={() => setToDelete(null)} onConfirm={remove} loading={pending} danger confirmLabel="حذف"
         title="حذف القسم"
-        message={toDelete ? `متأكد تبي تمسح قسم «${toDelete.name}»؟ المنتجات اللي فيه ما تتمسحش، بس تتشال من القسم.` : ""}
+        message={toDelete ? `حذف قسم «${toDelete.name}»؟ المنتجات اللي فيه تبقى، بس تتشال من القسم.` : ""}
       />
     </div>
   );

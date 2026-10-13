@@ -4,7 +4,7 @@ const tones = {
   neutral: "bg-surface-2 text-muted",
   navy: "bg-fg text-bg",
   gold: "bg-gold/20 text-fg ring-1 ring-gold/40",
-  teal: "bg-teal/12 text-link ring-1 ring-teal/30",
+  teal: "bg-teal/12 text-link-strong ring-1 ring-teal/30",
   success: "bg-success/15 text-success-fg ring-1 ring-success/30",
   danger: "bg-danger/15 text-danger-fg ring-1 ring-danger/30",
 } as const;

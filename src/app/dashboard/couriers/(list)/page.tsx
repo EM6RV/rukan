@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/ui/feedback";
 import { formatMoney } from "@/lib/money";
 import { listCouriers } from "@/server/orders/couriers";
 import { requireStoreContext } from "@/server/store-context";
-import { CourierList } from "./courier-manager";
+import { CourierList } from "../courier-manager";
 
 export const metadata: Metadata = { title: "المندوبون والكاش" };
 
@@ -28,7 +28,7 @@ export default async function CouriersPage() {
       </div>
       {couriers.length === 0 ? (
         <>
-          <EmptyState icon={<Truck className="size-6" />} title="ما أضفتش مندوبين لسا" description="أضف مندوباتك وشركات التوصيل باش تقدر تسلّمهم الطلبيات وتتابع الكاش اللي عندهم." />
+          <EmptyState icon={<Truck className="size-6" />} title="ما عندكش مندوبين لسا" description="أضف مندوب أو شركة توصيل باش تتابع الكاش اللي عندهم." />
           <CourierList couriers={[]} writable={ctx.access.writable} />
         </>
       ) : (

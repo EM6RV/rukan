@@ -224,9 +224,9 @@ function CheckoutInner({ initial, rates, payments, defaultCityId }: { initial: S
           <div className="flex justify-between border-t border-(--sp-line) pt-3 text-lg font-bold"><dt>الإجمالي</dt><dd>{formatMoney(total)}</dd></div>
         </dl>
         <button type="submit" disabled={pending || uploading || fee === null} className={cn(kit.cls.btn, "w-full")}>
-          {pending && <Loader2 className="size-5 animate-spin" />} تأكيد الطلب
+          {pending && <Loader2 className="size-5 animate-spin" />} أكّد الطلب
         </button>
-        <p className="text-center text-xs text-(--sp-muted)">بالضغط على «تأكيد الطلب» توافق على سياسات المتجر.</p>
+        <p className="text-center text-xs text-(--sp-muted)">بالضغط على «أكّد الطلب» توافق على سياسات المتجر.</p>
       </aside>
     </form>
   );

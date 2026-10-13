@@ -63,7 +63,7 @@ function CouponForm({ initial, onClose }: { initial?: CouponRow; onClose: () => 
   }
 
   return (
-    <Modal open onClose={onClose} title={initial ? "تعديل الكوبون" : "كوبون جديد"} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} onClick={submit}>حفظ</Button></>}>
+    <Modal open onClose={onClose} title={initial ? "تعديل الكوبون" : "كوبون جديد"} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={submit}>حفظ</Button></>}>
       <div className="space-y-4">
         <Input label="الكود" dir="ltr" className="text-right uppercase" value={v.code} maxLength={20} disabled={!!initial && initial.usedCount > 0} onChange={(e) => setV({ ...v, code: e.target.value.toUpperCase() })} hint="يكتبه الزبون عند الدفع، مثال: RAMADAN10" />
         <div className="grid grid-cols-2 gap-3">
@@ -109,7 +109,7 @@ export function CouponManager({ coupons, canEdit }: { coupons: CouponRow[]; canE
                 <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" variant="outline" disabled={!canEdit} onClick={() => setEditing(c)}>تعديل</Button>
                   <Button size="sm" variant="ghost" disabled={!canEdit || toggle.pending} onClick={() => toggle.act(() => toggleCouponAction(c.id, !c.isActive), c.isActive ? "تم التعطيل" : "تم التفعيل")}>{c.isActive ? "تعطيل" : "تفعيل"}</Button>
-                  <Button size="sm" variant="ghost" disabled={!canEdit} onClick={() => { del.setError(null); setDeleting(c); }}>مسح</Button>
+                  <Button size="sm" variant="ghost" disabled={!canEdit} onClick={() => { del.setError(null); setDeleting(c); }}>حذف</Button>
                 </div>
                 {toggle.error && <p role="alert" className="text-sm text-danger-fg">{toggle.error}</p>}
               </Card>
@@ -118,7 +118,7 @@ export function CouponManager({ coupons, canEdit }: { coupons: CouponRow[]; canE
         </ul>
       )}
       {editing && <CouponForm key={editing === "new" ? "new" : editing.id} initial={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} />}
-      <ConfirmModal open={!!deleting} onClose={() => setDeleting(null)} danger loading={del.pending} title="مسح الكوبون" message={del.error ?? `تمسح الكوبون «${deleting?.code}»؟`} confirmLabel="مسح" onConfirm={() => deleting && del.act(() => deleteCouponAction(deleting.id), "تم المسح", () => setDeleting(null))} />
+      <ConfirmModal open={!!deleting} onClose={() => setDeleting(null)} danger loading={del.pending} title="حذف الكوبون" message={del.error ?? `حذف الكوبون «${deleting?.code}»؟`} confirmLabel="حذف" onConfirm={() => deleting && del.act(() => deleteCouponAction(deleting.id), "تم المسح", () => setDeleting(null))} />
     </div>
   );
 }

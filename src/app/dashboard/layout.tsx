@@ -3,10 +3,12 @@ import Link from "next/link";
 import { LogOut, TriangleAlert } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { BottomNav, SidebarNav, type NavItem } from "@/components/dashboard/nav";
+import { SkipLink } from "@/components/ui/skip-link";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { can } from "@/server/permissions";
 import { Announcements } from "@/components/dashboard/announcements";
+import { OfflineBanner } from "@/components/dashboard/offline-banner";
 import { OrdersWatcher } from "@/components/dashboard/orders-watcher";
 import { getDb } from "@/db";
 import { activeAnnouncementsFor } from "@/server/admin/announcements";
@@ -49,13 +51,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-dvh bg-bg lg:flex">
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-e border-line bg-surface lg:flex">
+      <SkipLink />
+      <aside aria-label="القائمة الجانبية" className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-e border-line bg-surface lg:flex">
         <div className="flex h-16 items-center border-b border-line px-5"><Link href="/dashboard" aria-label="الرئيسية"><Logo className="h-9" /></Link></div>
         <div className="space-y-4 p-4">
-          <div className="rounded-lg bg-surface-2 p-3">
+          <div className="relative isolate overflow-hidden rounded-xl bg-navy p-3.5 text-white ring-1 ring-white/10">
+            <div aria-hidden className="pointer-events-none absolute -top-8 -start-8 -z-10 size-24 rounded-full bg-gold/30 blur-2xl" />
             <p className="truncate font-semibold">{ctx.store.name}</p>
-            <div className="mt-1 flex items-center gap-2 text-xs text-muted">
-              <Badge tone={access.state === "active" ? "success" : access.state === "trial" ? "gold" : "danger"}>
+            <div className="mt-1.5 flex items-center gap-2 text-xs text-white/75">
+              <Badge tone={access.state === "active" ? "success" : access.state === "trial" ? "gold" : "danger"} className="bg-white/10 text-white ring-white/25">
                 {access.state === "active" ? "نشط" : access.state === "trial" ? "تجريبي" : access.state === "expired" ? "منتهي" : "موقوف"}
               </Badge>
               {ctx.planName && <span>باقة {ctx.planName}</span>}
@@ -70,8 +74,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden">
-          <Link href="/dashboard" aria-label="الرئيسية" className="flex items-center gap-2"><Logo variant="icon" className="h-8" /><span className="max-w-[10rem] truncate font-semibold">{ctx.store.name}</span></Link>
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface/85 px-4 backdrop-blur-md lg:hidden">
+          <Link href="/dashboard" aria-label="الرئيسية" className="flex min-h-11 items-center gap-2"><Logo variant="icon" className="h-8" /><span className="max-w-[10rem] truncate font-semibold">{ctx.store.name}</span></Link>
           <div className="flex"><ThemeToggle /><LogoutButton /></div>
         </header>
         {banner && (
@@ -80,8 +84,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             {can(ctx.role, "billing") && access.state !== "suspended" && <Link href="/dashboard/billing" className="shrink-0 rounded-md bg-fg px-3 py-1 text-xs font-semibold text-bg hover:opacity-90">جدّد الاشتراك</Link>}
           </div>
         )}
+        <OfflineBanner />
         <Announcements items={announcements} />
-        <main className="mx-auto max-w-5xl px-4 py-6 pb-28 lg:px-8 lg:py-8 lg:pb-10">{children}</main>
+        <main id="main-content" tabIndex={-1} className="mx-auto max-w-5xl px-4 py-6 pb-28 outline-none lg:px-8 lg:py-8 lg:pb-10">{children}</main>
         <BottomNav items={items} />
         {pulse && <OrdersWatcher initialLatestId={pulse.latest?.id ?? null} />}
       </div>

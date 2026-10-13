@@ -20,8 +20,17 @@ export function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/** لون النص (أبيض أو كحلي رُكن) الأوضح فوق الخلفية */
-export const readableOn = (bg: string) => (contrastRatio(bg, "#FFFFFF") >= contrastRatio(bg, "#0D263E") ? "#FFFFFF" : "#0D263E");
+/**
+ * لون النص (أبيض أو كحلي رُكن) الأوضح فوق الخلفية.
+ * لو ولا واحد منهم يوصل 4.5:1 (مثل البرتقالي المتوسط) نستعمل الأسود، علشان النص يبقى مقروء (WCAG AA).
+ */
+export const readableOn = (bg: string) => {
+  const w = contrastRatio(bg, "#FFFFFF");
+  const n = contrastRatio(bg, "#0D263E");
+  const best = w >= n ? "#FFFFFF" : "#0D263E";
+  if (Math.max(w, n) >= 4.5) return best;
+  return contrastRatio(bg, "#000000") > Math.max(w, n) ? "#000000" : best;
+};
 
 /** مزج لونين: ratio من الأول (0..1) */
 export function mix(a: string, b: string, ratio: number): string {

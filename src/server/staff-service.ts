@@ -59,7 +59,7 @@ class QuotaError extends Error { constructor(public max: number) { super("quota"
 async function loadMember(db: Db, storeId: string, memberId: string, actorUserId: string) {
   const m = await db.select({ id: storeMembers.id, userId: storeMembers.userId, role: storeMembers.role, name: users.name, phone: users.phone })
     .from(storeMembers).innerJoin(users, eq(users.id, storeMembers.userId)).where(and(eq(storeMembers.id, memberId), eq(storeMembers.storeId, storeId))).get();
-  if (!m) return { error: "الموظف غير موجود." as const };
+  if (!m) return { error: "ما لقينا الموظف. يمكن انحذف، حدّث الصفحة." as const };
   if (m.role === "owner") return { error: "ما ينفعش تعدّل حساب المالك." as const };
   if (m.userId === actorUserId) return { error: "ما ينفعش تعدّل حسابك أنت." as const };
   return { m };

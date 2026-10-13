@@ -18,6 +18,7 @@ export function useToast(): Ctx {
 }
 
 const icons = { success: CheckCircle2, error: TriangleAlert, info: Info } as const;
+const barClass = { success: "border-s-success", error: "border-s-danger", info: "border-s-teal" } as const;
 const toneClass = {
   success: "text-success-fg",
   error: "text-danger-fg",
@@ -54,7 +55,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.97 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 shadow-lift"
+                className={cn("pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-xl border border-s-4 border-line bg-surface px-4 py-3 shadow-lift", barClass[t.tone])}
               >
                 <Icon className={cn("size-5 shrink-0", toneClass[t.tone])} aria-hidden />
                 <p className="flex-1 text-sm">{t.message}</p>

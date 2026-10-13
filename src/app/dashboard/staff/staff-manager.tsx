@@ -41,7 +41,7 @@ function AddForm({ onClose }: { onClose: () => void }) {
   const [v, setV] = useState({ name: "", phone: "", password: "", role: "orders_staff" as StaffRole });
   const { act, pending, error } = useAct();
   return (
-    <Modal open onClose={onClose} title="موظف جديد" footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} onClick={() => act(() => addStaffAction(v), "تمت إضافة الموظف", onClose)}>إضافة</Button></>}>
+    <Modal open onClose={onClose} title="موظف جديد" footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={() => act(() => addStaffAction(v), "تمت إضافة الموظف", onClose)}>إضافة</Button></>}>
       <div className="space-y-4">
         <Input label="الاسم" value={v.name} maxLength={80} onChange={(e) => setV({ ...v, name: e.target.value })} />
         <PhoneInput hint="يدخل بهذا الرقم. لازم يكون غير مسجّل في رُكن" value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} />
@@ -57,7 +57,7 @@ function ResetForm({ member, onClose }: { member: Member; onClose: () => void })
   const [pw, setPw] = useState("");
   const { act, pending, error } = useAct();
   return (
-    <Modal open onClose={onClose} title={`كلمة سر جديدة لـ ${member.name}`} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} onClick={() => act(() => resetPasswordAction(member.id, pw), "تم تغيير كلمة السر", onClose)}>حفظ</Button></>}>
+    <Modal open onClose={onClose} title={`كلمة سر جديدة لـ ${member.name}`} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={() => act(() => resetPasswordAction(member.id, pw), "تم تغيير كلمة السر", onClose)}>حفظ</Button></>}>
       <div className="space-y-4">
         <PasswordInput label="كلمة السر الجديدة" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} hint="الموظف يتسجل خروجه من كل الأجهزة." />
         <ErrorLine error={error} />

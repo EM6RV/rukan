@@ -16,8 +16,8 @@ const schema = z.object({
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{1,23}$/, "الرمز حروف إنجليزية صغيرة وأرقام وشرطة (2 إلى 24)").optional(),
   nameAr: z.string({ error: "اكتب اسم الباقة" }).trim().min(2, "اسم الباقة قصير").max(30, "اسم الباقة طويل"),
   descriptionAr: z.string().trim().max(160, "الوصف طويل").nullish().transform((v) => v || null),
-  priceMonthly: z.number({ error: "اكتب السعر الشهري" }).int("السعر لازم يكون رقم صحيح بالدرهم").min(0, "السعر ما يكونش بالسالب").max(100_000_000),
-  priceYearly: z.number({ error: "اكتب السعر السنوي" }).int("السعر لازم يكون رقم صحيح بالدرهم").min(0, "السعر ما يكونش بالسالب").max(1_000_000_000),
+  priceMonthly: z.number({ error: "اكتب السعر الشهري" }).int("السعر لازم يكون رقم صحيح بالدرهم").min(0, "اكتب سعر 0 أو أكثر").max(100_000_000),
+  priceYearly: z.number({ error: "اكتب السعر السنوي" }).int("السعر لازم يكون رقم صحيح بالدرهم").min(0, "اكتب سعر 0 أو أكثر").max(1_000_000_000),
   sortOrder: z.number().int().min(0).max(1000).default(0),
   isActive: z.boolean().default(true),
   limits: z.object({
@@ -39,7 +39,7 @@ export async function savePlan(db: Db, input: unknown, actorUserId: string): Pro
   try {
     if (id) {
       const cur = await db.select().from(plans).where(eq(plans.id, id)).get();
-      if (!cur) return fail("الباقة غير موجودة.");
+      if (!cur) return fail("ما لقينا الباقة. يمكن انحذف، حدّث الصفحة.");
       const trialSlug = await getPlatformSetting<string>(db, "trial_plan_slug", "growth");
       if (!d.isActive && cur.slug === trialSlug) return fail("هذي باقة التجربة المجانية. غيّر باقة التجربة من الإعدادات قبل ما توقفها.");
       await db.update(plans).set({ nameAr: d.nameAr, descriptionAr: d.descriptionAr, priceMonthly: d.priceMonthly, priceYearly: d.priceYearly, sortOrder: d.sortOrder, isActive: d.isActive, limits }).where(eq(plans.id, id));

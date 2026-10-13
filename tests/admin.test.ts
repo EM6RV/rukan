@@ -288,7 +288,7 @@ describe("الباقات", () => {
     const err = async (over: Record<string, unknown>) => { const r = await savePlan(db, { ...valid, slug: `x${++seq}`, ...over }, adminId); return r.ok ? "OK" : r.error; };
     expect(await err({ nameAr: "x" })).toContain("اسم الباقة");
     expect(await err({ slug: "Bad Slug" })).toContain("الرمز");
-    expect(await err({ priceMonthly: -1 })).toContain("بالسالب");
+    expect(await err({ priceMonthly: -1 })).toContain("0 أو أكثر");
     expect(await err({ priceMonthly: 10.5 })).toContain("رقم صحيح");
     expect(await err({ priceMonthly: 10_000, priceYearly: 200_000 })).toContain("السنوي أغلى");
     expect(await err({ limits: { ...valid.limits, maxProducts: -5 } })).toContain("حد المنتجات");
@@ -424,7 +424,7 @@ describe("إعادة تعيين كلمة سر المالك", () => {
     expect((await db.select().from(auditLogs).where(eq(auditLogs.storeId, s.id))).map((a) => a.action)).toContain("user.reset_password");
     expect(await adminResetPassword(db, adminId, "new-password-9", actor())).toEqual({ ok: false, error: expect.stringContaining("أدمن") });
     await db.update(users).set({ status: "blocked" }).where(eq(users.id, s.ownerId));
-    expect(await adminResetPassword(db, s.ownerId, "new-password-9", actor())).toEqual({ ok: false, error: expect.stringContaining("مقفول") });
+    expect(await adminResetPassword(db, s.ownerId, "new-password-9", actor())).toEqual({ ok: false, error: expect.stringContaining("حسابك موقوف") });
     expect((await adminResetPassword(db, "ghost", "new-password-9", actor())).ok).toBe(false);
   });
 });

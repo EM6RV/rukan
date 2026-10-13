@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 /* ===== هوية رُكن ===== */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --color-navy: #0d263e;
   --color-gold: #c19e58;
@@ -17,6 +19,7 @@
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-link: var(--link);
+  --color-link-strong: var(--link-strong);
   --color-ring: var(--ring);
   --color-success-fg: var(--success-fg);
   --color-danger-fg: var(--danger-fg);
@@ -39,6 +42,9 @@
   --muted: #55646f;
   --line: #dfe4ea;
   --link: #087c86;
+  --link-strong: #065a62; /* تركوازي أغمق للنص الصغير فوق خلفية تركوازية فاتحة */
+  --focus: #0d263e;
+  --focus-halo: #ffffff;
   --ring: #c19e58;
   --success-fg: #276b4d;
   --danger-fg: #a8441f;
@@ -48,6 +54,9 @@
 }
 
 [data-theme="light"] {
+  --focus: #0d263e;
+  --focus-halo: #ffffff;
+  --link-strong: #065a62;
   --bg: #f7f8fa;
   --surface: #ffffff;
   --surface-2: #eef1f5;
@@ -70,6 +79,9 @@
   --muted: #a3b2bf;
   --line: #22415f;
   --link: #3fc1cc; /* التركوازي أفتح علشان يقرا على الخلفية الداكنة */
+  --link-strong: #7fd6de;
+  --focus: #e3c487;
+  --focus-halo: #08192a;
   --ring: #c19e58;
   --success-fg: #6fd3a5;
   --danger-fg: #f2906a;
@@ -95,10 +107,17 @@
     font-weight: 700;
     line-height: 1.35;
   }
+  /* حلقة تركيز بطبقتين (هالة + خط): ظاهرة فوق أي خلفية، وتباينها ≥ 3:1 (WCAG 1.4.11) */
   :focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
+    box-shadow: 0 0 0 6px var(--focus-halo);
   }
+  /* روابط داخل النص: خط تحتها علشان ما نعتمد على اللون وحده (WCAG 1.4.1) */
+  a.text-link { text-decoration-line: underline; text-underline-offset: 3px; }
+  /* رابط «تخطي للمحتوى» */
+  .skip-link { position: fixed; inset-inline-start: 0.75rem; top: 0.75rem; z-index: 200; transform: translateY(-200%); border-radius: 0.5rem; background: var(--color-navy); color: #fff; padding: 0.75rem 1rem; font-weight: 600; }
+  .skip-link:focus { transform: none; }
   ::selection {
     background: color-mix(in srgb, var(--color-gold) 40%, transparent);
   }

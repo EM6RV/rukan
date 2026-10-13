@@ -42,7 +42,7 @@ export async function addDomain(db: Db, storeId: string, input: unknown, limits:
   const domain = normalizeDomain(raw.data);
   if (!domain) return fail("الدومين غير صحيح. اكتبه مثل: shop.example.com");
   if (isPlatformDomain(domain, rootDomain)) return fail("ما ينفعش تستعمل دومين رُكن نفسه. اكتب دومين تملكه.");
-  if (await getStoreDomain(db, storeId)) return fail("متجرك عنده دومين مضاف. امسحه أول لو تبي دومين ثاني.");
+  if (await getStoreDomain(db, storeId)) return fail("متجرك عنده دومين مضاف. احذفه أول لو تبي دومين ثاني.");
 
   const existing = await db.select().from(storeDomains).where(eq(storeDomains.domain, domain)).get();
   if (existing?.status === "verified") return fail("هذا الدومين مربوط بمتجر ثاني.");
@@ -52,7 +52,7 @@ export async function addDomain(db: Db, storeId: string, input: unknown, limits:
     await writeAudit(db, { actorUserId, storeId, action: "domain.add", entityType: "domain", entityId: row!.id, meta: { domain } });
     return ok({ id: row!.id, domain, status: "pending", token: row!.id });
   } catch (e) {
-    if (isUniqueViolation(e)) return fail("تعذر إضافة الدومين، جرّب مرة ثانية.");
+    if (isUniqueViolation(e)) return fail("ما قدرنا نضيف الدومين. جرّب مرة ثانية.");
     throw e;
   }
 }
@@ -104,7 +104,7 @@ export async function removeDomain(db: Db, storeId: string, actorUserId: string)
 /** اعتماد/رفض يدوي من الأدمن (للدعم لما DNS ما يتحققش آلياً) */
 export async function adminSetDomainStatus(db: Db, domainId: string, status: "verified" | "failed", actorUserId: string): Promise<Result<{ domain: string; storeId: string }>> {
   const d = await db.select().from(storeDomains).where(eq(storeDomains.id, domainId)).get();
-  if (!d) return fail("الدومين غير موجود.");
+  if (!d) return fail("ما لقينا الدومين. يمكن انحذف، حدّث الصفحة.");
   try {
     await db.update(storeDomains).set({ status }).where(eq(storeDomains.id, domainId));
   } catch (e) {

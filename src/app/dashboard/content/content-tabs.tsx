@@ -111,7 +111,7 @@ function PagesManager({ pages, writable }: { pages: PageItem[]; writable: boolea
         )}
       />
       {editing && <PageForm key={editing === "new" ? "new" : editing.id} initial={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} />}
-      <ConfirmModal open={!!deleting} onClose={() => setDeleting(null)} danger loading={del.pending} title="مسح الصفحة" message={del.error ?? `تمسح صفحة «${deleting?.title}»؟`} confirmLabel="مسح" onConfirm={() => deleting && del.act(() => deletePageAction(deleting.id), "تم المسح", () => setDeleting(null))} />
+      <ConfirmModal open={!!deleting} onClose={() => setDeleting(null)} danger loading={del.pending} title="حذف الصفحة" message={del.error ?? `حذف صفحة «${deleting?.title}»؟`} confirmLabel="حذف" onConfirm={() => deleting && del.act(() => deletePageAction(deleting.id), "تم المسح", () => setDeleting(null))} />
     </div>
   );
 }
@@ -121,7 +121,7 @@ function PageForm({ initial, onClose }: { initial?: PageItem; onClose: () => voi
   const { act, pending, error } = useAct();
   return (
     <Modal open onClose={onClose} title={initial ? "تعديل الصفحة" : "صفحة جديدة"} className="max-w-2xl"
-      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} disabled={v.title.trim().length < 2} onClick={() => act(() => savePageAction({ id: initial?.id, ...v }), "تم الحفظ", onClose)}>حفظ</Button></>}>
+      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} disabled={v.title.trim().length < 2} onClick={() => act(() => savePageAction({ id: initial?.id, ...v }), "تم الحفظ", onClose)}>حفظ</Button></>}>
       <div className="space-y-4">
         <Input label="عنوان الصفحة" value={v.title} maxLength={60} onChange={(e) => setV({ ...v, title: e.target.value })} />
         <Textarea label="المحتوى" rows={10} maxLength={10000} value={v.body} onChange={(e) => setV({ ...v, body: e.target.value })} hint="نص عادي. السطر الجديد يبقى سطر جديد." />

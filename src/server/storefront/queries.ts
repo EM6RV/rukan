@@ -48,6 +48,23 @@ export async function loadStorefront(db: Db, rawKey: string): Promise<Storefront
     scope.from(t.storePaymentMethods, eq(t.storePaymentMethods.isEnabled, true)).orderBy(t.storePaymentMethods.sortOrder),
   ]);
 
+  // القسم بدون صورة ياخذ صورة أول منتج ظاهر فيه (بدل بلاطة بحرف)
+  const fallbackImages = new Map<string, string>();
+  const needImage = categories.filter((c) => !c.imageMediaId);
+  if (needImage.length) {
+    const links = await scope.from(t.productCategories, inArray(t.productCategories.categoryId, needImage.map((c) => c.id)));
+    if (links.length) {
+      const prods = await scope.from(t.products, and(inArray(t.products.id, links.map((l) => l.productId)), visible())!).orderBy(desc(t.products.createdAt));
+      const images = prods.length ? await scope.from(t.productImages, inArray(t.productImages.productId, prods.map((p) => p.id))).orderBy(t.productImages.position) : [];
+      for (const c of needImage) {
+        const ids = new Set(links.filter((l) => l.categoryId === c.id).map((l) => l.productId));
+        const first = prods.find((p) => ids.has(p.id) && images.some((i) => i.productId === p.id));
+        const img = first && images.find((i) => i.productId === first.id);
+        if (img) fallbackImages.set(c.id, img.mediaId);
+      }
+    }
+  }
+
   return {
     id: store.id, slug: store.slug, name: store.name, template: store.template, businessType: store.businessType, status: store.status,
     trialEndsAt: ms(store.trialEndsAt), currentPeriodEnd: ms(store.currentPeriodEnd), logoMediaId: store.logoMediaId,
@@ -62,7 +79,7 @@ export async function loadStorefront(db: Db, rawKey: string): Promise<Storefront
     },
     limits: plan?.limits ?? FALLBACK_LIMITS,
     pages: pages.map((p) => ({ slug: p.slug, title: p.title })),
-    categories: categories.map((c) => ({ id: c.id, slug: c.slug, name: c.name, imageMediaId: c.imageMediaId })),
+    categories: categories.map((c) => ({ id: c.id, slug: c.slug, name: c.name, imageMediaId: c.imageMediaId ?? fallbackImages.get(c.id) ?? null })),
     homeSections: sections.map((x) => ({ id: x.id, type: x.type, config: x.config })),
     payments: payments.map((p) => ({ method: p.method, config: p.config })),
   };

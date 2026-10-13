@@ -76,7 +76,7 @@ export default async function AdminHome() {
                   <Link href={`/admin/stores/${e.id}`} className="min-w-0 flex-1"><p className="truncate font-semibold">{e.name}</p><p className="text-muted">{e.ownerName} · <span dir="ltr">{e.ownerPhone}</span></p></Link>
                   <Badge tone={e.state === "expired" ? "danger" : e.state === "trial" ? "gold" : "teal"}>{e.state === "expired" ? "منتهي" : e.state === "trial" ? "تجريبي" : "نشط"} · {e.daysLeft <= 0 ? `من ${-e.daysLeft} يوم` : `${e.daysLeft} يوم`}</Badge>
                   {wa && <a href={waLink(wa, msg)} target="_blank" rel="noopener noreferrer" className="rounded-md bg-success px-3 py-1.5 font-semibold text-white hover:brightness-95">واتساب</a>}
-                  <Link href={`/admin/stores/${e.id}#payment`} className="rounded-md border border-line px-3 py-1.5 font-medium hover:bg-surface-2">تسجيل دفعة</Link>
+                  <Link href={`/admin/stores/${e.id}#payment`} className="rounded-md border border-line px-3 py-1.5 font-medium hover:bg-surface-2">سجّل دفعة</Link>
                 </li>
               );
             })}

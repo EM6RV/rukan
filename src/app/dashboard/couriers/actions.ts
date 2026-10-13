@@ -13,7 +13,7 @@ async function run<T>(fn: (ctx: StoreContext) => Promise<Result<T>>): Promise<Re
   if (r.ok) revalidatePath("/dashboard", "layout");
   return r;
 }
-const bad = (): Result<never> => ({ ok: false, error: "البيانات غير صحيحة." });
+const bad = (): Result<never> => ({ ok: false, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." });
 
 export async function saveCourierAction(input: unknown) {
   return run((c) => saveCourier(c.scope, input));

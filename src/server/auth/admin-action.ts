@@ -8,7 +8,7 @@ export type AdminResult = { ok: true; user: SessionUser; db: ReturnType<typeof g
 /** للـ server actions وAPI الأدمن: يتأكد إن المستخدم أدمن المنصة (يرجع خطأ بدل redirect) */
 export async function adminContext(): Promise<AdminResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "سجّل دخولك من جديد." };
-  if (user.platformRole !== "admin") return { ok: false, error: "ما عندكش صلاحية لهذا الإجراء." };
+  if (!user) return { ok: false, error: "انتهت الجلسة. سجّل دخولك من جديد." };
+  if (user.platformRole !== "admin") return { ok: false, error: "ما عندكش صلاحية للإجراء هذا. كلّم مدير المتجر." };
   return { ok: true, user, db: getDb() };
 }

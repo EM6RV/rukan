@@ -40,7 +40,7 @@ export async function listPages(scope: StoreScope) {
 
 const pageSchema = z.object({
   id: z.string().min(1).optional(),
-  title: z.string({ error: "اكتب عنوان الصفحة" }).trim().min(2, "العنوان قصير").max(60, "العنوان طويل (الحد 60 حرف)"),
+  title: z.string({ error: "اكتب عنوان الصفحة" }).trim().min(2, "اكتب العنوان بالتفصيل").max(60, "العنوان طويل (الحد 60 حرف)"),
   body: z.string().max(10_000, "النص طويل بزيادة (الحد 10000 حرف)").default(""),
   isPublished: z.boolean().default(true),
 });
@@ -52,7 +52,7 @@ export async function savePage(scope: StoreScope, input: unknown): Promise<Resul
   try {
     if (id) {
       const [row] = await scope.update(t.storePages, d, eq(t.storePages.id, id));
-      return row ? ok({ id }) : fail("الصفحة غير موجودة.");
+      return row ? ok({ id }) : fail("ما لقينا الصفحة. يمكن انحذف، حدّث الصفحة.");
     }
     const pages = await scope.from(t.storePages);
     if (pages.length >= MAX_PAGES) return fail(`وصلت للحد الأقصى (${MAX_PAGES} صفحة).`);
@@ -67,8 +67,8 @@ export async function savePage(scope: StoreScope, input: unknown): Promise<Resul
 
 export async function deletePage(scope: StoreScope, id: string): Promise<Result> {
   const [row] = await scope.from(t.storePages, eq(t.storePages.id, id)).limit(1);
-  if (!row) return fail("الصفحة غير موجودة.");
-  if (CORE_PAGE_SLUGS.includes(row.slug)) return fail("هذه صفحة أساسية ما تتمسحش. تقدر تخفيها.");
+  if (!row) return fail("ما لقينا الصفحة. يمكن انحذف، حدّث الصفحة.");
+  if (CORE_PAGE_SLUGS.includes(row.slug)) return fail("هذه صفحة أساسية ما تنحذفش. تقدر تخفيها.");
   await scope.delete(t.storePages, eq(t.storePages.id, id));
   return ok(undefined);
 }
@@ -123,7 +123,7 @@ export async function saveHomeSections(db: Db, storeId: string, input: unknown):
     if (!cfg.success) return fail(firstError(cfg.error));
     const config = Object.fromEntries(Object.entries(cfg.data).filter(([, v]) => v !== null)) as Record<string, unknown>;
     if (s.type === "banner" && !config.imageMediaId) return fail("البانر لازم يكون فيه صورة.");
-    if (typeof config.imageMediaId === "string" && !(await validateOwnMedia(db, storeId, config.imageMediaId))) return fail("الصورة غير صحيحة، ارفعها من جديد.");
+    if (typeof config.imageMediaId === "string" && !(await validateOwnMedia(db, storeId, config.imageMediaId))) return fail("ما قدرنا نقرا الصورة. ارفع صورة JPG أو PNG أو WebP.");
     rows.push({ id: s.id ?? null, type: s.type, isVisible: s.isVisible, config });
   }
   for (const type of SINGLE_SECTION_TYPES) if (rows.filter((r) => r.type === type).length > 1) return fail("هذا القسم يتحط مرة وحدة بس.");
@@ -141,7 +141,7 @@ export async function saveHomeSections(db: Db, storeId: string, input: unknown):
       }
     });
   } catch (e) {
-    if (isUniqueViolation(e)) return fail("تعذر الحفظ، جرّب من جديد.");
+    if (isUniqueViolation(e)) return fail("ما قدرنا نحفظ. جرّب مرة ثانية.");
     throw e;
   }
   return ok(undefined);

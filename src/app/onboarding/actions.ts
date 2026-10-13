@@ -13,14 +13,14 @@ import {
 } from "@/server/store-service";
 import { loadStoreContext } from "@/server/store-context";
 
-const NOT_LOGGED = { ok: false as const, error: "سجّل دخولك من جديد." };
+const NOT_LOGGED = { ok: false as const, error: "انتهت الجلسة. سجّل دخولك من جديد." };
 
 export async function checkSlugAction(slug: string): Promise<Result<string>> {
   const user = await getCurrentUser();
   if (!user) return NOT_LOGGED;
   const db = getDb();
   const limit = await hitRateLimit(db, `slug-check:user:${user.id}`, { limit: 60, windowMs: 60_000 });
-  if (!limit.allowed) return { ok: false, error: "فحص كثير. استنى شوية." };
+  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
   const ctx = await loadStoreContext();
   return checkSlugAvailable(db, slug, ctx?.store.id);
 }
@@ -42,7 +42,7 @@ export async function saveBasicsAction(input: unknown): Promise<Result<{ slug: s
     return r.ok ? { ok: true, data: { slug: parsed.data.slug } } : r;
   }
   const limit = await hitRateLimit(db, `create-store:user:${user.id}`, { limit: 5, windowMs: 60 * 60_000 });
-  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. جرّب بعد شوية." };
+  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
   const r = await createStoreForUser(db, { userId: user.id, ...parsed.data });
   return r.ok ? { ok: true, data: { slug: parsed.data.slug } } : r;
 }

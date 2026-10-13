@@ -107,7 +107,7 @@ export function CartView() {
           <div className="flex justify-between text-(--sp-muted)"><dt>التوصيل</dt><dd>يتحسب حسب مدينتك</dd></div>
         </dl>
         <Link href={store.href("/checkout")} className={cn(kit.cls.btn, "w-full")}>إتمام الطلب</Link>
-        <Link href={store.href("/search")} className="block text-center text-sm font-medium text-(--sp-muted) hover:text-(--sp)">متابعة التسوق</Link>
+        <Link href={store.href("/search")} className="block text-center text-sm font-medium text-(--sp-muted) hover:text-(--sp)">كمّل التسوق</Link>
       </aside>
     </div>
   );

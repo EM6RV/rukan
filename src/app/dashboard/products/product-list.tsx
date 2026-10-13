@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Copy, Eye, EyeOff, Package, Pencil, Percent, Star, Trash2, Boxes } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { enterDelay, enterItem } from "@/components/ui/motion";
 import { ConfirmModal } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/feedback";
 import { Input, Select } from "@/components/ui/field";
@@ -39,7 +40,8 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
   function exec(fn: () => Promise<{ ok: boolean; error?: string }>, success: string, closeDialog = true) {
     setError(null);
     startTransition(async () => {
-      const r = await fn();
+      let r: { ok: boolean; error?: string };
+      try { r = await fn(); } catch { r = { ok: false, error: "ما قدرنا نوصل للسيرفر. تأكد من الإنترنت وجرّب مرة ثانية." }; }
       if (!r.ok) { if (dialog) setError(r.error ?? "صار خطأ"); else toast(r.error ?? "صار خطأ", "error"); return; }
       toast(success);
       if (closeDialog) { setDialog(null); setValue(""); }
@@ -50,7 +52,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 
   if (items.length === 0) {
     return hasFilters
-      ? <EmptyState icon={<Package className="size-6" />} title="ما لقينا منتجات" description="جرّب تغيّر البحث أو الفلتر." />
+      ? <EmptyState icon={<Package className="size-6" />} title="ما لقينا منتجات" description="جرّب تغيّر البحث أو الفلتر." action={<Link href="/dashboard/products" className="inline-flex h-11 items-center rounded-md border border-line px-5 font-semibold hover:bg-surface-2">عرض كل المنتجات</Link>} />
       : <EmptyState icon={<Package className="size-6" />} title="ما عندكش منتجات لسا" description="أضف منتجك الأول، أو استورد قائمة منتجاتك من Excel."
           action={<Link href="/dashboard/products/new" className="inline-flex h-11 items-center rounded-md bg-gold px-5 font-semibold text-navy">أضف منتج</Link>} />;
   }
@@ -58,7 +60,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 px-1 text-sm">
-        <label className="flex cursor-pointer items-center gap-2 font-medium">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 font-medium">
           <input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)))} className="size-4 accent-[var(--color-gold)]" />
           تحديد الكل
         </label>
@@ -66,16 +68,16 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
       </div>
 
       <ul className="space-y-2">
-        {items.map((p) => {
+        {items.map((p, i) => {
           const low = p.stock === 0 ? "out" : p.stock <= 5 ? "low" : null;
           return (
-            <li key={p.id} className={cn("flex items-center gap-3 rounded-xl border bg-surface p-3 shadow-soft transition-colors", selected.has(p.id) ? "border-gold bg-gold/5" : "border-line", !p.isVisible && "opacity-75")}>
-              <input type="checkbox" aria-label={`تحديد ${p.name}`} checked={selected.has(p.id)} onChange={() => toggle(p.id)} className="size-4 shrink-0 accent-[var(--color-gold)]" />
-              <Link href={`/dashboard/products/${p.id}`} className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
+            <li key={p.id} style={enterDelay(i)} className={cn(enterItem, "flex items-center gap-3 rounded-2xl border bg-surface p-3 shadow-soft transition-colors", selected.has(p.id) ? "border-gold bg-gold/5" : "border-line", !p.isVisible && "opacity-75")}>
+              <label className="-mx-2 flex size-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" aria-label={`تحديد ${p.name}`} checked={selected.has(p.id)} onChange={() => toggle(p.id)} className="size-5 accent-[var(--color-gold)]" /></label>
+              <Link href={`/dashboard/products/${p.id}`} aria-label={p.name} className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-2">
                 {p.thumbMediaId ? <img src={`/api/media/${p.thumbMediaId}`} alt="" loading="lazy" className="size-full object-cover" /> : <Package className="size-6 text-muted" />}
               </Link>
               <div className="min-w-0 flex-1 space-y-0.5">
-                <Link href={`/dashboard/products/${p.id}`} className="block truncate font-semibold hover:underline">{p.name}</Link>
+                <Link href={`/dashboard/products/${p.id}`} className="block truncate py-2 font-semibold hover:underline">{p.name}</Link>
                 <p className="text-sm">
                   <span className="font-semibold">{formatMoney(p.price)}</span>
                   {p.compareAtPrice !== null && <span className="ms-2 text-muted line-through">{formatMoney(p.compareAtPrice)}</span>}
@@ -93,8 +95,8 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
                 <Icon label={p.isVisible ? "إخفاء" : "إظهار"} disabled={!writable || pending} onClick={() => exec(() => setVisibilityAction([p.id], !p.isVisible), p.isVisible ? "تم إخفاء المنتج" : "تم إظهار المنتج", false)}>
                   {p.isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Icon>
-                <Icon label="نسخ" disabled={!writable || pending} onClick={() => exec(() => duplicateProductAction(p.id), "تم نسخ المنتج (مخفي، عدّله وأظهره)", false)}><Copy className="size-4" /></Icon>
-                <Link href={`/dashboard/products/${p.id}`} aria-label="تعديل" title="تعديل" className="flex size-9 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"><Pencil className="size-4" /></Link>
+                <Icon label="نسخ" disabled={!writable || pending} onClick={() => exec(() => duplicateProductAction(p.id), "تم نسخ المنتج وهو مخفي. عدّله وأظهره.", false)}><Copy className="size-4" /></Icon>
+                <Link href={`/dashboard/products/${p.id}`} aria-label="تعديل" title="تعديل" className="flex size-9 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg pointer-coarse:size-11"><Pencil className="size-4" /></Link>
               </div>
             </li>
           );
@@ -114,7 +116,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 
       <Modal
         open={dialog === "price"} onClose={() => setDialog(null)} title={`تعديل سعر ${selected.size} منتج`}
-        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button><Button loading={pending} disabled={!value.trim()} onClick={() => exec(() => bulkPriceAction(ids, { mode, value }), "تم تعديل الأسعار")}>تطبيق</Button></>}
+        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button><Button loading={pending} disabled={!value.trim()} onClick={() => exec(() => bulkPriceAction(ids, { mode, value }), "تم تعديل الأسعار")}>طبّق</Button></>}
       >
         <div className="space-y-4">
           <Select label="طريقة التعديل" value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -130,7 +132,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 
       <Modal
         open={dialog === "stock"} onClose={() => setDialog(null)} title={`تعديل مخزون ${selected.size} منتج`}
-        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button><Button loading={pending} disabled={!value.trim()} onClick={() => exec(() => bulkStockAction(ids, { mode, value }), "تم تعديل المخزون")}>تطبيق</Button></>}
+        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button><Button loading={pending} disabled={!value.trim()} onClick={() => exec(() => bulkStockAction(ids, { mode, value }), "تم تعديل المخزون")}>طبّق</Button></>}
       >
         <div className="space-y-4">
           <Select label="طريقة التعديل" value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -145,7 +147,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 
       <ConfirmModal
         open={dialog === "delete"} onClose={() => setDialog(null)} danger loading={pending} confirmLabel="حذف"
-        title="حذف المنتجات" message={`متأكد تبي تمسح ${selected.size} منتج؟ الطلبيات القديمة تفضل محفوظة.`}
+        title="حذف المنتجات" message={`حذف ${selected.size} منتج؟ الطلبيات القديمة تبقى محفوظة.`}
         onConfirm={() => exec(() => deleteProductsAction(ids), "تم الحذف")}
       />
     </div>
@@ -155,7 +157,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 function Icon({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled}
-      className="flex size-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:opacity-40">
+      className="flex size-9 items-center justify-center rounded-md text-muted transition-colors pointer-coarse:size-11 hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:opacity-40">
       {children}
     </button>
   );

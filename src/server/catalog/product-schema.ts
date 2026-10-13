@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const money = z.number({ error: "السعر لازم يكون رقم" }).int("السعر غير صحيح").min(0, "السعر ما يكونش بالسالب").max(1_000_000_000, "السعر كبير بزيادة");
+const money = z.number({ error: "السعر لازم يكون رقم" }).int("السعر غير صحيح").min(0, "اكتب سعر 0 أو أكثر").max(1_000_000_000, "السعر كبير بزيادة");
 const nullableMoney = money.nullish().transform((v) => v ?? null);
 
 export const MAX_OPTIONS = 3;

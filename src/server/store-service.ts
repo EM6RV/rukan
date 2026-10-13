@@ -123,8 +123,8 @@ export async function saveIdentity(
   input: { template: StoreTemplate; primaryColor: string; accentColor: string; logoMediaId: string | null },
   limits: PlanLimits,
 ): Promise<Result> {
-  if (!limits.allTemplates && input.template !== BASE_TEMPLATE) return fail("هذا القالب متاح في باقة «نمو» وما فوق.");
-  if (!(await validateOwnMedia(db, storeId, input.logoMediaId))) return fail("اللوجو غير صحيح، ارفعه من جديد.");
+  if (!limits.allTemplates && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «نمو» وما فوق. رقّي باقتك لتستعمله.");
+  if (!(await validateOwnMedia(db, storeId, input.logoMediaId))) return fail("ما قدرنا نقرا اللوجو. ارفع صورة JPG أو PNG أو WebP.");
   await bumpStep(db, storeId, 4, { template: input.template, logoMediaId: input.logoMediaId });
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: input.primaryColor, accentColor: input.accentColor });
   return { ok: true, data: undefined };
@@ -170,7 +170,7 @@ export async function saveDelivery(
 
 export async function completeOnboarding(db: Db, storeId: string): Promise<Result> {
   const store = await db.select().from(stores).where(eq(stores.id, storeId)).get();
-  if (!store) return fail("المتجر غير موجود.");
+  if (!store) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
   if (store.onboardingStep < 5) return fail("كمّل الخطوات اللي قبل.");
   await bumpStep(db, storeId, 6, { onboardedAt: store.onboardedAt ?? new Date() });
   return { ok: true, data: undefined };

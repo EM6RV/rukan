@@ -9,7 +9,7 @@ import { fail, ok, type Result } from "../catalog/result";
 const optMs = z.number().int().min(0).max(4_102_444_800_000).nullish().transform((v) => v ?? null);
 const schema = z.object({
   id: z.string().min(1).optional(),
-  title: z.string({ error: "اكتب عنوان الإعلان" }).trim().min(2, "العنوان قصير").max(80, "العنوان طويل (الحد 80)"),
+  title: z.string({ error: "اكتب عنوان الإعلان" }).trim().min(2, "اكتب العنوان بالتفصيل").max(80, "العنوان طويل (الحد 80)"),
   body: z.string({ error: "اكتب نص الإعلان" }).trim().min(2, "النص قصير").max(500, "النص طويل (الحد 500)"),
   level: z.enum(["info", "warning", "success"], { error: "اختار نوع الإعلان" }),
   startsAt: optMs, endsAt: optMs,
@@ -30,7 +30,7 @@ export async function saveAnnouncement(db: Db, input: unknown, actorUserId: stri
   const data = { ...d, startsAt: d.startsAt === null ? null : new Date(d.startsAt), endsAt: d.endsAt === null ? null : new Date(d.endsAt) };
   if (id) {
     const [row] = await db.update(announcements).set(data).where(eq(announcements.id, id)).returning({ id: announcements.id });
-    if (!row) return fail("الإعلان غير موجود.");
+    if (!row) return fail("ما لقينا الإعلان. يمكن انحذف، حدّث الصفحة.");
     await writeAudit(db, { actorUserId, storeId: null, action: "announcement.update", entityType: "announcement", entityId: id });
     return ok({ id });
   }
@@ -41,7 +41,7 @@ export async function saveAnnouncement(db: Db, input: unknown, actorUserId: stri
 
 export async function deleteAnnouncement(db: Db, id: string, actorUserId: string): Promise<Result> {
   const rows = await db.delete(announcements).where(eq(announcements.id, id)).returning({ id: announcements.id });
-  if (!rows.length) return fail("الإعلان غير موجود.");
+  if (!rows.length) return fail("ما لقينا الإعلان. يمكن انحذف، حدّث الصفحة.");
   await writeAudit(db, { actorUserId, storeId: null, action: "announcement.delete", entityType: "announcement", entityId: id });
   return ok(undefined);
 }
@@ -60,7 +60,7 @@ export async function activeAnnouncementsFor(db: Db, userId: string, now = Date.
 
 export async function dismissAnnouncement(db: Db, userId: string, announcementId: string): Promise<Result> {
   const a = await db.select({ id: announcements.id }).from(announcements).where(eq(announcements.id, announcementId)).get();
-  if (!a) return fail("الإعلان غير موجود.");
+  if (!a) return fail("ما لقينا الإعلان. يمكن انحذف، حدّث الصفحة.");
   await db.insert(announcementDismissals).values({ announcementId, userId }).onConflictDoNothing();
   return ok(undefined);
 }

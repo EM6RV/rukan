@@ -72,10 +72,10 @@ export function DomainTab({ allowed, canManage, target, current }: DomainProps &
               <Button loading={verify.pending} onClick={() => { setReport(null); verify.act(async () => { const r = await verifyDomainAction(); if (r.ok) setReport(r.data.verified ? null : r.data); return r; }, "تم التحقق من الدومين (إن كان كل شي تمام)"); }}><RefreshCw className="size-4" aria-hidden /> تحقق الآن</Button>
             </div>
           )}
-          <div className="border-t border-line pt-4"><Button variant="ghost" onClick={() => { remove.setError(null); setConfirm(true); }}><Trash2 className="size-4 text-danger-fg" aria-hidden /> مسح الدومين</Button></div>
+          <div className="border-t border-line pt-4"><Button variant="ghost" onClick={() => { remove.setError(null); setConfirm(true); }}><Trash2 className="size-4 text-danger-fg" aria-hidden /> حذف الدومين</Button></div>
         </div>
       )}
-      <ConfirmModal open={confirm} onClose={() => setConfirm(false)} danger loading={remove.pending} title="مسح الدومين" message={remove.error ?? "متجرك يرجع يشتغل على رابط rukn.ly بس. تمسح الدومين؟"} confirmLabel="مسح" onConfirm={() => remove.act(() => removeDomainAction(), "تم مسح الدومين", () => setConfirm(false))} />
+      <ConfirmModal open={confirm} onClose={() => setConfirm(false)} danger loading={remove.pending} title="حذف الدومين" message={remove.error ?? "متجرك يرجع يشتغل على رابط rukn.ly بس. حذف الدومين؟"} confirmLabel="حذف" onConfirm={() => remove.act(() => removeDomainAction(), "تم مسح الدومين", () => setConfirm(false))} />
     </CardBody></Card>
   );
 }

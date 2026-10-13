@@ -22,7 +22,7 @@ function Form({ initial, onClose }: { initial?: Item; onClose: () => void }) {
   const [v, setV] = useState({ title: initial?.title ?? "", body: initial?.body ?? "", level: initial?.level ?? "info", startsAt: msToDateInput(initial?.startsAt ?? null), endsAt: msToDateInput(initial?.endsAt ?? null), isActive: initial?.isActive ?? true });
   const { act, pending, error } = useAct();
   return (
-    <Modal open onClose={onClose} title={initial ? "تعديل الإعلان" : "إعلان جديد"} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} onClick={() => act(() => saveAnnouncementAction({ id: initial?.id, ...v, startsAt: dateInputToMs(v.startsAt, "start"), endsAt: dateInputToMs(v.endsAt, "end") }), "تم الحفظ", onClose)}>حفظ</Button></>}>
+    <Modal open onClose={onClose} title={initial ? "تعديل الإعلان" : "إعلان جديد"} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={() => act(() => saveAnnouncementAction({ id: initial?.id, ...v, startsAt: dateInputToMs(v.startsAt, "start"), endsAt: dateInputToMs(v.endsAt, "end") }), "تم الحفظ", onClose)}>حفظ</Button></>}>
       <div className="space-y-4">
         <Input label="العنوان" value={v.title} maxLength={80} onChange={(e) => setV({ ...v, title: e.target.value })} />
         <Textarea label="النص" rows={4} maxLength={500} value={v.body} onChange={(e) => setV({ ...v, body: e.target.value })} hint={`${v.body.length}/500`} />
@@ -50,14 +50,14 @@ export function AnnouncementManager({ items }: { items: Item[] }) {
                 <div className="flex flex-wrap items-center gap-2"><h2 className="text-base">{a.title}</h2><Badge tone={LEVEL[a.level][1]}>{LEVEL[a.level][0]}</Badge>{!a.isActive && <Badge>معطّل</Badge>}</div>
                 <p className="whitespace-pre-line text-sm">{a.body}</p>
                 <p className="text-xs text-muted">{a.startsAt ? `من ${formatDate(a.startsAt)}` : "من الحين"}{a.endsAt ? ` · لين ${formatDate(a.endsAt)}` : ""} · أغلقه {a.dismissedBy} بياع</p>
-                <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setEditing(a)}>تعديل</Button><Button size="sm" variant="ghost" onClick={() => { del.setError(null); setDeleting(a); }}>مسح</Button></div>
+                <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setEditing(a)}>تعديل</Button><Button size="sm" variant="ghost" onClick={() => { del.setError(null); setDeleting(a); }}>حذف</Button></div>
               </Card>
             </li>
           ))}
         </ul>
       )}
       {editing && <Form key={editing === "new" ? "new" : editing.id} initial={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} />}
-      <ConfirmModal open={!!deleting} onClose={() => setDeleting(null)} danger loading={del.pending} title="مسح الإعلان" message={del.error ?? `تمسح «${deleting?.title}»؟`} confirmLabel="مسح" onConfirm={() => deleting && del.act(() => deleteAnnouncementAction(deleting.id), "تم المسح", () => setDeleting(null))} />
+      <ConfirmModal open={!!deleting} onClose={() => setDeleting(null)} danger loading={del.pending} title="حذف الإعلان" message={del.error ?? `حذف «${deleting?.title}»؟`} confirmLabel="حذف" onConfirm={() => deleting && del.act(() => deleteAnnouncementAction(deleting.id), "تم المسح", () => setDeleting(null))} />
     </div>
   );
 }

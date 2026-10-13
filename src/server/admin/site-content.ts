@@ -45,7 +45,7 @@ export async function saveSiteContent(db: Db, input: unknown, actorUserId: strin
   const img = p.data.hero.imageMediaId;
   if (img) {
     const m = await db.select({ id: media.id, storeId: media.storeId, isPrivate: media.isPrivate }).from(media).where(eq(media.id, img)).get();
-    if (!m || m.storeId !== null || m.isPrivate) return fail("صورة الهيرو غير صحيحة، ارفعها من جديد.");
+    if (!m || m.storeId !== null || m.isPrivate) return fail("ما قدرنا نقرا صورة الهيرو. ارفع صورة JPG أو PNG أو WebP.");
   }
   await db.insert(siteContent).values({ key: KEY, value: p.data, updatedBy: actorUserId }).onConflictDoUpdate({ target: siteContent.key, set: { value: p.data, updatedBy: actorUserId, updatedAt: new Date() } });
   await writeAudit(db, { actorUserId, storeId: null, action: "site.content", entityType: "site_content", entityId: KEY });

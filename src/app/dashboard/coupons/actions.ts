@@ -19,10 +19,10 @@ export async function saveCouponAction(input: unknown) {
 }
 export async function toggleCouponAction(id: unknown, active: unknown) {
   const p = z.object({ id: z.string().min(1), active: z.boolean() }).safeParse({ id, active });
-  if (!p.success) return { ok: false as const, error: "البيانات غير صحيحة." };
+  if (!p.success) return { ok: false as const, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." };
   return run((c) => setCouponActive(c.scope, p.data.id, p.data.active));
 }
 export async function deleteCouponAction(id: unknown) {
-  if (typeof id !== "string" || !id) return { ok: false as const, error: "البيانات غير صحيحة." };
+  if (typeof id !== "string" || !id) return { ok: false as const, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." };
   return run((c) => deleteCoupon(c.scope, id));
 }

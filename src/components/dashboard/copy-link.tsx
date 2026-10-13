@@ -11,10 +11,10 @@ export function StoreLinkCard({ url, name }: { url: string; name: string }) {
       await navigator.clipboard.writeText(url);
       toast("تم نسخ الرابط");
     } catch {
-      toast("ما قدرنا ننسخوا، انسخه يدوي", "error");
+      toast("ما قدرنا ننسخ الرابط. انسخه بإيدك.", "error");
     }
   }
-  const btn = "inline-flex h-9 items-center gap-1.5 rounded-md border border-line bg-surface px-3 text-sm font-medium transition-colors hover:bg-surface-2";
+  const btn = "inline-flex h-9 pointer-coarse:h-11 items-center gap-1.5 rounded-md border border-line bg-surface px-3 text-sm font-medium transition-colors hover:bg-surface-2";
   return (
     <div className="space-y-3">
       <div dir="ltr" className="truncate rounded-md bg-surface-2 px-3 py-2.5 text-sm font-medium">{url}</div>

@@ -245,7 +245,7 @@ describe("الكوبونات", () => {
     expect(await checkCoupon(s.scope, "pct", 100_000)).toMatchObject({ ok: true, discount: 10_000 }); // حساسية الحروف
     expect(await checkCoupon(s.scope, "PCT", 30_000)).toEqual({ ok: false, error: expect.stringContaining("الحد الأدنى") });
     expect(await checkCoupon(s.scope, "FIX", 100_000)).toMatchObject({ ok: true, discount: 100_000 }); // ما يزيدش عن المجموع
-    for (const [code, msg] of [["OFF", "غير صحيح"], ["OLD", "منتهي"], ["SOON", "ما بدا"], ["FULL", "الاستخدام"], ["NOPE", "غير صحيح"], ["", "اكتب"]] as const) {
+    for (const [code, msg] of [["OFF", "ما لقينا"], ["OLD", "انتهى"], ["SOON", "ما بدا"], ["FULL", "استعماله"], ["NOPE", "ما لقينا"], ["", "اكتب"]] as const) {
       expect(await checkCoupon(s.scope, code, 100_000), code).toEqual({ ok: false, error: expect.stringContaining(msg) });
     }
   });
@@ -278,7 +278,7 @@ describe("الكوبونات", () => {
     const c = await coupon(s, { code: "ONCE", type: "fixed", value: 10_000, maxUses: 1 });
     const line = [{ variantId: p.variantId, quantity: 1 }];
     expect((await order(s, line, { couponCode: "ONCE" })).ok).toBe(true);
-    expect(await order(s, line, { couponCode: "ONCE" })).toEqual({ ok: false, error: expect.stringContaining("الاستخدام") });
+    expect(await order(s, line, { couponCode: "ONCE" })).toEqual({ ok: false, error: expect.stringContaining("استعماله") });
     expect(await stockOf(s, p.variantId)).toBe(9); // الطلب الفاشل ما خصمش مخزون
     expect((await s.scope.from(t.coupons, eq(t.coupons.id, c.id)))[0]!.usedCount).toBe(1);
     expect(await s.scope.count(t.couponRedemptions)).toBe(1);

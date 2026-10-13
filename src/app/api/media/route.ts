@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   if (!limit.allowed) return fail("رفعت صور كثيرة. استنى شوية وجرّب.", 429);
 
   const length = Number(request.headers.get("content-length") ?? 0);
-  if (length > MAX_UPLOAD_BYTES + 64 * 1024) return fail("الصورة كبيرة بزيادة. الحد الأقصى 8 ميغا.", 413);
+  if (length > MAX_UPLOAD_BYTES + 64 * 1024) return fail("الصورة كبيرة. الحد الأقصى 8 ميغا، صغّرها وجرّب.", 413);
 
   let form: FormData;
   try {
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   if (!(file instanceof File) || !KINDS.includes(kind)) return fail("اختار صورة صحيحة.", 400);
 
   const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(media).where(eq(media.storeId, ctx.store.id));
-  if (n >= MAX_MEDIA_PER_STORE) return fail("وصلت للحد الأقصى من الصور. امسح صور قديمة.", 400);
+  if (n >= MAX_MEDIA_PER_STORE) return fail("وصلت للحد الأقصى من الصور. احذف صور قديمة.", 400);
 
   try {
     const saved = await saveImage(db, getStorage(), {

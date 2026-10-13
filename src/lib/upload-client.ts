@@ -6,7 +6,7 @@ const MAX_BYTES = 8 * 1024 * 1024;
 /** يرفع صورة لـ /api/media. يرمي Error برسالة عربية جاهزة للعرض. */
 export async function uploadImage(file: File, kind: UploadKind, extra: { storeId?: string } = {}): Promise<UploadedImage> {
   if (!file.type.startsWith("image/")) throw new Error("اختار ملف صورة (JPG أو PNG أو WebP).");
-  if (file.size > MAX_BYTES) throw new Error("الصورة كبيرة بزيادة. الحد الأقصى 8 ميغا.");
+  if (file.size > MAX_BYTES) throw new Error("الصورة كبيرة. الحد الأقصى 8 ميغا، صغّرها وجرّب.");
   const body = new FormData();
   body.set("file", file);
   body.set("kind", kind);

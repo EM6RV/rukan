@@ -80,7 +80,7 @@ const CategoryTile: Kit["CategoryTile"] = ({ name, href, imageMediaId }) => (
 const SectionTitle: Kit["SectionTitle"] = ({ title, href, linkLabel }) => (
   <div className="mb-5 flex items-end justify-between gap-3">
     <h2 className="text-xl font-bold md:text-2xl">{title}</h2>
-    {href && <Link href={href} className="text-sm font-semibold text-(--sa-text) hover:underline">{linkLabel ?? "عرض الكل"}</Link>}
+    {href && <Link href={href} className="inline-flex min-h-10 items-center text-sm font-semibold text-(--sa-text) hover:underline">{linkLabel ?? "عرض الكل"}</Link>}
   </div>
 );
 

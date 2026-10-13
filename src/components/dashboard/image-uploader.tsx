@@ -64,11 +64,11 @@ export function ImageUploader({ label, hint, kind, value, onChange, shape = "squ
           )}
         </button>
         <div className="space-y-1 text-sm">
-          <button type="button" onClick={() => input.current?.click()} disabled={busy} className="font-medium text-link hover:underline disabled:opacity-50">
+          <button type="button" onClick={() => input.current?.click()} disabled={busy} className="flex min-h-11 items-center px-1 font-medium text-link hover:underline disabled:opacity-50">
             {value ? "تغيير" : "رفع صورة"}
           </button>
           {value && (
-            <button type="button" onClick={() => onChange(null)} className="flex items-center gap-1 text-danger-fg hover:underline">
+            <button type="button" onClick={() => onChange(null)} className="flex min-h-11 items-center gap-1 px-1 text-danger-fg hover:underline">
               <Trash2 className="size-3.5" /> حذف
             </button>
           )}

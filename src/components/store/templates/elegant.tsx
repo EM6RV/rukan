@@ -34,7 +34,7 @@ function Header() {
 
 function Footer() {
   return (
-    <footer className="mt-24 bg-(--sp) text-(--sp-fg)">
+    <footer className="mt-24 bg-(--sp) text-(--sp-fg) [--focus:var(--sp-fg)] [--focus-halo:transparent]">
       <div className="mx-auto max-w-6xl px-4 py-14">
         <div className="mb-10 flex justify-center"><StoreBrand className="justify-center" textClass="text-2xl font-light tracking-[0.2em]" /></div>
         <div className="mx-auto grid max-w-3xl gap-10 text-center sm:grid-cols-2 sm:text-start [&_li]:justify-center sm:[&_li]:justify-start [&_a]:justify-center sm:[&_a]:justify-start">
@@ -89,7 +89,7 @@ const SectionTitle: Kit["SectionTitle"] = ({ title, href, linkLabel }) => (
   <div className="mb-10 text-center">
     <h2 className="text-2xl font-light tracking-[0.15em] md:text-3xl">{title}</h2>
     <span className="mx-auto mt-3 block h-px w-14 bg-(--sa)" />
-    {href && <Link href={href} className="mt-3 inline-block text-xs tracking-[0.2em] text-(--sa-text) hover:underline">{linkLabel ?? "عرض الكل"}</Link>}
+    {href && <Link href={href} className="mt-1 inline-flex min-h-10 items-center text-sm tracking-[0.2em] text-(--sa-text) hover:underline">{linkLabel ?? "عرض الكل"}</Link>}
   </div>
 );
 

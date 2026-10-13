@@ -25,12 +25,12 @@ export function Price({
   return (
     <span className={cn("inline-flex flex-wrap items-baseline gap-x-2", className)}>
       <span className={cn("font-bold", text)}>
-        {maxPrice !== undefined && maxPrice > price ? <span className="text-[0.8em] font-medium opacity-70">من </span> : null}
+        {maxPrice !== undefined && maxPrice > price ? <span className="text-[0.8em] font-medium text-(--sp-muted)">من </span> : null}
         {formatMoney(price)}
       </span>
       {compareAt && pct ? (
         <>
-          <s className="text-[0.85em] opacity-55">{formatMoney(compareAt)}</s>
+          <s className="text-[0.85em] text-(--sp-muted)">{formatMoney(compareAt)}</s>
           <span className="sr-only">خصم {pct}%</span>
         </>
       ) : null}
