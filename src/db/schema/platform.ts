@@ -28,6 +28,25 @@ export const sessions = sqliteTable(
   (t) => [index("sessions_user_idx").on(t.userId), index("sessions_expires_idx").on(t.expiresAt)],
 );
 
+/**
+ * طلبات استرجاع كلمة السر. ما عندنا SMS، فالبياع يطلب من /forgot-password، والأدمن يتأكد منه ويصدر رابط
+ * (يُرسل على واتساب). الرابط صالح ساعة ولمرة وحدة، والتوكن ما ينحفظش (sha256 بس).
+ */
+export const passwordResetRequests = sqliteTable(
+  "password_reset_requests",
+  {
+    id: pk(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["pending", "issued", "used", "dismissed"] }).notNull().default("pending"),
+    tokenHash: text("token_hash"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    issuedBy: text("issued_by").references(() => users.id, { onDelete: "set null" }),
+    usedAt: integer("used_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("pwreset_user_idx").on(t.userId, t.status), uniqueIndex("pwreset_token_uq").on(t.tokenHash)],
+);
+
 export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").primaryKey(),
   count: integer("count").notNull().default(0),

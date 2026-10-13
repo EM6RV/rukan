@@ -15,6 +15,13 @@
       "when": 1791857108516,
       "tag": "0001_fat_zarda",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791924689555,
+      "tag": "0002_normal_nightcrawler",
+      "breakpoints": true
     }
   ]
 }

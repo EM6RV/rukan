@@ -9,6 +9,10 @@ import { savePlatformConfig } from "@/server/admin/settings";
 import { resetSiteContent, saveSiteContent } from "@/server/admin/site-content";
 import { changePlan, extendTrial, recordPayment, setSuspended, type TouchedStore } from "@/server/admin/subscriptions";
 import { adminResetPassword } from "@/server/admin/users";
+import { getEnv } from "@/lib/env";
+import { toWhatsappNumber } from "@/lib/phone";
+import { waLink } from "@/lib/whatsapp";
+import { dismissResetRequest, issueResetLink } from "@/server/auth/password-reset";
 import { adminSetDomainStatus } from "@/server/domains";
 import { adminContext } from "@/server/auth/admin-action";
 import type { Result } from "@/server/catalog/result";
@@ -90,4 +94,24 @@ export async function adminResetPasswordAction(userId: unknown, storeId: unknown
   const p = z.object({ userId: id, storeId: id.nullish() }).safeParse({ userId, storeId });
   if (!p.success) return bad();
   return run(({ db, userId: actor }) => adminResetPassword(db, p.data.userId, password, { id: actor }, p.data.storeId ?? null));
+}
+
+// ===== طلبات استرجاع كلمة السر =====
+/** يصدر رابط (يرجع هنا مرة وحدة بس) مع رابط واتساب جاهز لرقم البياع */
+export async function issueResetLinkAction(requestId: unknown) {
+  const p = id.safeParse(requestId);
+  if (!p.success) return bad();
+  return run(async ({ db, userId }) => {
+    const r = await issueResetLink(db, p.data, { id: userId });
+    if (!r.ok) return r;
+    const url = `${getEnv().APP_URL.replace(/\/$/, "")}/reset-password/${r.data.token}`;
+    const to = toWhatsappNumber(r.data.user.phone);
+    const text = `السلام عليكم ${r.data.user.name}، هذا رابط استرجاع كلمة السر لحسابك في رُكن (صالح ساعة ولمرة وحدة): ${url}`;
+    return { ok: true as const, data: { url, expiresAt: r.data.expiresAt, whatsappUrl: to ? waLink(to, text) : null } };
+  });
+}
+export async function dismissResetAction(requestId: unknown) {
+  const p = id.safeParse(requestId);
+  if (!p.success) return bad();
+  return run(({ db, userId }) => dismissResetRequest(db, p.data, { id: userId }));
 }

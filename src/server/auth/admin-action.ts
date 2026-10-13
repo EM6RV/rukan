@@ -9,6 +9,6 @@ export type AdminResult = { ok: true; user: SessionUser; db: ReturnType<typeof g
 export async function adminContext(): Promise<AdminResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "انتهت الجلسة. سجّل دخولك من جديد." };
-  if (user.platformRole !== "admin") return { ok: false, error: "ما عندكش صلاحية للإجراء هذا. كلّم مدير المتجر." };
+  if (user.platformRole !== "admin") return { ok: false, error: "هذا الإجراء للأدمن فقط." };
   return { ok: true, user, db: getDb() };
 }

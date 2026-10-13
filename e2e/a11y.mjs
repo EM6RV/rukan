@@ -9,7 +9,7 @@ const c = db();
 const orderId = (await c.execute("select o.id from orders o join stores s on s.id=o.store_id where s.slug='nada-perfume' limit 1")).rows[0].id;
 c.close();
 
-const PUBLIC = ["/", "/login", "/register", "/s/nada-perfume", "/s/street-218", "/s/lamsa", "/s/nada-perfume/cart", "/s/nada-perfume/checkout", "/s/nada-perfume/track"];
+const PUBLIC = ["/", "/login", "/register", "/forgot-password", "/s/nada-perfume", "/s/street-218", "/s/lamsa", "/s/nada-perfume/cart", "/s/nada-perfume/checkout", "/s/nada-perfume/track"];
 const DASH = ["/dashboard", "/dashboard/orders", `/dashboard/orders/${orderId}`, "/dashboard/products", "/dashboard/products/new", "/dashboard/couriers", "/dashboard/customers", "/dashboard/returns", "/dashboard/coupons", "/dashboard/design", "/dashboard/content", "/dashboard/settings", "/dashboard/reports", "/dashboard/staff", "/dashboard/billing"];
 const MODES = [
   ["جوال فاتح", { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, false, true],

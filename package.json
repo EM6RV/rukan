@@ -63,6 +63,7 @@
     "check:env": "NODE_ENV=production STRICT_PRODUCTION=1 tsx --env-file-if-exists=.env scripts/check-env.ts",
     "e2e:a11y": "node e2e/a11y.mjs",
     "e2e:keyboard": "node e2e/keyboard.mjs",
-    "e2e": "pnpm e2e:a11y && pnpm e2e:keyboard"
+    "e2e": "pnpm e2e:a11y && pnpm e2e:keyboard && pnpm e2e:reset",
+    "e2e:reset": "node e2e/password-reset.mjs"
   }
 }
