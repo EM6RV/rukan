@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+/* ===== هوية رُكن ===== */
+@theme {
+  --color-navy: #0d263e;
+  --color-gold: #c19e58;
+  --color-teal: #087c86;
+  --color-charcoal: #37474f;
+  --color-success: #276b4d;
+  --color-danger: #a8441f;
+
+  /* ألوان دلالية: تتغير مع الوضع الداكن */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-link: var(--link);
+  --color-ring: var(--ring);
+  --color-success-fg: var(--success-fg);
+  --color-danger-fg: var(--danger-fg);
+
+  --font-heading: var(--font-alexandria), system-ui, sans-serif;
+  --font-sans: var(--font-plex), system-ui, sans-serif;
+
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --shadow-soft: 0 1px 2px rgb(13 38 62 / 0.05), 0 4px 16px rgb(13 38 62 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(13 38 62 / 0.06), 0 12px 32px rgb(13 38 62 / 0.12);
+}
+
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --fg: #0d263e;
+  --muted: #55646f;
+  --line: #dfe4ea;
+  --link: #087c86;
+  --ring: #c19e58;
+  --success-fg: #276b4d;
+  --danger-fg: #a8441f;
+  --logo-light-display: block;
+  --logo-dark-display: none;
+  color-scheme: light;
+}
+
+[data-theme="light"] {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --fg: #0d263e;
+  --muted: #55646f;
+  --line: #dfe4ea;
+  --link: #087c86;
+  --success-fg: #276b4d;
+  --danger-fg: #a8441f;
+  --logo-light-display: block;
+  --logo-dark-display: none;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #08192a;
+  --surface: #0e2640;
+  --surface-2: #143250;
+  --fg: #f1f4f8;
+  --muted: #a3b2bf;
+  --line: #22415f;
+  --link: #3fc1cc; /* التركوازي أفتح علشان يقرا على الخلفية الداكنة */
+  --ring: #c19e58;
+  --success-fg: #6fd3a5;
+  --danger-fg: #f2906a;
+  --logo-light-display: none;
+  --logo-dark-display: block;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.7;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-gold) 40%, transparent);
+  }
+  /* الأرقام والهواتف دايماً LTR */
+  input[type="tel"], input[type="email"], input[type="url"], .ltr {
+    direction: ltr;
+    text-align: right;
+  }
+}
+
+/* اللوجو: نسخة فاتحة ونسخة للوضع الداكن (نفس الـ paths، الكحلي صار أبيض).
+   نستعمل متغيرات علشان تتبع أقرب data-theme (مثلاً منطقة فاتحة داخل صفحة داكنة). */
+.logo-light { display: var(--logo-light-display); }
+.logo-dark { display: var(--logo-dark-display); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(50%); }
+}

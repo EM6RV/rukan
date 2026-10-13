@@ -1,0 +1,106 @@
+import { and, count, eq, gte, inArray, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { isTable, getTableName } from "drizzle-orm";
+import { writeTransaction, type Db } from "@/db";
+import * as tenantSchema from "@/db/schema/tenant";
+
+export * as t from "@/db/schema/tenant";
+
+type Schema = typeof tenantSchema;
+export type TenantTable = Schema[keyof Schema];
+
+/** كل جداول المتجر (T). الاختبارات تقارنها بالـ schema الكامل. */
+export const TENANT_TABLES: TenantTable[] = Object.values(tenantSchema).filter((v): v is TenantTable => isTable(v));
+export const TENANT_TABLE_NAMES: string[] = TENANT_TABLES.map((tbl) => getTableName(tbl));
+
+type Insertable<T extends TenantTable> = Omit<T["$inferInsert"], "storeId">;
+type Updatable<T extends TenantTable> = Partial<Omit<T["$inferInsert"], "storeId" | "id">>;
+
+/**
+ * الباب الوحيد لبيانات المتجر. كل عملية بتتفلتر/تتختم بـ storeId تلقائياً:
+ *  - from():   SELECT مفلتر بالمتجر (تقدر تكمل join/orderBy/limit، بس ما تقدرش تغير where)
+ *  - insert(): يفرض storeId حتى لو المدخل فيه storeId ثاني
+ *  - update()/delete(): دايماً AND store_id = ?
+ * الـ joins بين جداول المتجر آمنة لأن المفاتيح الأجنبية المركّبة (store_id, id) تمنع ربط متجرين.
+ */
+function createScope(db: Db, storeId: string) {
+  if (!storeId || typeof storeId !== "string") throw new Error("forStore: storeId مطلوب");
+
+  const scope = (table: TenantTable, extra?: SQL) =>
+    extra ? and(eq(table.storeId, storeId), extra) : eq(table.storeId, storeId);
+
+  return {
+    storeId,
+
+    from<T extends TenantTable>(table: T, where?: SQL) {
+      const query = db.select().from(table).where(scope(table, where)).$dynamic();
+      return query as Omit<typeof query, "where">;
+    },
+
+    /** عدد صفوف المتجر في الجدول (مع شرط اختياري). */
+    async count(table: TenantTable, where?: SQL): Promise<number> {
+      const [row] = await db.select({ n: count() }).from(table).where(scope(table, where));
+      return row?.n ?? 0;
+    },
+
+    /**
+     * استعلام تجميعي (sum/count/group by) مفلتر بالمتجر. fields: أعمدة أو تعبيرات SQL.
+     * مثال: scope.aggregate(t.orders, { status: t.orders.status, n: count() }, { groupBy: [t.orders.status] })
+     */
+    aggregate<F extends Record<string, SQLWrapper>>(table: TenantTable, fields: F, opts: { where?: SQL; groupBy?: SQLWrapper[] } = {}) {
+      let q = db.select(fields as never).from(table).where(scope(table, opts.where)).$dynamic();
+      if (opts.groupBy?.length) q = q.groupBy(...(opts.groupBy as never[]));
+      return q as unknown as Promise<{ [K in keyof F]: F[K] extends { _: { data: infer D } } ? D : any }[]>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    },
+
+    async insert<T extends TenantTable>(table: T, values: Insertable<T> | Insertable<T>[]) {
+      const rows = (Array.isArray(values) ? values : [values]).map((v) => ({ ...v, storeId }));
+      if (rows.length === 0) return [];
+      return db.insert(table).values(rows as never).returning() as Promise<T["$inferSelect"][]>;
+    },
+
+    async update<T extends TenantTable>(table: T, set: Updatable<T>, where?: SQL) {
+      const clean = { ...set } as Record<string, unknown>;
+      delete clean.storeId;
+      return db.update(table).set(clean as never).where(scope(table, where)).returning() as Promise<T["$inferSelect"][]>;
+    },
+
+    async delete<T extends TenantTable>(table: T, where?: SQL) {
+      return db.delete(table).where(scope(table, where)).returning() as Promise<T["$inferSelect"][]>;
+    },
+
+  };
+}
+
+export type StoreScopeCore = ReturnType<typeof createScope>;
+export type StoreScope = StoreScopeCore & {
+  transaction<R>(fn: (tx: StoreScopeCore) => Promise<R>): Promise<R>;
+};
+
+export function forStore(db: Db, storeId: string): StoreScope {
+  return {
+    ...createScope(db, storeId),
+    transaction: (fn) => writeTransaction(db, async (tx) => fn(createScope(tx as unknown as Db, storeId))),
+  };
+}
+
+// ===== قراءات تجميعية عبر المتاجر (للأدمن فقط) =====
+// استثناء مقصود من قاعدة العزل: أرقام مجمعة فقط (عدّادات ومجاميع) بدون أي بيانات زبائن أو طلبيات تفصيلية.
+// لازم يناديها كود تأكد إن المستخدم أدمن (requireAdmin / adminContext).
+
+/** عدد الطلبيات ومجموعها لكل متجر منذ تاريخ معين (بدون الملغي والمرتجع) */
+export async function platformOrderTotals(db: Db, sinceMs: number): Promise<{ storeId: string; orders: number; total: number }[]> {
+  const o = tenantSchema.orders;
+  const rows = await db
+    .select({ storeId: o.storeId, orders: count(), total: sql<number>`coalesce(sum(${o.total}), 0)` })
+    .from(o)
+    .where(and(inArray(o.status, ["new", "confirmed", "with_courier", "delivered"]), gte(o.createdAt, new Date(sinceMs))))
+    .groupBy(o.storeId);
+  return rows;
+}
+
+/** عدّادات متجر واحد (منتجات، طلبيات، زبائن) لصفحة تفاصيل المتجر عند الأدمن */
+export async function platformStoreCounts(db: Db, storeId: string): Promise<{ products: number; orders: number; customers: number }> {
+  const s = forStore(db, storeId);
+  const [products, orders, customers] = await Promise.all([s.count(tenantSchema.products), s.count(tenantSchema.orders), s.count(tenantSchema.customers)]);
+  return { products, orders, customers };
+}

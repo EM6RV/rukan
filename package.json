@@ -1,0 +1,63 @@
+{
+  "name": "rukn",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "@node-rs/argon2": "^2.2.2",
+    "aws4fetch": "^1.0.20",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.4",
+    "framer-motion": "^14.1.0",
+    "lucide-react": "^1.55.0",
+    "nanoid": "^6.0.2",
+    "next": "16.4.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "read-excel-file": "^9.3.12",
+    "server-only": "^0.0.1",
+    "sharp": "^0.35.5",
+    "tailwind-merge": "^3.7.0",
+    "write-excel-file": "^4.1.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^10.12.0",
+    "eslint-config-next": "^16.4.0",
+    "postcss": "^8.5.30",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.4"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=.env scripts/seed.ts",
+    "db:setup": "pnpm db:migrate && pnpm db:seed",
+    "icons": "tsx scripts/make-icons.ts",
+    "db:seed:demo": "tsx --env-file-if-exists=.env scripts/seed-demo.ts",
+    "start:prod": "pnpm db:migrate && pnpm db:seed && next start",
+    "check:env": "NODE_ENV=production STRICT_PRODUCTION=1 tsx --env-file-if-exists=.env scripts/check-env.ts"
+  }
+}
