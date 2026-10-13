@@ -1,7 +1,7 @@
 // كل جدول هنا خاص بمتجر ولازم يحمل store_id. الوصول له فقط عبر forStore(storeId) في src/server/tenant.
 import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createdAt, pk, scopedFk, updatedAt } from "./_helpers";
-import { cities, media, stores } from "./platform";
+import { cities, media, stores, users } from "./platform";
 import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/constants";
 
 const storeIdCol = () =>
@@ -74,6 +74,22 @@ export const storePaymentMethods = sqliteTable(
     sortOrder: integer("sort_order").notNull().default(0),
   },
   (t) => [uniqueIndex("store_payment_methods_uq").on(t.storeId, t.method)],
+);
+
+/** اشتراكات Web Push لأجهزة البياع والموظفين (إشعار الطلبية الجديدة). المفتاح (store_id, endpoint). */
+export const pushSubscriptions = sqliteTable(
+  "push_subscriptions",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("push_subscriptions_uq").on(t.storeId, t.endpoint), index("push_subscriptions_user_idx").on(t.storeId, t.userId)],
 );
 
 export const whatsappTemplates = sqliteTable(

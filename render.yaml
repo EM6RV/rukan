@@ -35,6 +35,13 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
+      # --- إشعارات الطلبيات (اختياري): ولّد المفاتيح بـ pnpm push:keys وحطها هنا ---
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
       # --- حساب الأدمن (يُنشأ مرة وحدة؛ احذف ADMIN_PASSWORD بعد أول تشغيل) ---
       - key: ADMIN_NAME
         value: مدير رُكن

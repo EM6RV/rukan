@@ -1,3 +1,4 @@
+import { notifyNewOrder } from "../push";
 import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -62,6 +63,8 @@ export async function createOrder(db: Db, storeId: string, rawInput: unknown): P
 
   try {
     const data = await writeTransaction(db, async (tx) => place(tx as unknown as Db, storeId, input));
+    // إشعار الجهاز بدون انتظار (يتعطل بهدوء لو ما فيه مفاتيح VAPID)
+    void notifyNewOrder(db, storeId, data.orderId).catch(() => {});
     return { ok: true, data };
   } catch (e) {
     if (e instanceof OrderError) return { ok: false, error: e.message };

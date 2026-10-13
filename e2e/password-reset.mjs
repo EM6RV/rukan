@@ -1,5 +1,5 @@
 // تدفق استرجاع كلمة السر كاملاً: البياع يطلب، الأدمن يصدر الرابط، البياع يعيّن كلمة جديدة ويدخل بها
-import { BASE, PASSWORD, check, finish, launch, resetRateLimits } from "./lib.mjs";
+import { BASE, check, finish, launch, resetRateLimits } from "./lib.mjs";
 
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? "0910000000";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "ci-admin-password-123";

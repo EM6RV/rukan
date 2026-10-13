@@ -1,3 +1,4 @@
+import { removeUserPushSubscriptions } from "./push";
 import { and, asc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { writeTransaction, type Db } from "@/db";
@@ -81,6 +82,7 @@ export async function changeStaffRole(db: Db, storeId: string, actorUserId: stri
     if (r.data === "courier" && !linked) await s.insert(t.couriers, { name: m.name, phone: m.phone, kind: "person", userId: m.userId });
     if (r.data !== "courier" && linked) await s.update(t.couriers, { userId: null }, eq(t.couriers.id, linked.id));
   });
+  if (r.data === "courier") await removeUserPushSubscriptions(db, storeId, m.userId); // المندوب ما يستلم إشعارات الطلبيات
   await writeAudit(db, { actorUserId, storeId, action: "staff.role", entityType: "member", entityId: memberId, meta: { from: m.role, to: r.data } });
   return ok(undefined);
 }
@@ -108,6 +110,7 @@ export async function removeStaff(db: Db, storeId: string, actorUserId: string, 
     await d.update(users).set({ status: "blocked", passwordHash: "!", name: "موظف سابق", phone: `removed:${m.userId}` }).where(eq(users.id, m.userId));
   });
   await destroyAllUserSessions(db, m.userId);
+  await removeUserPushSubscriptions(db, storeId, m.userId);
   await writeAudit(db, { actorUserId, storeId, action: "staff.remove", entityType: "member", entityId: memberId, meta: { role: m.role, phone: m.phone } });
   return ok(undefined);
 }

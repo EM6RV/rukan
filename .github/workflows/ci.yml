@@ -51,6 +51,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright-core install --with-deps chromium
       - run: mkdir -p data && pnpm db:setup && pnpm db:seed:demo
+      - name: مفاتيح VAPID للاختبار فقط
+        run: pnpm push:keys | grep '^VAPID_' | sed 's/ *#.*//' >> "$GITHUB_ENV"
       - run: pnpm build
       - name: تشغيل الخادم
         run: |

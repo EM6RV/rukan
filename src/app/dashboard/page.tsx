@@ -3,11 +3,13 @@ import Link from "next/link";
 import { isNull } from "drizzle-orm";
 import { Banknote, CheckCircle2, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
 import { StoreLinkCard } from "@/components/dashboard/copy-link";
+import { PushToggle } from "@/components/dashboard/push-toggle";
 import { SalesChart } from "@/components/dashboard/sales-chart";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { getEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
 import { getDashboardStats } from "@/server/orders/stats";
+import { pushConfig } from "@/server/push";
 import { can } from "@/server/permissions";
 import { storeUrl } from "@/lib/store-url";
 import { requireStoreContext } from "@/server/store-context";
@@ -33,6 +35,7 @@ export default async function DashboardHome() {
     { done: !!settings?.whatsapp, label: "حط رقم واتساب للتواصل", href: "/dashboard/settings?tab=contact" },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
+  const push = ctx.role !== "courier" && can(ctx.role, "orders") ? pushConfig() : null;
 
   return (
     <div className="space-y-6">
@@ -40,6 +43,8 @@ export default async function DashboardHome() {
         <h1 className="text-2xl tracking-tight md:text-3xl">أهلاً {ctx.user.name} 👋</h1>
         <p className="mt-1 text-muted">هذي لمحة سريعة عن متجرك «{store.name}».</p>
       </div>
+
+      {push && <PushToggle publicKey={push.publicKey} />}
 
       <section aria-label="المبيعات" className="space-y-4">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
