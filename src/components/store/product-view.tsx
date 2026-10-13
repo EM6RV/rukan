@@ -104,7 +104,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
     trackPixel({ name: "AddToCart", value: price * q, id: product.id, contentName: product.name, quantity: q });
     if (goCheckout) return router.push(store.href("/checkout"));
     setAdded(true);
-    toast("تمت الإضافة للسلة ✓");
+    toast("تمت الإضافة للسلة");
     setTimeout(() => setAdded(false), 2000);
   }
 

@@ -69,7 +69,7 @@ export function CashActions({ courier, writable }: { courier: Pick<CourierItem, 
       </div>
       <Modal
         open={mode !== null} onClose={close} title={mode === "settle" ? `استلام فلوس من ${courier.name}` : `تعديل رصيد ${courier.name}`}
-        footer={<><Button variant="ghost" onClick={close} disabled={pending}>رجوع</Button><Button loading={pending} onClick={submit}>تسجيل</Button></>}
+        footer={<><Button variant="ghost" onClick={close} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={submit}>{mode === "settle" ? "سجّل الاستلام" : "احفظ التعديل"}</Button></>}
       >
         <div className="space-y-4">
           <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">الكاش عنده الحين: <b>{formatMoney(courier.balance)}</b></p>
@@ -95,7 +95,7 @@ function CourierForm({ initial, onClose }: { initial?: CourierItem; onClose: () 
   const [v, setV] = useState({ name: initial?.name ?? "", phone: initial?.phone ?? "", kind: initial?.kind ?? "person", notes: initial?.notes ?? "", isActive: initial?.isActive ?? true });
   const { act, pending, error } = useAct();
   return (
-    <Modal open onClose={onClose} title={initial ? "تعديل المندوب" : "مندوب جديد"} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} disabled={v.name.trim().length < 2} onClick={() => act(() => saveCourierAction({ id: initial?.id, ...v }), "تم الحفظ", onClose)}>حفظ</Button></>}>
+    <Modal open onClose={onClose} title={initial ? "تعديل المندوب" : "مندوب جديد"} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} disabled={v.name.trim().length < 2} onClick={() => act(() => saveCourierAction({ id: initial?.id, ...v }), "تم الحفظ", onClose)}>حفظ</Button></>}>
       <div className="space-y-4">
         <Input label="الاسم" value={v.name} maxLength={60} onChange={(e) => setV({ ...v, name: e.target.value })} />
         <Select label="النوع" value={v.kind} onChange={(e) => setV({ ...v, kind: e.target.value as "person" | "company" })}><option value="person">مندوب (شخص)</option><option value="company">شركة توصيل</option></Select>
@@ -114,8 +114,8 @@ export function DeleteCourier({ id, name, redirectTo }: { id: string; name: stri
   const { act, pending, error, setError } = useAct();
   return (
     <>
-      <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>مسح</Button>
-      <ConfirmModal open={open} onClose={() => { setOpen(false); setError(null); }} danger loading={pending} title="مسح المندوب" message={error ?? `تمسح «${name}»؟ يتمسح بس لو ما عندوش طلبيات أو حركات كاش.`} confirmLabel="مسح" onConfirm={() => act(() => deleteCourierAction(id), "تم المسح", () => { setOpen(false); if (redirectTo) router.push(redirectTo); })} />
+      <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>حذف</Button>
+      <ConfirmModal open={open} onClose={() => { setOpen(false); setError(null); }} danger loading={pending} title="حذف المندوب" message={error ?? `حذف «${name}»؟ ما ينفع لو عنده طلبيات أو كاش، وقتها أوقفه بدل الحذف.`} confirmLabel="حذف" onConfirm={() => act(() => deleteCourierAction(id), "تم المسح", () => { setOpen(false); if (redirectTo) router.push(redirectTo); })} />
     </>
   );
 }

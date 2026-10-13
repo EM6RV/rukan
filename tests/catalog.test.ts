@@ -56,7 +56,7 @@ describe("الأقسام", () => {
   it("المتجر ما يقدر يعدل/يمسح/يرتب أقسام متجر ثاني", async () => {
     const b = await saveCategory(B, { name: "قسم B" });
     if (!b.ok) throw new Error("setup");
-    expect(await saveCategory(A, { id: b.data.id, name: "اختراق" })).toEqual({ ok: false, error: "القسم غير موجود." });
+    expect(await saveCategory(A, { id: b.data.id, name: "اختراق" })).toEqual({ ok: false, error: "ما لقينا القسم. يمكن انحذف، حدّث الصفحة." });
     expect((await deleteCategory(A, b.data.id)).ok).toBe(false);
     expect((await reorderCategories(A, [b.data.id])).ok).toBe(false);
     expect((await listCategories(B))[0]!.name).toBe("قسم B");
@@ -231,7 +231,7 @@ describe("الحدود والعزل", () => {
     if (!b.ok) throw new Error("setup");
     const bProduct = (await getProductForEdit(B, b.data.id))!;
     expect(await getProductForEdit(A, b.data.id)).toBeNull();
-    expect(await saveProduct(A, { ...bProduct, name: "اختراق" }, { limits: LIMITS })).toEqual({ ok: false, error: "المنتج غير موجود." });
+    expect(await saveProduct(A, { ...bProduct, name: "اختراق" }, { limits: LIMITS })).toEqual({ ok: false, error: "ما لقينا المنتج. يمكن انحذف، حدّث الصفحة." });
     expect((await duplicateProduct(A, b.data.id, { limits: LIMITS })).ok).toBe(false);
     expect((await deleteProducts(A, [b.data.id]))).toEqual({ ok: true, data: { count: 0 } });
     expect((await getProductForEdit(B, b.data.id))!.name).toBe("منتج B");

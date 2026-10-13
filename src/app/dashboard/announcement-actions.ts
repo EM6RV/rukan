@@ -8,8 +8,8 @@ import { getCurrentUser } from "@/server/auth/current";
 /** البياع يغلق إعلان (لنفسه بس) */
 export async function dismissAnnouncementAction(id: unknown) {
   const user = await getCurrentUser();
-  if (!user) return { ok: false as const, error: "سجّل دخولك من جديد." };
-  if (typeof id !== "string" || !id) return { ok: false as const, error: "البيانات غير صحيحة." };
+  if (!user) return { ok: false as const, error: "انتهت الجلسة. سجّل دخولك من جديد." };
+  if (typeof id !== "string" || !id) return { ok: false as const, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." };
   const r = await dismissAnnouncement(getDb(), user.id, id);
   if (r.ok) revalidatePath("/dashboard", "layout");
   return r;

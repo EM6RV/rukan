@@ -91,7 +91,7 @@ export function OrderDetailView(p: Props) {
               {ACTION_LABEL[s]}
             </Button>
           ))}
-          {p.canReturn && <Button variant="outline" disabled={locked} onClick={() => setModal({ type: "return" })}><RotateCcw className="size-4" aria-hidden /> تسجيل مرتجع</Button>}
+          {p.canReturn && <Button variant="outline" disabled={locked} onClick={() => setModal({ type: "return" })}><RotateCcw className="size-4" aria-hidden /> سجّل المرتجع</Button>}
           {p.messages.length > 0 && <WhatsappMenu messages={p.messages} />}
         </CardBody></Card>
       )}
@@ -271,7 +271,7 @@ function StatusModal({ to, order, couriers, onClose }: { to: OrderStatus; order:
   return (
     <Modal
       open onClose={onClose} title={title}
-      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button variant={to === "cancelled" ? "danger" : "primary"} loading={pending} onClick={() => act(() => changeStatusAction({ orderId: order.id, to, note, courierId: courierId || null, shipmentNumber: shipment }), `الطلبية صارت «${ORDER_STATUS_LABELS[to]}»`, onClose)}>{to === "cancelled" ? "إلغاء الطلبية" : "تأكيد"}</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button variant={to === "cancelled" ? "danger" : "primary"} loading={pending} onClick={() => act(() => changeStatusAction({ orderId: order.id, to, note, courierId: courierId || null, shipmentNumber: shipment }), `الطلبية صارت «${ORDER_STATUS_LABELS[to]}»`, onClose)}>{to === "cancelled" ? "إلغاء الطلبية" : "تأكيد"}</Button></>}
     >
       <div className="space-y-4">
         {to === "with_courier" && (
@@ -313,7 +313,7 @@ function ReturnModal({ order, items, onClose }: { order: Props["order"]; items: 
   }
 
   return (
-    <Modal open onClose={onClose} title={`تسجيل مرتجع للطلبية #${order.number}`} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} onClick={submit}>تسجيل المرتجع</Button></>}>
+    <Modal open onClose={onClose} title={`تسجيل مرتجع للطلبية #${order.number}`} footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={submit}>سجّل المرتجع</Button></>}>
       <div className="space-y-4">
         <Select label="سبب المرتجع" value={reason} onChange={(e) => setReason(e.target.value)}><option value="">اختار السبب</option>{RETURN_REASONS.map((r) => <option key={r} value={r}>{RETURN_REASON_LABELS[r]}</option>)}</Select>
         {partialAllowed ? (
@@ -346,7 +346,7 @@ function EditModal({ order, onClose }: { order: Props["order"]; onClose: () => v
     act(() => updateOrderAction(order.id, { customerName: v.customerName, customerPhone: v.customerPhone, address: v.address, notes: v.notes, deliveryFee: fee }), "تم الحفظ", onClose);
   }
   return (
-    <Modal open onClose={onClose} title="تعديل بيانات الطلبية" footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>رجوع</Button><Button loading={pending} onClick={submit}>حفظ</Button></>}>
+    <Modal open onClose={onClose} title="تعديل بيانات الطلبية" footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={submit}>حفظ</Button></>}>
       <div className="space-y-4">
         <Input label="اسم الزبون" value={v.customerName} maxLength={80} onChange={(e) => setV({ ...v, customerName: e.target.value })} />
         <Input label="رقم الهاتف" dir="ltr" className="text-right" inputMode="tel" value={v.customerPhone} onChange={(e) => setV({ ...v, customerPhone: e.target.value })} />

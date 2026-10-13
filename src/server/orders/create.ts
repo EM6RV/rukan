@@ -42,10 +42,10 @@ export async function checkCoupon(scope: StoreScope, rawCode: string, subtotal: 
   const code = rawCode.trim().toUpperCase();
   if (!code) return { ok: false, error: "اكتب كود الخصم" };
   const [c] = await scope.from(t.coupons, sql`upper(${t.coupons.code}) = ${code}`).limit(1);
-  if (!c || !c.isActive) return { ok: false, error: "كود الخصم غير صحيح" };
+  if (!c || !c.isActive) return { ok: false, error: "ما لقينا كود الخصم هذا. تأكد من كتابته." };
   if (c.startsAt && c.startsAt.getTime() > now) return { ok: false, error: "كود الخصم لسا ما بدا" };
-  if (c.expiresAt && c.expiresAt.getTime() <= now) return { ok: false, error: "كود الخصم منتهي" };
-  if (c.maxUses !== null && c.usedCount >= c.maxUses) return { ok: false, error: "كود الخصم وصل لحد الاستخدام" };
+  if (c.expiresAt && c.expiresAt.getTime() <= now) return { ok: false, error: "كود الخصم انتهى" };
+  if (c.maxUses !== null && c.usedCount >= c.maxUses) return { ok: false, error: "كود الخصم خلص استعماله" };
   if (c.minOrder !== null && subtotal < c.minOrder) return { ok: false, error: "الطلبية أقل من الحد الأدنى لكود الخصم" };
   const discount = c.type === "percent" ? Math.floor((subtotal * Math.min(100, c.value)) / 100) : Math.min(c.value, subtotal);
   return { ok: true, couponId: c.id, code: c.code, discount };
@@ -65,7 +65,7 @@ export async function createOrder(db: Db, storeId: string, rawInput: unknown): P
     return { ok: true, data };
   } catch (e) {
     if (e instanceof OrderError) return { ok: false, error: e.message };
-    if (isUniqueViolation(e)) return { ok: false, error: "تعذر إنشاء الطلب. جرّب مرة ثانية." };
+    if (isUniqueViolation(e)) return { ok: false, error: "ما قدرنا ننشئ الطلب. جرّب مرة ثانية." };
     throw e;
   }
 }
@@ -74,7 +74,7 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
   const scope = forStore(db, storeId);
 
   const row = await db.select({ store: stores, plan: plans }).from(stores).leftJoin(plans, eq(plans.id, stores.planId)).where(eq(stores.id, storeId)).get();
-  if (!row) throw new OrderError("المتجر غير موجود.");
+  if (!row) throw new OrderError("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
   if (!isStoreOpenToCustomers(computeStoreAccess(row.store))) throw new OrderError("المتجر مغلق حالياً ولا يستقبل طلبيات.");
   const limits = row.plan?.limits ?? FALLBACK_LIMITS;
 

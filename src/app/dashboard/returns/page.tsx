@@ -22,7 +22,7 @@ export default async function ReturnsPage({ searchParams }: { searchParams: Prom
     <div className="space-y-5">
       <div><h1 className="text-2xl">المرتجعات</h1><p className="text-muted">كل المرتجعات وأسبابها وتكلفة التوصيل اللي ضاعت عليك. لتسجيل مرتجع افتح الطلبية واضغط «تسجيل مرتجع».</p></div>
       {r.total === 0 ? (
-        <EmptyState icon={<RotateCcw className="size-6" />} title="ما فيش مرتجعات" description="الحمد لله! لما ترجع طلبية بتظهر هنا." action={<ButtonLink variant="outline" href="/dashboard/orders">عرض الطلبيات</ButtonLink>} />
+        <EmptyState icon={<RotateCcw className="size-6" />} title="ما فيش مرتجعات" description="أي طلبية ترجع تظهر هنا." action={<ButtonLink variant="outline" href="/dashboard/orders">عرض الطلبيات</ButtonLink>} />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">

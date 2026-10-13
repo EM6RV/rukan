@@ -113,7 +113,7 @@ export function SiteEditor({ initial, heroImage }: { initial: SiteContent; heroI
         <Button loading={save.pending} onClick={onSave}>حفظ محتوى الموقع</Button>
         <Button variant="ghost" onClick={() => { reset.setError(null); setConfirmReset(true); }}>إعادة للنص الأصلي</Button>
       </div>
-      <ConfirmModal open={confirmReset} onClose={() => setConfirmReset(false)} danger loading={reset.pending} title="إعادة المحتوى للأصل" message={reset.error ?? "كل تعديلاتك على نصوص وصور الموقع تتمسح ويرجع النص الافتراضي. تكمل؟"} confirmLabel="إعادة" onConfirm={() => reset.act(() => resetSiteContentAction(), "رجع المحتوى للأصل", () => setConfirmReset(false))} />
+      <ConfirmModal open={confirmReset} onClose={() => setConfirmReset(false)} danger loading={reset.pending} title="إعادة المحتوى للأصل" message={reset.error ?? "رجّع الأصل؟ يتحذف كل تعديلك على نصوص وصور الموقع، ويرجع النص الافتراضي."} confirmLabel="إعادة" onConfirm={() => reset.act(() => resetSiteContentAction(), "رجع المحتوى للأصل", () => setConfirmReset(false))} />
     </div>
   );
 }

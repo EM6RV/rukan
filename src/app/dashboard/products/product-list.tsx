@@ -95,7 +95,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
                 <Icon label={p.isVisible ? "إخفاء" : "إظهار"} disabled={!writable || pending} onClick={() => exec(() => setVisibilityAction([p.id], !p.isVisible), p.isVisible ? "تم إخفاء المنتج" : "تم إظهار المنتج", false)}>
                   {p.isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Icon>
-                <Icon label="نسخ" disabled={!writable || pending} onClick={() => exec(() => duplicateProductAction(p.id), "تم نسخ المنتج (مخفي، عدّله وأظهره)", false)}><Copy className="size-4" /></Icon>
+                <Icon label="نسخ" disabled={!writable || pending} onClick={() => exec(() => duplicateProductAction(p.id), "تم نسخ المنتج وهو مخفي. عدّله وأظهره.", false)}><Copy className="size-4" /></Icon>
                 <Link href={`/dashboard/products/${p.id}`} aria-label="تعديل" title="تعديل" className="flex size-9 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg pointer-coarse:size-11"><Pencil className="size-4" /></Link>
               </div>
             </li>
@@ -116,7 +116,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 
       <Modal
         open={dialog === "price"} onClose={() => setDialog(null)} title={`تعديل سعر ${selected.size} منتج`}
-        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button><Button loading={pending} disabled={!value.trim()} onClick={() => exec(() => bulkPriceAction(ids, { mode, value }), "تم تعديل الأسعار")}>تطبيق</Button></>}
+        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button><Button loading={pending} disabled={!value.trim()} onClick={() => exec(() => bulkPriceAction(ids, { mode, value }), "تم تعديل الأسعار")}>طبّق</Button></>}
       >
         <div className="space-y-4">
           <Select label="طريقة التعديل" value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -132,7 +132,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 
       <Modal
         open={dialog === "stock"} onClose={() => setDialog(null)} title={`تعديل مخزون ${selected.size} منتج`}
-        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button><Button loading={pending} disabled={!value.trim()} onClick={() => exec(() => bulkStockAction(ids, { mode, value }), "تم تعديل المخزون")}>تطبيق</Button></>}
+        footer={<><Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button><Button loading={pending} disabled={!value.trim()} onClick={() => exec(() => bulkStockAction(ids, { mode, value }), "تم تعديل المخزون")}>طبّق</Button></>}
       >
         <div className="space-y-4">
           <Select label="طريقة التعديل" value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -147,7 +147,7 @@ export function ProductList({ items, writable, hasFilters }: { items: Item[]; wr
 
       <ConfirmModal
         open={dialog === "delete"} onClose={() => setDialog(null)} danger loading={pending} confirmLabel="حذف"
-        title="حذف المنتجات" message={`متأكد تبي تمسح ${selected.size} منتج؟ الطلبيات القديمة تفضل محفوظة.`}
+        title="حذف المنتجات" message={`حذف ${selected.size} منتج؟ الطلبيات القديمة تبقى محفوظة.`}
         onConfirm={() => exec(() => deleteProductsAction(ids), "تم الحذف")}
       />
     </div>

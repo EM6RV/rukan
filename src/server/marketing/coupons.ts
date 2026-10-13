@@ -64,7 +64,7 @@ export async function saveCoupon(scope: StoreScope, input: unknown, limits: Pick
   try {
     if (id) {
       const [cur] = await scope.from(t.coupons, eq(t.coupons.id, id)).limit(1);
-      if (!cur) return fail("الكوبون غير موجود.");
+      if (!cur) return fail("ما لقينا الكوبون. يمكن انحذف، حدّث الصفحة.");
       if (cur.usedCount > 0 && cur.code !== d.code) return fail("ما ينفعش تغيّر كود كوبون استُخدم. أنشئ كوبون جديد.");
       if (d.maxUses !== null && d.maxUses < cur.usedCount) return fail(`الكوبون استُخدم ${cur.usedCount} مرة، فعدد الاستخدامات ما يكونش أقل منها.`);
       await scope.update(t.coupons, data, eq(t.coupons.id, id));
@@ -80,15 +80,15 @@ export async function saveCoupon(scope: StoreScope, input: unknown, limits: Pick
 
 export async function setCouponActive(scope: StoreScope, id: string, isActive: boolean): Promise<Result> {
   const [row] = await scope.update(t.coupons, { isActive }, eq(t.coupons.id, id));
-  return row ? ok(undefined) : fail("الكوبون غير موجود.");
+  return row ? ok(undefined) : fail("ما لقينا الكوبون. يمكن انحذف، حدّث الصفحة.");
 }
 
 export async function deleteCoupon(scope: StoreScope, id: string): Promise<Result> {
   const [cur] = await scope.from(t.coupons, eq(t.coupons.id, id)).limit(1);
-  if (!cur) return fail("الكوبون غير موجود.");
+  if (!cur) return fail("ما لقينا الكوبون. يمكن انحذف، حدّث الصفحة.");
   const used = await scope.count(t.couponRedemptions, eq(t.couponRedemptions.couponId, id));
   const orders = await scope.count(t.orders, eq(t.orders.couponId, id));
-  if (cur.usedCount > 0 || used > 0 || orders > 0) return fail("هذا الكوبون استُخدم في طلبيات. عطّله بدل ما تمسحه.");
+  if (cur.usedCount > 0 || used > 0 || orders > 0) return fail("هذا الكوبون استُخدم في طلبيات. عطّله بدل الحذف.");
   await scope.delete(t.coupons, and(eq(t.coupons.id, id), sql`${t.coupons.usedCount} = 0`)!);
   return ok(undefined);
 }

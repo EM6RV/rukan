@@ -35,12 +35,12 @@ export async function recordPayment(db: Db, input: unknown, actor: Actor, now = 
   const d = p.data;
 
   const store = await db.select().from(stores).where(eq(stores.id, d.storeId)).get();
-  if (!store) return fail("المتجر غير موجود.");
+  if (!store) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
   const plan = await db.select().from(plans).where(eq(plans.id, d.planId)).get();
-  if (!plan) return fail("الباقة غير موجودة.");
+  if (!plan) return fail("ما لقينا الباقة. يمكن انحذف، حدّث الصفحة.");
   if (d.receiptMediaId) {
     const m = await db.select({ id: media.id }).from(media).where(and(eq(media.id, d.receiptMediaId), eq(media.storeId, store.id), eq(media.isPrivate, true))).get();
-    if (!m) return fail("صورة الإيصال غير صحيحة، ارفعها من جديد.");
+    if (!m) return fail("ما قدرنا نقرا صورة الإيصال. ارفع صورة JPG أو PNG أو WebP.");
   }
 
   const result = await writeTransaction(db, async (tx) => {
@@ -71,7 +71,7 @@ export async function extendTrial(db: Db, storeId: string, daysInput: unknown, a
   const days = daysSchema.safeParse(daysInput);
   if (!days.success) return fail(firstError(days.error));
   const store = await db.select().from(stores).where(eq(stores.id, storeId)).get();
-  if (!store) return fail("المتجر غير موجود.");
+  if (!store) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
   const access = computeStoreAccess(store, now);
   if (access.state === "active") return fail("المتجر مشترك فعلياً. استعمل «تسجيل دفعة» بدل تمديد التجربة.");
 
@@ -85,7 +85,7 @@ export async function extendTrial(db: Db, storeId: string, daysInput: unknown, a
 /** إيقاف/تفعيل متجر. التفعيل يرجّع الحالة المنطقية (نشط/تجريبي/منتهي) حسب التواريخ. */
 export async function setSuspended(db: Db, storeId: string, suspended: boolean, actor: Actor, reason?: string | null, now = Date.now()): Promise<Result<{ store: TouchedStore; status: string }>> {
   const store = await db.select().from(stores).where(eq(stores.id, storeId)).get();
-  if (!store) return fail("المتجر غير موجود.");
+  if (!store) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
   let status: "suspended" | "active" | "trial" | "expired" = "suspended";
   if (!suspended) {
     if (store.status !== "suspended") return fail("المتجر مش موقوف.");
@@ -99,8 +99,8 @@ export async function setSuspended(db: Db, storeId: string, suspended: boolean, 
 /** تغيير الباقة يدوياً بدون دفعة (هدية/تصحيح) */
 export async function changePlan(db: Db, storeId: string, planId: string, actor: Actor): Promise<Result<{ store: TouchedStore }>> {
   const [store, plan] = await Promise.all([db.select().from(stores).where(eq(stores.id, storeId)).get(), db.select().from(plans).where(eq(plans.id, planId)).get()]);
-  if (!store) return fail("المتجر غير موجود.");
-  if (!plan) return fail("الباقة غير موجودة.");
+  if (!store) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
+  if (!plan) return fail("ما لقينا الباقة. يمكن انحذف، حدّث الصفحة.");
   await db.update(stores).set({ planId }).where(eq(stores.id, storeId));
   await writeAudit(db, { actorUserId: actor.id, storeId, action: "store.change_plan", entityType: "store", entityId: storeId, meta: { from: store.planId, to: planId, plan: plan.slug } });
   return ok({ store: { id: store.id, slug: store.slug } });

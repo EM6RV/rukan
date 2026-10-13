@@ -96,7 +96,7 @@ export function Wizard(props: WizardProps) {
     setError(null);
     startTransition(async () => {
       const r = await fn();
-      if (r && !r.ok) return setError(r.error ?? "صار خطأ، جرّب مرة ثانية.");
+      if (r && !r.ok) return setError(r.error ?? "صار خطأ عندنا. جرّب مرة ثانية، ولو تكرر كلمنا.");
       setStep(next);
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -194,7 +194,7 @@ export function Wizard(props: WizardProps) {
               <div dir="ltr" className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 p-3 text-start text-sm">
                 <span className="min-w-0 flex-1 truncate font-medium">{storeLink}</span>
                 <button type="button" aria-label="نسخ الرابط" className="rounded-md p-2 hover:bg-surface"
-                  onClick={async () => { try { await navigator.clipboard.writeText(storeLink); toast("تم نسخ الرابط"); } catch { toast("ما قدرنا ننسخوا، انسخه يدوي", "error"); } }}>
+                  onClick={async () => { try { await navigator.clipboard.writeText(storeLink); toast("تم نسخ الرابط"); } catch { toast("ما قدرنا ننسخ الرابط. انسخه بإيدك.", "error"); } }}>
                   <Copy className="size-4" />
                 </button>
               </div>

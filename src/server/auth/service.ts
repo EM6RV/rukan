@@ -20,7 +20,7 @@ export async function registerUser(db: Db, input: unknown, ip: string | null): P
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
 
   const limit = await hitRateLimit(db, `register:ip:${ip ?? "unknown"}`, REGISTER_IP_LIMIT);
-  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. جرّب بعد شوية." };
+  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
 
   const { name, phone, password } = parsed.data;
   const existing = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).get();
@@ -53,7 +53,7 @@ export async function authenticate(db: Db, input: unknown, ip: string | null): P
   const user = await db.select().from(users).where(eq(users.phone, phone)).get();
   const valid = await verifyPassword(user?.passwordHash ?? (await getDummyHash()), password);
   if (!user || !valid) return { ok: false, error: "رقم الهاتف أو كلمة السر غلط." };
-  if (user.status !== "active") return { ok: false, error: "هذا الحساب موقوف. تواصل مع الدعم." };
+  if (user.status !== "active") return { ok: false, error: "حسابك موقوف. تواصل مع الدعم." };
 
   await resetRateLimit(db, phoneKey);
   await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));

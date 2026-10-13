@@ -68,7 +68,7 @@ describe("إضافة الدومين", () => {
     expect(r.data).toMatchObject({ domain: "shop.example.com", status: "pending" });
     expect(r.data.token.length).toBeGreaterThanOrEqual(10);
     expect(await getStoreDomain(db, s.id)).toMatchObject({ domain: "shop.example.com", status: "pending" });
-    expect(await addDomain(db, s.id, "other.example.com", PRO, ROOT, s.userId)).toEqual({ ok: false, error: expect.stringContaining("امسحه") });
+    expect(await addDomain(db, s.id, "other.example.com", PRO, ROOT, s.userId)).toEqual({ ok: false, error: expect.stringContaining("احذفه") });
   });
 
   it("الباقة بدون دومين خاص، ودومين المنصة، وغير صالح", async () => {

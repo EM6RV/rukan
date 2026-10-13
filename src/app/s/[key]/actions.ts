@@ -34,7 +34,7 @@ export async function checkCouponAction(key: string, code: string, items: unknow
   if (!sf.limits.coupons) return { ok: false, error: "كود الخصم غير متاح في هذا المتجر" };
   const ip = (await getClientIp()) ?? "unknown";
   const limit = await hitRateLimit(getDb(), `coupon:${sf.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
-  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. جرّب بعد شوية." };
+  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
   const scope = forStore(getDb(), sf.id);
   const lines = await resolveCart(scope, parsed.data);
   const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
@@ -50,11 +50,11 @@ const payload = z.object({
 
 export async function placeOrderAction(key: string, input: unknown): Promise<{ ok: true; data: Pick<CreatedOrder, "number" | "trackingToken" | "total"> } | { ok: false; error: string }> {
   const sf = await openStore(key);
-  if (!sf) return { ok: false, error: "المتجر مغلق حالياً." };
+  if (!sf) return { ok: false, error: "المتجر مقفول مؤقتاً. جرّب بعد شوية." };
   const parsed = payload.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "البيانات غير صحيحة." };
+  if (!parsed.success) return { ok: false, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." };
   const { website, ...order } = parsed.data;
-  if (website) return { ok: false, error: "تعذر إرسال الطلب." }; // روبوت
+  if (website) return { ok: false, error: "ما قدرنا نرسل طلبك. جرّب مرة ثانية." }; // روبوت
 
   // حماية من الطلبيات الوهمية: حد لكل IP وحد لكل رقم هاتف داخل المتجر
   const db = getDb();
@@ -76,7 +76,7 @@ export async function trackOrderAction(key: string, orderNumber: string, rawPhon
   if (!sf) return NOT_FOUND;
   const ip = (await getClientIp()) ?? "unknown";
   const limit = await hitRateLimit(getDb(), `track:${sf.id}:${ip}`, { limit: 15, windowMs: 10 * 60_000 });
-  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. جرّب بعد شوية." };
+  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
   const number = Number(orderNumber.replace(/\D/g, ""));
   if (!Number.isInteger(number) || number <= 0) return NOT_FOUND;
   const order = await trackOrder(forStore(getDb(), sf.id), number, rawPhone);

@@ -15,7 +15,7 @@ async function run<T>(fn: (ctx: StoreContext) => Promise<Result<T>>): Promise<Re
   return r;
 }
 const id = z.string().min(1);
-const bad = () => ({ ok: false as const, error: "البيانات غير صحيحة." });
+const bad = () => ({ ok: false as const, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." });
 
 export async function addStaffAction(input: unknown) {
   return run((c) => addStaff(getDb(), c.store.id, c.user.id, input, c.limits));

@@ -313,7 +313,7 @@ export function ProductEditor({
       <ConfirmModal open={confirm === "options-off"} onClose={() => setConfirm(null)} onConfirm={turnOptionsOff} danger confirmLabel="إلغاء الخيارات"
         title="إلغاء الخيارات" message="كل الخيارات والمتغيرات تتشال، ويبقى منتج واحد بمخزون مجموع المتغيرات." />
       <ConfirmModal open={confirm === "delete"} onClose={() => setConfirm(null)} danger confirmLabel="حذف" loading={pending}
-        title="حذف المنتج" message="متأكد تبي تمسح هذا المنتج؟ الطلبيات القديمة تفضل محفوظة."
+        title="حذف المنتج" message="حذف هذا المنتج؟ الطلبيات القديمة تبقى محفوظة."
         onConfirm={() => startTransition(async () => { const r = await deleteProductsAction([initial!.id]); if (!r.ok) { setConfirm(null); return toast(r.error, "error"); } toast("تم حذف المنتج"); router.push("/dashboard/products"); })} />
     </div>
   );

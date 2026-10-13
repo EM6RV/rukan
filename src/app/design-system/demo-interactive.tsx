@@ -18,7 +18,7 @@ export function DemoInteractive() {
           <Button variant="outline" onClick={() => setOpen(true)}>افتح نافذة</Button>
           <Button variant="outline" onClick={() => toast("تم الحفظ", "success")}>تم الحفظ</Button>
           <Button variant="outline" onClick={() => toast("طلبية جديدة وصلتك", "info")}>طلبية جديدة</Button>
-          <Button variant="outline" onClick={() => toast("صار خطأ، جرّب مرة ثانية", "error")}>خطأ</Button>
+          <Button variant="outline" onClick={() => toast("صار خطأ عندنا. جرّب مرة ثانية، ولو تكرر كلمنا.", "error")}>خطأ</Button>
         </div>
         <Tabs items={[
           { key: "a", label: "المنتجات", content: <p>محتوى المنتجات</p> },
@@ -27,7 +27,7 @@ export function DemoInteractive() {
         ]} />
         <Modal open={open} onClose={() => setOpen(false)} title="تأكيد الحذف"
           footer={<><Button variant="ghost" onClick={() => setOpen(false)}>إلغاء</Button><Button variant="danger" onClick={() => { setOpen(false); toast("تم الحذف"); }}>حذف</Button></>}>
-          <p>متأكد تبي تمسح هذا المنتج؟ ما تقدرش ترجعه.</p>
+          <p>حذف هذا المنتج؟ ما ينفع ترجعه.</p>
         </Modal>
       </CardBody>
     </Card>

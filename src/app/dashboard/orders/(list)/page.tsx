@@ -85,7 +85,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       </form>
 
       {result.items.length === 0 ? (
-        <EmptyState icon={<Inbox className="size-6" />} title={hasFilters || status ? "ما لقينا طلبيات بهذا الفلتر" : "ما فيش طلبيات لسا"} description={hasFilters || status ? "جرّب تغيّر البحث أو الفلاتر." : "أول ما زبون يطلب من متجرك تظهر الطلبية هنا. شارك رابط متجرك في إنستغرام وتيك توك وواتساب."}
+        <EmptyState icon={<Inbox className="size-6" />} title={hasFilters || status ? "ما لقينا طلبيات" : "ما فيش طلبيات لسا"} description={hasFilters || status ? "غيّر البحث أو الفلاتر." : "شارك رابط متجرك، وأول طلبية تظهر هنا."}
           action={hasFilters || status ? <ButtonLink variant="outline" href="/dashboard/orders">عرض كل الطلبيات</ButtonLink> : isCourier ? undefined : <ButtonLink href="/dashboard#store-link">شارك رابط متجرك</ButtonLink>} />
       ) : (
         <>

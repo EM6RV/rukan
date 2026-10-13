@@ -11,7 +11,7 @@ export function StoreLinkCard({ url, name }: { url: string; name: string }) {
       await navigator.clipboard.writeText(url);
       toast("تم نسخ الرابط");
     } catch {
-      toast("ما قدرنا ننسخوا، انسخه يدوي", "error");
+      toast("ما قدرنا ننسخ الرابط. انسخه بإيدك.", "error");
     }
   }
   const btn = "inline-flex h-9 items-center gap-1.5 rounded-md border border-line bg-surface px-3 text-sm font-medium transition-colors hover:bg-surface-2";

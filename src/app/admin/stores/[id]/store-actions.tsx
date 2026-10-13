@@ -51,7 +51,7 @@ export function StoreActions({ storeId, suspended, currentPlanId, currentCycle, 
           <ImageUploader label="صورة الإيصال (اختياري)" kind="receipt" storeId={storeId} shape="wide" value={receipt} onChange={setReceipt} />
           <Textarea label="ملاحظة (اختياري)" rows={2} maxLength={300} value={pay.note} onChange={(e) => setPay({ ...pay, note: e.target.value })} />
           {(localError ?? payAct.error) && <p role="alert" className={errorClass}>{localError ?? payAct.error}</p>}
-          <Button loading={payAct.pending} onClick={submitPay}>تسجيل الدفعة</Button>
+          <Button loading={payAct.pending} onClick={submitPay}>سجّل الدفعة</Button>
         </CardBody>
       </Card>
 
@@ -83,7 +83,7 @@ export function StoreActions({ storeId, suspended, currentPlanId, currentCycle, 
 
       {modal === "suspend" && (
         <Modal open onClose={() => setModal(null)} title="إيقاف المتجر"
-          footer={<><Button variant="ghost" onClick={() => setModal(null)} disabled={susAct.pending}>رجوع</Button><Button variant="danger" loading={susAct.pending} onClick={() => susAct.act(() => setSuspendedAction(storeId, true, reason), "تم إيقاف المتجر", () => setModal(null))}>إيقاف</Button></>}>
+          footer={<><Button variant="ghost" onClick={() => setModal(null)} disabled={susAct.pending}>إلغاء</Button><Button variant="danger" loading={susAct.pending} onClick={() => susAct.act(() => setSuspendedAction(storeId, true, reason), "تم إيقاف المتجر", () => setModal(null))}>إيقاف</Button></>}>
           <div className="space-y-3"><p className="text-sm">المتجر يتقفل للزباين واللوحة تبقى للقراءة فقط. تقدر تفعّله بعدين.</p><Input label="السبب (للسجل)" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />{susAct.error && <p role="alert" className={errorClass}>{susAct.error}</p>}</div>
         </Modal>
       )}

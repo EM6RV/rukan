@@ -102,7 +102,7 @@ describe("أقسام الرئيسية", () => {
     const foreign = await img(b.id);
     const err = async (list: unknown) => { const r = await saveHomeSections(db, a.id, list); return r.ok ? "OK" : r.error; };
     expect(await err([{ type: "banner", config: {} }])).toContain("صورة");
-    expect(await err([{ type: "banner", config: { imageMediaId: foreign } }])).toContain("الصورة غير صحيحة");
+    expect(await err([{ type: "banner", config: { imageMediaId: foreign } }])).toContain("ما قدرنا نقرا الصورة");
     expect(await err([{ type: "banner", config: { imageMediaId: await img(a.id), linkUrl: "javascript:alert(1)" } }])).toContain("الرابط");
     expect(await err([{ type: "banner", config: { imageMediaId: await img(a.id), linkUrl: "//evil.com" } }])).toContain("الرابط");
     expect(await err([{ type: "banner", config: { imageMediaId: await img(a.id), linkUrl: "http://insecure.com" } }])).toContain("الرابط");

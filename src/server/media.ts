@@ -22,7 +22,7 @@ export const IMAGE_PRESETS = {
 /** يتحقق إن الملف صورة فعلاً (من محتواه مش من الامتداد)، يصحح الاتجاه، يصغّر ويحوله WebP بدون metadata. */
 export async function processImage(input: Buffer, preset: ImagePreset = IMAGE_PRESETS.product) {
   if (input.length === 0) throw new MediaError("الملف فاضي.");
-  if (input.length > MAX_UPLOAD_BYTES) throw new MediaError("الصورة كبيرة بزيادة. الحد الأقصى 8 ميغا.");
+  if (input.length > MAX_UPLOAD_BYTES) throw new MediaError("الصورة كبيرة. الحد الأقصى 8 ميغا، صغّرها وجرّب.");
 
   try {
     const meta = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();

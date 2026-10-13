@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const a = await adminContext();
   if (!a.ok) return fail(a.error, 403);
 
-  if (Number(request.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES + 64 * 1024) return fail("الصورة كبيرة بزيادة. الحد الأقصى 8 ميغا.", 413);
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES + 64 * 1024) return fail("الصورة كبيرة. الحد الأقصى 8 ميغا، صغّرها وجرّب.", 413);
   let form: FormData;
   try { form = await request.formData(); } catch { return fail("الطلب غير صحيح.", 400); }
   const file = form.get("file");
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   let storeId: string | null = null;
   if (kind === "receipt") {
     storeId = String(form.get("storeId") ?? "");
-    if (!storeId || !(await db.select({ id: stores.id }).from(stores).where(eq(stores.id, storeId)).get())) return fail("المتجر غير موجود.", 400);
+    if (!storeId || !(await db.select({ id: stores.id }).from(stores).where(eq(stores.id, storeId)).get())) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.", 400);
   } else {
     const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(media).where(and(isNull(media.storeId)));
     if (n >= 500) return fail("وصلت للحد الأقصى من صور الموقع.", 400);

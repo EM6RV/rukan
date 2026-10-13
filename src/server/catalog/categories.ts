@@ -31,7 +31,7 @@ export async function saveCategory(scope: StoreScope, input: unknown): Promise<R
   try {
     if (id) {
       const [row] = await scope.update(t.categories, data, eq(t.categories.id, id));
-      return row ? ok({ id: row.id }) : fail("القسم غير موجود.");
+      return row ? ok({ id: row.id }) : fail("ما لقينا القسم. يمكن انحذف، حدّث الصفحة.");
     }
     const existing = await scope.from(t.categories);
     const slug = uniqueSlug(slugify(data.name) || "category", new Set(existing.map((c) => c.slug)));
@@ -39,14 +39,14 @@ export async function saveCategory(scope: StoreScope, input: unknown): Promise<R
     const [row] = await scope.insert(t.categories, { ...data, slug, position });
     return ok({ id: row!.id });
   } catch (e) {
-    if (isFkViolation(e)) return fail("الصورة غير صحيحة، ارفعها من جديد.");
+    if (isFkViolation(e)) return fail("ما قدرنا نقرا الصورة. ارفع صورة JPG أو PNG أو WebP.");
     throw e;
   }
 }
 
 export async function deleteCategory(scope: StoreScope, id: string): Promise<Result> {
   const rows = await scope.delete(t.categories, eq(t.categories.id, id)); // product_categories تتمسح بالـ cascade
-  return rows.length ? ok(undefined) : fail("القسم غير موجود.");
+  return rows.length ? ok(undefined) : fail("ما لقينا القسم. يمكن انحذف، حدّث الصفحة.");
 }
 
 export async function reorderCategories(scope: StoreScope, orderedIds: string[]): Promise<Result> {

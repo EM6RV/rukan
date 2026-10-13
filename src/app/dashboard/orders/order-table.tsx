@@ -52,7 +52,7 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
                 {couriers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
             </div>
-            <Button onClick={assign} loading={pending}>تعيين</Button>
+            <Button onClick={assign} loading={pending}>عيّن المندوب</Button>
             <Button variant="ghost" onClick={() => setSelected(new Set())}>إلغاء</Button>
           </div>
           {error && <p role="alert" className="text-sm text-danger-fg">{error}</p>}

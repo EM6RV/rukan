@@ -9,7 +9,7 @@ const sum = (col: SQLWrapper) => sql<number>`coalesce(sum(${col}), 0)`;
 
 const courierSchema = z.object({
   id: z.string().optional(),
-  name: z.string({ error: "اكتب الاسم" }).trim().min(2, "الاسم قصير").max(60, "الاسم طويل"),
+  name: z.string({ error: "اكتب الاسم" }).trim().min(2, "اكتب اسمك (حرفين على الأقل)").max(60, "الاسم طويل"),
   phone: z.string().trim().nullish().transform((v, ctx) => {
     if (!v) return null;
     const n = normalizeLibyanPhone(v);
@@ -27,7 +27,7 @@ export async function saveCourier(scope: StoreScope, input: unknown): Promise<Re
   const { id, ...data } = parsed.data;
   if (id) {
     const [row] = await scope.update(t.couriers, data, eq(t.couriers.id, id));
-    return row ? ok({ id: row.id }) : fail("المندوب غير موجود.");
+    return row ? ok({ id: row.id }) : fail("ما لقينا المندوب. يمكن انحذف، حدّث الصفحة.");
   }
   const [row] = await scope.insert(t.couriers, data);
   return ok({ id: row!.id });
@@ -77,7 +77,7 @@ export function recordSettlement(scope: StoreScope, input: { courierId: string; 
   if (!amount.success) return Promise.resolve(fail(amount.error.issues[0]!.message));
   return scope.transaction(async (tx) => {
     const [c] = await tx.from(t.couriers, eq(t.couriers.id, input.courierId)).limit(1);
-    if (!c) return fail("المندوب غير موجود.");
+    if (!c) return fail("ما لقينا المندوب. يمكن انحذف، حدّث الصفحة.");
     const rows = (await tx.aggregate(t.courierCashEntries, { type: t.courierCashEntries.type, total: sum(t.courierCashEntries.amount) }, { where: eq(t.courierCashEntries.courierId, input.courierId), groupBy: [t.courierCashEntries.type] })) as { type: string; total: number }[];
     const g = (type: string) => rows.find((r) => r.type === type)?.total ?? 0;
     const balance = g("collected") - g("settlement") + g("adjustment");
@@ -95,7 +95,7 @@ export function recordAdjustment(scope: StoreScope, input: { courierId: string; 
   if (note.length < 3) return Promise.resolve(fail("اكتب سبب التسوية."));
   return scope.transaction(async (tx) => {
     const [c] = await tx.from(t.couriers, eq(t.couriers.id, input.courierId)).limit(1);
-    if (!c) return fail("المندوب غير موجود.");
+    if (!c) return fail("ما لقينا المندوب. يمكن انحذف، حدّث الصفحة.");
     await tx.insert(t.courierCashEntries, { courierId: input.courierId, type: "adjustment", amount: amount.data, note, actorUserId });
     return ok(undefined);
   });
@@ -117,9 +117,9 @@ export async function getLedger(scope: StoreScope, courierId: string, page = 1, 
 
 export async function deleteCourier(scope: StoreScope, id: string): Promise<Result> {
   const [orders, entries] = await Promise.all([scope.count(t.orders, eq(t.orders.courierId, id)), scope.count(t.courierCashEntries, eq(t.courierCashEntries.courierId, id))]);
-  if (orders > 0 || entries > 0) return fail("عند هذا المندوب طلبيات أو حركات كاش. أوقفه بدل ما تمسحه.");
+  if (orders > 0 || entries > 0) return fail("عند هذا المندوب طلبيات أو حركات كاش. أوقفه بدل الحذف.");
   const rows = await scope.delete(t.couriers, and(eq(t.couriers.id, id))!);
-  return rows.length ? ok(undefined) : fail("المندوب غير موجود.");
+  return rows.length ? ok(undefined) : fail("ما لقينا المندوب. يمكن انحذف، حدّث الصفحة.");
 }
 
 export { OrderOpError };

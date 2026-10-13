@@ -9,13 +9,13 @@ import { bulkAssignCourier, changeOrderStatus, registerReturn, reviewReceipt, se
 import { invalidateStore } from "@/server/storefront/data";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
-const bad = (): Result<never> => ({ ok: false, error: "البيانات غير صحيحة." });
+const bad = (): Result<never> => ({ ok: false, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." });
 
 /** المندوب ما يقدر يعمل غير تسجيل التوصيل؛ باقي العمليات للموظفين */
 async function run<T>(permission: "orders" | "returns", opts: { staffOnly?: boolean }, fn: (ctx: StoreContext, restrict: string | null) => Promise<Result<T>>): Promise<Result<T>> {
   const auth = await actionContext(permission, { write: true });
   if (!auth.ok) return auth;
-  if (opts.staffOnly && auth.ctx.role === "courier") return { ok: false, error: "ما عندكش صلاحية لهذا الإجراء." };
+  if (opts.staffOnly && auth.ctx.role === "courier") return { ok: false, error: "ما عندكش صلاحية للإجراء هذا. كلّم مدير المتجر." };
   const r = await fn(auth.ctx, await courierRestriction(auth.ctx));
   if (r.ok) {
     revalidatePath("/dashboard", "layout");

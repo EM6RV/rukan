@@ -118,7 +118,7 @@ export async function importProducts(
   const catIds = new Map((await listCategories(scope)).map((c) => [norm(c.name), c.id]));
 
   for (const row of parsed.rows) {
-    if (created >= quota.remaining) { limitReached = true; skipped.push({ line: row.line, error: "تخطينا هذا المنتج: وصلت لحد باقتك" }); continue; }
+    if (created >= quota.remaining) { limitReached = true; skipped.push({ line: row.line, error: "تخطينا المنتج. وصلت للحد الأقصى في باقتك، رقّيها لإضافة المزيد." }); continue; }
 
     let categoryId: string | undefined;
     if (row.category) {

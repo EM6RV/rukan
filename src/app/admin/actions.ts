@@ -14,7 +14,7 @@ import { adminContext } from "@/server/auth/admin-action";
 import type { Result } from "@/server/catalog/result";
 import { invalidateStore } from "@/server/storefront/data";
 
-const bad = () => ({ ok: false as const, error: "البيانات غير صحيحة." });
+const bad = () => ({ ok: false as const, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." });
 const id = z.string().min(1);
 
 async function run<T>(fn: (a: { userId: string; db: Parameters<typeof savePlan>[0] }) => Promise<Result<T>>, after?: (data: T) => void): Promise<Result<T>> {

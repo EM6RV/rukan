@@ -142,7 +142,7 @@ export async function saveProduct(scope: StoreScope, input: unknown, ctx: SaveCt
       };
       if (productId) {
         const [row] = await tx.update(t.products, base, and(eq(t.products.id, productId), isNull(t.products.deletedAt)));
-        if (!row) throw new SaveError("المنتج غير موجود.");
+        if (!row) throw new SaveError("ما لقينا المنتج. يمكن انحذف، حدّث الصفحة.");
       } else {
         // الفحص جوّا المعاملة (الكتابة متسلسلة) علشان طلبين متزامنين ما يتجاوزوش الحد
         if (ctx.limits.maxProducts !== null && (await productQuota(tx, ctx.limits)).used >= ctx.limits.maxProducts) {
@@ -268,7 +268,7 @@ async function logStock(tx: Tx, variantId: string, delta: number, note: string, 
 
 export async function duplicateProduct(scope: StoreScope, id: string, ctx: SaveCtx): Promise<Result<{ id: string }>> {
   const src = await getProductForEdit(scope, id);
-  if (!src) return fail("المنتج غير موجود.");
+  if (!src) return fail("ما لقينا المنتج. يمكن انحذف، حدّث الصفحة.");
   const tmp = () => `tmp_${nanoid(8)}`;
   const optionMap = new Map(src.options.map((o) => [o.id, tmp()]));
   const valueMap = new Map(src.options.flatMap((o) => o.values.map((v) => [v.id, tmp()] as const)));
@@ -289,7 +289,7 @@ export async function setProductsVisibility(scope: StoreScope, ids: string[], is
 
 export async function setProductFeatured(scope: StoreScope, id: string, isFeatured: boolean): Promise<Result> {
   const rows = await scope.update(t.products, { isFeatured }, and(eq(t.products.id, id), isNull(t.products.deletedAt)));
-  return rows.length ? ok(undefined) : fail("المنتج غير موجود.");
+  return rows.length ? ok(undefined) : fail("ما لقينا المنتج. يمكن انحذف، حدّث الصفحة.");
 }
 
 /** حذف ناعم: المنتج يختفي من المتجر واللوحة، والطلبيات القديمة تفضل سليمة. */
@@ -312,7 +312,7 @@ export function applyPriceOp(current: number, op: BulkPriceOp): number {
 export async function bulkUpdatePrices(scope: StoreScope, ids: string[], op: BulkPriceOp): Promise<Result<{ count: number }>> {
   if (!ids.length) return fail("ما اخترت أي منتج.");
   if (!Number.isFinite(op.value)) return fail("القيمة غير صحيحة.");
-  if (op.mode === "set" && op.value < 0) return fail("السعر ما يكونش بالسالب.");
+  if (op.mode === "set" && op.value < 0) return fail("اكتب سعر 0 أو أكثر.");
   if (op.mode === "percent" && (op.value < -90 || op.value > 500)) return fail("النسبة لازم تكون بين -90% و 500%.");
 
   const products = await scope.from(t.products, and(inArray(t.products.id, ids), isNull(t.products.deletedAt)));
@@ -337,7 +337,7 @@ export async function bulkUpdateStock(scope: StoreScope, ids: string[], op: Bulk
   if (!ids.length) return fail("ما اخترت أي منتج.");
   if (!Number.isInteger(op.value)) return fail("المخزون لازم يكون رقم صحيح.");
   if (op.mode === "set" && op.value < 0) return fail("المخزون ما يكونش بالسالب.");
-  if (Math.abs(op.value) > 1_000_000) return fail("القيمة كبيرة بزيادة.");
+  if (Math.abs(op.value) > 1_000_000) return fail("الرقم كبير بزيادة. اكتب رقم أصغر.");
 
   const products = await scope.from(t.products, and(inArray(t.products.id, ids), isNull(t.products.deletedAt)));
   const variants = products.length ? await scope.from(t.productVariants, inArray(t.productVariants.productId, products.map((p) => p.id))) : [];

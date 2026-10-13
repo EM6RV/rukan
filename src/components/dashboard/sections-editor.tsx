@@ -41,7 +41,7 @@ function SectionForm({ draft, onCancel, onSave }: { draft: EditorSection; onCanc
   const needsImage = v.type === "banner" && !v.image;
   return (
     <Modal open onClose={onCancel} title={`${draft.id ? "تعديل" : "إضافة"}: ${SECTION_LABELS[v.type]}`}
-      footer={<><Button variant="ghost" onClick={onCancel}>رجوع</Button><Button disabled={needsImage || (v.type === "text" && !c.body.trim())} onClick={() => onSave(v)}>تم</Button></>}>
+      footer={<><Button variant="ghost" onClick={onCancel}>إلغاء</Button><Button disabled={needsImage || (v.type === "text" && !c.body.trim())} onClick={() => onSave(v)}>تم</Button></>}>
       <div className="space-y-4">
         <p className="text-sm text-muted">{SECTION_HINTS[v.type]}</p>
         {(v.type === "hero" || v.type === "banner") && <ImageUploader label={v.type === "hero" ? "صورة الغلاف (اختياري)" : "صورة البانر"} kind="banner" shape="wide" value={v.image} onChange={(image) => setV({ ...v, image })} hint={v.type === "banner" ? "صورة عرضية، الأفضل 1600×700." : "لو ما حطيتش صورة نستعمل ألوان متجرك."} />}

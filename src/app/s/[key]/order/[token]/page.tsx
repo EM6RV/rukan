@@ -39,7 +39,7 @@ export default async function OrderPage({ params }: { params: Promise<{ key: str
       {waHref && <WhatsAppConfirmButton href={waHref} className={`${kit.cls.btn} w-full !bg-[#25D366] !text-[#0b2e18]`} />}
       <OrderSummary order={order} panelClass={kit.cls.panel} />
       <p className="text-center text-sm text-(--sp-muted)">احتفظ برقم الطلبية ورقم هاتفك لتتبع طلبيتك من <Link href={`${base}/track`} className="font-semibold underline">صفحة التتبع</Link>.</p>
-      <div className="text-center"><Link href={base || "/"} className={kit.cls.btnOutline}>متابعة التسوق</Link></div>
+      <div className="text-center"><Link href={base || "/"} className={kit.cls.btnOutline}>كمّل التسوق</Link></div>
     </div>
   );
 }
