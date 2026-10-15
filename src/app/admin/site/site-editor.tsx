@@ -1,5 +1,7 @@
 "use client";
 
+import { STORE_TEMPLATES, STORE_TEMPLATE_LABELS } from "@/lib/constants";
+
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { ImageUploader } from "@/components/dashboard/image-uploader";
@@ -70,7 +72,7 @@ export function SiteEditor({ initial, heroImage }: { initial: SiteContent; heroI
         {c.showcase.items.map((it, i) => (
           <div key={i} className="space-y-3 rounded-lg border border-line p-3">
             <div className="flex items-end gap-2"><div className="min-w-0 flex-1"><Input label="اسم المتجر" value={it.name} maxLength={40} onChange={(e) => setItem("showcase", i, { name: e.target.value })} /></div><ListButtons i={i} n={c.showcase.items.length} move={move("showcase")} remove={() => remove("showcase", i)} /></div>
-            <div className="grid gap-3 sm:grid-cols-2"><Input label="النشاط" value={it.category} maxLength={40} onChange={(e) => setItem("showcase", i, { category: e.target.value })} /><Select label="القالب" value={it.template} onChange={(e) => setItem("showcase", i, { template: e.target.value as never })}><option value="elegant">أنيق</option><option value="bold">جريء</option><option value="simple">بسيط</option></Select></div>
+            <div className="grid gap-3 sm:grid-cols-2"><Input label="النشاط" value={it.category} maxLength={40} onChange={(e) => setItem("showcase", i, { category: e.target.value })} /><Select label="القالب" value={it.template} onChange={(e) => setItem("showcase", i, { template: e.target.value as never })}>{STORE_TEMPLATES.map((v) => <option key={v} value={v}>{STORE_TEMPLATE_LABELS[v]}</option>)}</Select></div>
             <div className="grid grid-cols-2 gap-3"><label className="flex items-center gap-2 text-sm font-medium">الأساسي <input type="color" value={it.primary} onChange={(e) => setItem("showcase", i, { primary: e.target.value })} className="h-9 w-14 rounded border border-line" /></label><label className="flex items-center gap-2 text-sm font-medium">التمييز <input type="color" value={it.accent} onChange={(e) => setItem("showcase", i, { accent: e.target.value })} className="h-9 w-14 rounded border border-line" /></label></div>
             <Input label="رابط (اختياري)" dir="ltr" className="text-right" value={it.href} maxLength={300} onChange={(e) => setItem("showcase", i, { href: e.target.value })} hint="https://… أو /s/اسم-المتجر" />
           </div>

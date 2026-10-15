@@ -33,7 +33,10 @@ export default async function SearchPage({ params, searchParams }: Props) {
       {result.items.length === 0 ? (
         <div className={`${kit.cls.panel} text-center`}>{q ? "ما لقينا منتجات بهذا الاسم. جرّب كلمة ثانية." : "المنتجات تنضاف قريب."}</div>
       ) : (
+        <>
+        <h2 className="sr-only">المنتجات</h2>
         <div className={kit.cls.productGrid}>{result.items.map((p, i) => <kit.ProductCard key={p.id} product={p} priority={i < 4} />)}</div>
+        </>
       )}
       {result.pageCount > 1 && (
         <nav aria-label="الصفحات" className="flex items-center justify-center gap-3 text-sm">

@@ -155,3 +155,10 @@
   from { transform: translateX(0); }
   to { transform: translateX(50%); }
 }
+
+/* ظهور ناعم للأقسام وقت التمرير (تحسين تدريجي: المتصفحات القديمة تعرضها عادي) */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .sf-reveal { animation: fade-up 0.6s ease-out both; animation-timeline: view(); animation-range: entry 0% entry 30%; }
+  }
+}

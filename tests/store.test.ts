@@ -102,7 +102,7 @@ describe("خطوات المعالج", () => {
     expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ name: "اسم جديد", slug: "flow-renamed" });
 
     const type = await saveBusinessType(db, id, "perfume", ALL);
-    expect(type).toMatchObject({ ok: true, data: { template: "elegant" } });
+    expect(type).toMatchObject({ ok: true, data: { template: "noir" } });
     expect((await forStore(db, id).from(t.storeSettings))[0]).toMatchObject({ primaryColor: "#2B1B3D", accentColor: "#C19E58" });
 
     const [logo] = await db.insert(media).values({ storeId: id, mime: "image/webp", size: 1, driver: "turso" }).returning();

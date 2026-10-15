@@ -1,3 +1,4 @@
+import { STORE_TEMPLATES } from "@/lib/constants";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/db";
@@ -22,7 +23,7 @@ const link = z.string().trim().max(300, "الرابط طويل").transform((v, c
 const schema = z.object({
   hero: z.object({ badge: str(60, "شارة الهيرو"), title: str(90, "عنوان الهيرو", 2), subtitle: str(300, "وصف الهيرو"), primaryCta: str(30, "نص الزر الرئيسي", 2), secondaryCta: str(30, "نص الزر الثاني"), imageMediaId: z.string().min(1).nullish().transform((v) => v ?? null) }),
   features: z.object({ title: str(80, "عنوان المميزات", 2), subtitle: str(200, "وصف المميزات"), items: z.array(z.object({ icon: z.enum(FEATURE_ICONS, { error: "أيقونة غير صحيحة" }), title: str(50, "عنوان الميزة", 2), text: str(220, "نص الميزة", 2) })).min(1, "ميزة وحدة على الأقل").max(9, "الحد الأقصى 9 مميزات") }),
-  showcase: z.object({ title: str(80, "عنوان الأمثلة", 2), subtitle: str(200, "وصف الأمثلة"), items: z.array(z.object({ name: str(40, "اسم المتجر", 2), category: str(40, "نوع النشاط"), primary: hexColorSchema, accent: hexColorSchema, template: z.enum(["elegant", "bold", "simple"], { error: "قالب غير صحيح" }), href: link })).max(6, "الحد الأقصى 6 أمثلة") }),
+  showcase: z.object({ title: str(80, "عنوان الأمثلة", 2), subtitle: str(200, "وصف الأمثلة"), items: z.array(z.object({ name: str(40, "اسم المتجر", 2), category: str(40, "نوع النشاط"), primary: hexColorSchema, accent: hexColorSchema, template: z.enum(STORE_TEMPLATES, { error: "قالب غير صحيح" }), href: link })).max(6, "الحد الأقصى 6 أمثلة") }),
   steps: z.object({ title: str(80, "عنوان الخطوات", 2), items: z.array(z.object({ title: str(40, "عنوان الخطوة", 2), text: str(180, "نص الخطوة") })).min(1).max(5, "الحد الأقصى 5 خطوات") }),
   pricing: z.object({ title: str(80, "عنوان الأسعار", 2), subtitle: str(200, "وصف الأسعار"), note: str(250, "ملاحظة الأسعار") }),
   faq: z.object({ title: str(80, "عنوان الأسئلة", 2), items: z.array(z.object({ q: str(120, "السؤال", 2), a: str(500, "الجواب", 2) })).max(12, "الحد الأقصى 12 سؤال") }),

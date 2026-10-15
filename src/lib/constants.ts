@@ -29,12 +29,17 @@ export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   courier: "مندوب",
 };
 
-export const STORE_TEMPLATES = ["elegant", "bold", "simple"] as const;
+export const STORE_TEMPLATES = ["simple", "elegant", "bold", "warm", "editorial", "noir", "pop", "gallery"] as const;
 export type StoreTemplate = (typeof STORE_TEMPLATES)[number];
 export const STORE_TEMPLATE_LABELS: Record<StoreTemplate, string> = {
   elegant: "أنيق",
   bold: "جريء",
   simple: "بسيط",
+  warm: "دافئ",
+  editorial: "مجلة",
+  noir: "فخم",
+  pop: "مرح",
+  gallery: "معرض",
 };
 
 export const BUSINESS_TYPES = ["clothing", "perfume", "beauty", "accessories", "food", "other"] as const;

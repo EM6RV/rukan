@@ -8,7 +8,7 @@ export const FEATURE_ICON_LABELS: Record<FeatureIcon, string> = {
 export type SiteContent = {
   hero: { badge: string; title: string; subtitle: string; primaryCta: string; secondaryCta: string; imageMediaId: string | null };
   features: { title: string; subtitle: string; items: { icon: FeatureIcon; title: string; text: string }[] };
-  showcase: { title: string; subtitle: string; items: { name: string; category: string; primary: string; accent: string; template: "elegant" | "bold" | "simple"; href: string }[] };
+  showcase: { title: string; subtitle: string; items: { name: string; category: string; primary: string; accent: string; template: import("./constants").StoreTemplate; href: string }[] };
   steps: { title: string; items: { title: string; text: string }[] };
   pricing: { title: string; subtitle: string; note: string };
   faq: { title: string; items: { q: string; a: string }[] };
@@ -40,11 +40,14 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   },
   showcase: {
     title: "متاجر بتصاميم مختلفة",
-    subtitle: "اختار القالب اللي يناسب نشاطك، ولونه بألوان علامتك.",
+    subtitle: "8 قوالب مختلفة في الشكل، اختار اللي يناسب نشاطك، ولونه بألوان علامتك.",
     items: [
       { name: "عطور الندى", category: "عطور وعناية", primary: "#2B1B3D", accent: "#C19E58", template: "elegant", href: "" },
       { name: "شارع 218", category: "ملابس وشباب", primary: "#111111", accent: "#FF5A1F", template: "bold", href: "" },
       { name: "لمسة", category: "إكسسوارات وهدايا", primary: "#0D263E", accent: "#087C86", template: "simple", href: "" },
+      { name: "بيت الحلا", category: "حلويات وأكل بيتي", primary: "#7A3E12", accent: "#E0A030", template: "warm", href: "" },
+      { name: "خيط", category: "أزياء وإكسسوارات", primary: "#111111", accent: "#C19E58", template: "editorial", href: "" },
+      { name: "ذهب ليبيا", category: "عطور وذهب", primary: "#12372A", accent: "#D9B65C", template: "noir", href: "" },
     ],
   },
   steps: {

@@ -56,7 +56,7 @@ type ProductSpec = {
 };
 
 async function buildStore(spec: {
-  phone: string; owner: string; slug: string; name: string; type: Parameters<typeof saveBusinessType>[2]; template: "elegant" | "bold" | "simple";
+  phone: string; owner: string; slug: string; name: string; type: Parameters<typeof saveBusinessType>[2]; template: "elegant" | "bold" | "simple" | "warm" | "editorial" | "noir" | "pop" | "gallery";
   primary: string; accent: string; whatsapp: string; announcement: string; city: string; freeOver: number | null; bank?: boolean;
   categories: string[]; products: ProductSpec[]; coupon: { code: string; value: number };
 }) {

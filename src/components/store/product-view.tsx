@@ -37,7 +37,7 @@ function Gallery({ images, name, frame }: { images: string[]; name: string; fram
   return (
     <div className="space-y-3">
       <div className={cn("relative overflow-hidden", frame)}>
-        <div ref={track} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-roledescription="معرض صور" role="group">
+        <div ref={track} tabIndex={0} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-roledescription="معرض صور" role="group">
           {images.map((id, i) => (
             <div key={id} className="aspect-square w-full shrink-0 snap-center md:aspect-[4/5]">
               <MediaImage id={id} alt={`${name} - صورة ${i + 1}`} priority={i === 0} sizes="(min-width: 1024px) 50vw, 100vw" widths={[640, 960, 1280]} />
@@ -198,7 +198,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
       </div>
 
       {/* شريط الشراء الثابت على الموبايل */}
-      <div className={cn("fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-(--sp-line) bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur transition-transform lg:hidden", ctaVisible && "pointer-events-none translate-y-full")} aria-hidden={ctaVisible}>
+      <div className={cn("fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-(--sp-line) bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur transition-transform lg:hidden", ctaVisible && "pointer-events-none translate-y-full")} inert={ctaVisible}>
         <div className="min-w-0 flex-1"><Price price={price} compareAt={compareAt} size="md" /></div>
         <button type="button" onClick={() => addToCart(false)} disabled={!canBuy} className={cn(kit.cls.btn, "!h-11 shrink-0 !px-6")}>{canBuy ? "أضف للسلة" : "نفد"}</button>
       </div>

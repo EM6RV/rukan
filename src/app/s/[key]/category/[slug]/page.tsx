@@ -58,7 +58,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       {result.items.length === 0 ? (
         <div className={`${kit.cls.panel} text-center`}>ما فيه منتجات في هذا القسم حالياً.</div>
       ) : (
+        <>
+        <h2 className="sr-only">المنتجات</h2>
         <div className={kit.cls.productGrid}>{result.items.map((p, i) => <kit.ProductCard key={p.id} product={p} priority={i < 4} />)}</div>
+        </>
       )}
 
       {result.pageCount > 1 && (
