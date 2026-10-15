@@ -256,7 +256,7 @@ turso db create rukn-pitr --from-db rukn --timestamp 2026-01-01T10:00:00Z   # ا
 | `pnpm dev` / `pnpm build` / `pnpm start` | تطوير / بناء / تشغيل |
 | `pnpm start:prod` | migrations + seed مرجعي ثم تشغيل (يستعمله Render) |
 | `pnpm check:env` | فحص إعدادات الإنتاج (`NODE_ENV=production STRICT_PRODUCTION=1`) |
-| `pnpm e2e` | اختبارات المتصفح (تحتاج خادم شغّال على `E2E_BASE` وبيانات `db:seed:demo`): وصول (axe)، كيبورد، استرجاع كلمة السر، إشعارات، سلة متروكة، صفحة المندوب. تشتغل في CI |
+| `pnpm e2e` | اختبارات المتصفح، تشتغل عندك محلياً بدون أي كلفة (تحتاج خادم شغّال على `E2E_BASE` وبيانات `db:seed:demo` ومتصفح Chromium، وتحدد مساره بـ `CHROMIUM_PATH` لو لزم): وصول (axe)، كيبورد، استرجاع كلمة السر، إشعارات، سلة متروكة، صفحة المندوب |
 | `pnpm push:keys` | توليد مفاتيح VAPID لإشعارات Web Push |
 | `pnpm test` | كل الاختبارات (عزل المتاجر، الطلبيات، الاشتراكات، الدومينات، الحارس الأمني…) |
 | `pnpm typecheck` / `pnpm lint` | الأنواع / ESLint |
