@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { describe, expect, it } from "vitest";
 import { createDb } from "@/db";
-import { approxMonthly, periodLabel, periodUnit } from "@/lib/billing";
+import { approxMonthly, daysText, periodLabel, periodUnit } from "@/lib/billing";
 
 const MIGRATIONS = "./src/db/migrations";
 const OLD = { starter: "p-starter", growth: "p-growth", pro: "p-pro" };
@@ -123,5 +123,6 @@ describe("أدوات عرض الباقات", () => {
     expect(approxMonthly(500_000, "yearly")).toBe(42_000); // 41.67 ← 42 د.ل
     expect(approxMonthly(800_000, "yearly")).toBe(67_000); // 66.67 ← 67 د.ل
     expect(approxMonthly(100_000, "monthly")).toBeNull();
+    expect([1, 2, 3, 10, 14].map(daysText)).toEqual(["يوم", "يومين", "3 أيام", "10 أيام", "14 يوم"]);
   });
 });

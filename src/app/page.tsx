@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Banknote, Check, BarChart3, MapPin, MessageCircle, Palette, RotateCcw, ShieldCheck, Smartphone, Store, Truck, Users, Zap, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { MockStore } from "@/components/marketing/mock-store";
+import { daysText } from "@/lib/billing";
 import { Pricing } from "@/components/marketing/pricing";
 import { ButtonLink } from "@/components/ui/button";
 import { SkipLink } from "@/components/ui/skip-link";
@@ -79,7 +80,7 @@ export default async function Home() {
               </FadeIn>
               <FadeIn delay={0.24}>
                 <ul className="flex flex-wrap justify-center gap-2 text-sm text-white/85 lg:justify-start">
-                  {[`تجربة مجانية ${trialDays} يوم`, "بدون بطاقة بنكية", "الدفع كاش أو تحويل"].map((t) => (
+                  {[`تجربة مجانية ${daysText(trialDays)}`, "بدون بطاقة بنكية", "الدفع كاش أو تحويل"].map((t) => (
                     <li key={t} className="inline-flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-1 ring-1 ring-white/10"><Check className="size-3.5 text-gold" aria-hidden />{t}</li>
                   ))}
                 </ul>

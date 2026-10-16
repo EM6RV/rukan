@@ -1,5 +1,7 @@
 "use client";
 
+import { daysText } from "@/lib/billing";
+
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, CheckCircle2, Copy, Flower2, Gem, MessageCircle, Shirt, SprayCan, Store, UtensilsCrossed, XCircle } from "lucide-react";
@@ -190,7 +192,7 @@ export function Wizard(props: WizardProps) {
           {step === 6 && (
             <section className="space-y-6 text-center">
               <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-success/15 text-success-fg"><Check className="size-8" /></div>
-              <Header title="متجرك جاهز! 🎉" subtitle={`عندك ${props.trialDays} يوم تجربة مجانية. ابدا بإضافة منتجاتك.`} />
+              <Header title="متجرك جاهز! 🎉" subtitle={`عندك ${daysText(props.trialDays)} تجربة مجانية. ابدا بإضافة منتجاتك.`} />
               <div dir="ltr" className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 p-3 text-start text-sm">
                 <span className="min-w-0 flex-1 truncate font-medium">{storeLink}</span>
                 <button type="button" aria-label="نسخ الرابط" className="rounded-md p-2 hover:bg-surface"

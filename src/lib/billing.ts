@@ -42,3 +42,10 @@ export const periodLabel = (period: BillingPeriod) => (period === "yearly" ? "س
 export function approxMonthly(price: number, period: BillingPeriod): number | null {
   return period === "yearly" ? Math.round(price / 12 / 1000) * 1000 : null;
 }
+
+/** "3 أيام" / "يوم" / "14 يوم" (عدد الأيام بصيغة عربية سليمة) */
+export function daysText(n: number): string {
+  if (n === 1) return "يوم";
+  if (n === 2) return "يومين";
+  return `${n} ${n >= 3 && n <= 10 ? "أيام" : "يوم"}`;
+}
