@@ -3,7 +3,7 @@ import { writeTransaction, type Db } from "@/db";
 import { cities, media, plans, storeMembers, stores, type PlanLimits } from "@/db/schema/platform";
 import { BUSINESS_PRESETS } from "@/lib/business-presets";
 import { BASE_TEMPLATE } from "@/lib/plan-limits";
-import { DEFAULT_TRIAL_DAYS, type BusinessType, type StoreTemplate } from "@/lib/constants";
+import { DEFAULT_TRIAL_DAYS, DEFAULT_TRIAL_PLAN_SLUG, type BusinessType, type StoreTemplate } from "@/lib/constants";
 import { DEFAULT_FOOTER_TEXT, DEFAULT_THANKS_MESSAGE, defaultHomeSections, defaultPages } from "@/lib/store-defaults";
 import { DEFAULT_WHATSAPP_TEMPLATES } from "@/lib/whatsapp-defaults";
 import { firstError, slugSchema, storeNameSchema } from "@/lib/validation";
@@ -38,7 +38,7 @@ export async function createStoreForUser(db: Db, input: { userId: string; name: 
   if (already) return fail("عندك متجر بالفعل.");
 
   const trialDays = await getPlatformSetting<number>(db, "trial_days", DEFAULT_TRIAL_DAYS);
-  const planSlug = await getPlatformSetting<string>(db, "trial_plan_slug", "growth");
+  const planSlug = await getPlatformSetting<string>(db, "trial_plan_slug", DEFAULT_TRIAL_PLAN_SLUG);
   const plan = await db.select({ id: plans.id }).from(plans).where(eq(plans.slug, planSlug)).get();
 
   try {
@@ -123,7 +123,7 @@ export async function saveIdentity(
   input: { template: StoreTemplate; primaryColor: string; accentColor: string; logoMediaId: string | null },
   limits: PlanLimits,
 ): Promise<Result> {
-  if (!limits.allTemplates && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «نمو» وما فوق. رقّي باقتك لتستعمله.");
+  if (!limits.allTemplates && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «سنوية» وما فوق. رقّي باقتك لتستعمله.");
   if (!(await validateOwnMedia(db, storeId, input.logoMediaId))) return fail("ما قدرنا نقرا اللوجو. ارفع صورة JPG أو PNG أو WebP.");
   await bumpStep(db, storeId, 4, { template: input.template, logoMediaId: input.logoMediaId });
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: input.primaryColor, accentColor: input.accentColor });

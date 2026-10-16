@@ -54,7 +54,7 @@ export function IdentityPicker({ logo, onLogo, template, onTemplate, primary, ac
             );
           })}
         </div>
-        {!allTemplates && <p className="text-sm text-muted">باقي القوالب متاحة في باقة «نمو» وما فوق.</p>}
+        {!allTemplates && <p className="text-sm text-muted">باقي القوالب متاحة في باقة «سنوية» وما فوق.</p>}
       </div>
 
       <div className="space-y-2">

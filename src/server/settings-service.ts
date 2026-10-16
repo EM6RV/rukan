@@ -32,7 +32,7 @@ export async function saveGeneralSettings(db: Db, storeId: string, input: unknow
   const parsed = generalSchema.safeParse(input);
   if (!parsed.success) return fail(firstError(parsed.error));
   const d = parsed.data;
-  if (!limits.allTemplates && d.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «نمو» وما فوق. رقّي باقتك لتستعمله.");
+  if (!limits.allTemplates && d.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «سنوية» وما فوق. رقّي باقتك لتستعمله.");
   if (!(await validateOwnMedia(db, storeId, d.logoMediaId))) return fail("ما قدرنا نقرا اللوجو. ارفع صورة JPG أو PNG أو WebP.");
 
   await db.update(stores).set({ name: d.name, businessType: d.businessType, template: d.template, logoMediaId: d.logoMediaId }).where(eq(stores.id, storeId));
@@ -126,7 +126,7 @@ export async function saveSeoSettings(db: Db, storeId: string, input: unknown): 
   return ok(undefined);
 }
 
-// ===== Pixels (باقة احترافي) =====
+// ===== Pixels (باقة سنوية برو) =====
 
 const pixelField = (label: string) =>
   z.string().trim().nullish().transform((v, ctx) => {
@@ -139,7 +139,7 @@ const pixelField = (label: string) =>
 const pixelSchema = z.object({ metaPixelId: pixelField("Meta Pixel"), tiktokPixelId: pixelField("TikTok Pixel") });
 
 export async function savePixelSettings(db: Db, storeId: string, input: unknown, limits: Pick<PlanLimits, "pixels">): Promise<Result> {
-  if (!limits.pixels) return fail("Pixels متاحة في الباقة الاحترافية.");
+  if (!limits.pixels) return fail("Pixels متاحة في باقة «سنوية برو».");
   const parsed = pixelSchema.safeParse(input);
   if (!parsed.success) return fail(firstError(parsed.error));
   await forStore(db, storeId).update(t.storeSettings, parsed.data);
@@ -161,7 +161,7 @@ export async function saveDesignSettings(db: Db, storeId: string, input: unknown
   if (!parsed.success) return fail(firstError(parsed.error));
   const d = parsed.data;
   if (!isStoreFont(d.fontKey)) return fail("اختار خط من القائمة");
-  if (!limits.allTemplates && d.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «نمو» وما فوق. رقّي باقتك لتستعمله.");
+  if (!limits.allTemplates && d.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «سنوية» وما فوق. رقّي باقتك لتستعمله.");
   if (!(await validateOwnMedia(db, storeId, d.logoMediaId))) return fail("ما قدرنا نقرا اللوجو. ارفع صورة JPG أو PNG أو WebP.");
   await db.update(stores).set({ template: d.template, logoMediaId: d.logoMediaId }).where(eq(stores.id, storeId));
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: d.primaryColor, accentColor: d.accentColor, fontKey: d.fontKey });

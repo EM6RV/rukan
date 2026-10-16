@@ -13,7 +13,7 @@ export type CouponRow = {
   startsAt: number | null; expiresAt: number | null; isActive: boolean; state: CouponState; createdAt: number;
 };
 
-const NO_PLAN = "الكوبونات متاحة في باقة «نمو» وما فوق.";
+const NO_PLAN = "الكوبونات متاحة في باقة «سنوية» وما فوق.";
 
 export function couponState(c: { isActive: boolean; startsAt: Date | null; expiresAt: Date | null; maxUses: number | null; usedCount: number }, now = Date.now()): CouponState {
   if (!c.isActive) return "disabled";

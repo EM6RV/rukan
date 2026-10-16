@@ -50,7 +50,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     return (
       <div className="space-y-5">
         <h1 className="text-2xl">التقارير</h1>
-        <Card className="border-gold"><CardBody className="flex items-start gap-3"><Lock className="mt-0.5 size-5 shrink-0" aria-hidden /><div><p className="font-semibold">التقارير متاحة من باقة «نمو»</p><p className="text-sm text-muted">تقارير المبيعات وأكثر المنتجات مبيعاً والمرتجعات والأرباح مع تصدير Excel.</p></div></CardBody></Card>
+        <Card className="border-gold"><CardBody className="flex items-start gap-3"><Lock className="mt-0.5 size-5 shrink-0" aria-hidden /><div><p className="font-semibold">التقارير متاحة من باقة «سنوية»</p><p className="text-sm text-muted">تقارير المبيعات وأكثر المنتجات مبيعاً والمرتجعات والأرباح مع تصدير Excel.</p></div></CardBody></Card>
       </div>
     );
   }

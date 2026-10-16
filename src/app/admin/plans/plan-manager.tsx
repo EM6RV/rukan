@@ -6,14 +6,15 @@ import { errorClass, useAct } from "@/components/dashboard/use-act";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input, Textarea } from "@/components/ui/field";
+import { Input, Select, Textarea } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { Toggle } from "@/components/ui/toggle";
+import { approxMonthly, periodUnit, type BillingPeriod } from "@/lib/billing";
 import { dirhamToInput, formatMoney, inputToDirham } from "@/lib/money";
 import type { PlanLimits } from "@/db/schema/platform";
 import { savePlanAction } from "../actions";
 
-type Plan = { id: string; slug: string; nameAr: string; descriptionAr: string | null; priceMonthly: number; priceYearly: number; sortOrder: number; isActive: boolean; limits: PlanLimits };
+type Plan = { id: string; slug: string; nameAr: string; descriptionAr: string | null; billingPeriod: BillingPeriod; price: number; isFeatured: boolean; sortOrder: number; isActive: boolean; limits: PlanLimits };
 
 const FLAGS: { key: keyof Omit<PlanLimits, "maxProducts" | "maxStaff">; label: string }[] = [
   { key: "allTemplates", label: "كل القوالب" }, { key: "coupons", label: "الكوبونات" }, { key: "reports", label: "التقارير" },
@@ -24,7 +25,7 @@ const limitText = (n: number | null, unit: string) => (n === null ? `${unit} غ�
 function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void }) {
   const [v, setV] = useState({
     slug: initial?.slug ?? "", nameAr: initial?.nameAr ?? "", descriptionAr: initial?.descriptionAr ?? "",
-    priceMonthly: dirhamToInput(initial?.priceMonthly ?? 0) || "0", priceYearly: dirhamToInput(initial?.priceYearly ?? 0) || "0", sortOrder: String(initial?.sortOrder ?? 0), isActive: initial?.isActive ?? true,
+    billingPeriod: (initial?.billingPeriod ?? "monthly") as BillingPeriod, price: dirhamToInput(initial?.price ?? 0) || "0", isFeatured: initial?.isFeatured ?? false, sortOrder: String(initial?.sortOrder ?? 0), isActive: initial?.isActive ?? true,
     maxProducts: initial?.limits.maxProducts === null ? "" : String(initial?.limits.maxProducts ?? 50), maxStaff: initial?.limits.maxStaff === null ? "" : String(initial?.limits.maxStaff ?? 1),
     flags: { allTemplates: initial?.limits.allTemplates ?? false, coupons: initial?.limits.coupons ?? false, reports: initial?.limits.reports ?? false, pixels: initial?.limits.pixels ?? false, customDomain: initial?.limits.customDomain ?? false, removeBranding: initial?.limits.removeBranding ?? false },
   });
@@ -33,10 +34,10 @@ function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void })
 
   function submit() {
     setLocalError(null);
-    const priceMonthly = inputToDirham(v.priceMonthly), priceYearly = inputToDirham(v.priceYearly);
-    if (priceMonthly == null || priceYearly == null) return setLocalError("اكتب الأسعار بالدينار (أرقام)");
+    const price = inputToDirham(v.price);
+    if (price == null) return setLocalError("اكتب السعر بالدينار (أرقام)");
     const num = (s: string) => (s.trim() === "" ? null : Number(s));
-    act(() => savePlanAction({ id: initial?.id, slug: initial ? undefined : v.slug, nameAr: v.nameAr, descriptionAr: v.descriptionAr, priceMonthly, priceYearly, sortOrder: Number(v.sortOrder) || 0, isActive: v.isActive, limits: { maxProducts: num(v.maxProducts), maxStaff: num(v.maxStaff), ...v.flags } }), "تم حفظ الباقة", onClose);
+    act(() => savePlanAction({ id: initial?.id, slug: initial ? undefined : v.slug, nameAr: v.nameAr, descriptionAr: v.descriptionAr, billingPeriod: v.billingPeriod, price, isFeatured: v.isFeatured, sortOrder: Number(v.sortOrder) || 0, isActive: v.isActive, limits: { maxProducts: num(v.maxProducts), maxStaff: num(v.maxStaff), ...v.flags } }), "تم حفظ الباقة", onClose);
   }
 
   return (
@@ -49,8 +50,8 @@ function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void })
         </div>
         <Textarea label="وصف قصير" rows={2} maxLength={160} value={v.descriptionAr} onChange={(e) => setV({ ...v, descriptionAr: e.target.value })} />
         <div className="grid grid-cols-3 gap-3">
-          <Input label="شهري (د.ل)" inputMode="decimal" value={v.priceMonthly} onChange={(e) => setV({ ...v, priceMonthly: e.target.value })} />
-          <Input label="سنوي (د.ل)" inputMode="decimal" value={v.priceYearly} onChange={(e) => setV({ ...v, priceYearly: e.target.value })} />
+          <Select label="المدة" value={v.billingPeriod} onChange={(e) => setV({ ...v, billingPeriod: e.target.value as BillingPeriod })}><option value="monthly">شهرية</option><option value="yearly">سنوية</option></Select>
+          <Input label={`السعر (د.ل / ${periodUnit(v.billingPeriod)})`} inputMode="decimal" value={v.price} onChange={(e) => setV({ ...v, price: e.target.value })} />
           <Input label="الترتيب" inputMode="numeric" value={v.sortOrder} onChange={(e) => setV({ ...v, sortOrder: e.target.value })} />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -61,6 +62,7 @@ function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void })
           {FLAGS.map((f) => <Toggle key={f.key} label={f.label} checked={v.flags[f.key]} onChange={(c) => setV({ ...v, flags: { ...v.flags, [f.key]: c } })} />)}
         </fieldset>
         <Toggle label="فعّالة (تظهر في الأسعار)" checked={v.isActive} onChange={(isActive) => setV({ ...v, isActive })} />
+        <Toggle label="الباقة المميزة (شارة «الأكثر طلباً» في صفحة الأسعار)" checked={v.isFeatured} onChange={(isFeatured) => setV({ ...v, isFeatured })} />
         {(localError ?? error) && <p role="alert" className={errorClass}>{localError ?? error}</p>}
       </div>
     </Modal>
@@ -76,10 +78,10 @@ export function PlanManager({ plans }: { plans: Plan[] }) {
         {plans.map((p) => (
           <li key={p.id}>
             <Card className="h-full space-y-3 p-5">
-              <div className="flex items-start justify-between gap-2"><div><h2 className="text-lg">{p.nameAr}</h2><p dir="ltr" className="text-start text-xs text-muted">{p.slug}</p></div>{!p.isActive && <Badge>موقوفة</Badge>}</div>
+              <div className="flex items-start justify-between gap-2"><div><h2 className="text-lg">{p.nameAr}</h2><p dir="ltr" className="text-start text-xs text-muted">{p.slug}</p></div><div className="flex gap-1.5">{p.isFeatured && <Badge tone="gold">مميزة</Badge>}{!p.isActive && <Badge>موقوفة</Badge>}</div></div>
               {p.descriptionAr && <p className="text-sm text-muted">{p.descriptionAr}</p>}
-              <p className="text-2xl font-bold">{formatMoney(p.priceMonthly)} <span className="text-sm font-normal text-muted">/ شهر</span></p>
-              <p className="text-sm text-muted">{formatMoney(p.priceYearly)} / سنة</p>
+              <p className="text-2xl font-bold">{formatMoney(p.price)} <span className="text-sm font-normal text-muted">/ {periodUnit(p.billingPeriod)}</span></p>
+              {approxMonthly(p.price, p.billingPeriod) ? <p className="text-sm text-muted">يعني تقريباً {formatMoney(approxMonthly(p.price, p.billingPeriod)!)} في الشهر</p> : null}
               <ul className="space-y-1.5 text-sm">
                 <li>{limitText(p.limits.maxProducts, "منتج")}</li><li>{limitText(p.limits.maxStaff, "موظف")}</li>
                 {FLAGS.map((f) => <li key={f.key} className={`flex items-center gap-1.5 ${p.limits[f.key] ? "" : "text-muted"}`}>{p.limits[f.key] ? <Check className="size-4 text-success-fg" aria-hidden /> : <X className="size-4" aria-hidden />}{f.label}</li>)}

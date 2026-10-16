@@ -71,8 +71,9 @@ export const plans = sqliteTable("plans", {
   slug: text("slug").notNull().unique(),
   nameAr: text("name_ar").notNull(),
   descriptionAr: text("description_ar"),
-  priceMonthly: integer("price_monthly").notNull(), // بالدرهم (1 د.ل = 1000)
-  priceYearly: integer("price_yearly").notNull(),
+  billingPeriod: text("billing_period").$type<BillingCycle>().notNull().default("monthly"), // مدة الباقة: شهرية أو سنوية
+  price: integer("price").notNull().default(0), // سعر المدة كاملة، بالدرهم (1 د.ل = 1000)
+  isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false), // الباقة المميزة في صفحة الأسعار
   limits: text("limits", { mode: "json" }).$type<PlanLimits>().notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),

@@ -57,7 +57,7 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
           <CardHeader title="معلومات" />
           <dl className="divide-y divide-line text-sm">
             {([
-              ["المالك", `${d.ownerName}`], ["الهاتف", d.ownerPhone], ["الباقة", d.plan ? `${d.plan.nameAr} (${store.billingCycle === "yearly" ? "سنوي" : "شهري"})` : "بدون باقة"],
+              ["المالك", `${d.ownerName}`], ["الهاتف", d.ownerPhone], ["الباقة", d.plan ? `${d.plan.nameAr} (${d.plan.billingPeriod === "yearly" ? "سنوية" : "شهرية"})` : "بدون باقة"],
               [store.status === "trial" ? "تنتهي التجربة" : "ينتهي الاشتراك", end ? `${formatDate(end)}${access.daysLeft !== null ? ` · ${access.daysLeft > 0 ? `باقي ${access.daysLeft} يوم` : "منتهي"}` : ""}` : "—"],
               ["القالب", store.template], ["تاريخ التسجيل", formatDateTimeYear(store.createdAt)],
               ["المنتجات", String(d.counts.products)], ["الطلبيات", String(d.counts.orders)], ["الزبائن", String(d.counts.customers)],
@@ -65,8 +65,8 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
           </dl>
         </Card>
         <StoreActions
-          storeId={store.id} suspended={store.status === "suspended"} currentPlanId={store.planId} currentCycle={store.billingCycle} state={access.state}
-          plans={plans.filter((p) => p.isActive || p.id === store.planId).map((p) => ({ id: p.id, name: p.nameAr, priceMonthly: p.priceMonthly, priceYearly: p.priceYearly }))}
+          storeId={store.id} suspended={store.status === "suspended"} currentPlanId={store.planId} state={access.state}
+          plans={plans.filter((p) => p.isActive || p.id === store.planId).map((p) => ({ id: p.id, name: p.nameAr, billingPeriod: p.billingPeriod, price: p.price }))}
         />
       </div>
 

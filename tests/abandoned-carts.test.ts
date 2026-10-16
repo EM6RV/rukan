@@ -20,7 +20,7 @@ const NOW = Date.UTC(2026, 5, 1, 12, 0, 0);
 
 type Shop = { id: string; scope: ReturnType<typeof forStore>; variantId: string; price: number };
 async function shop(slug: string): Promise<Shop> {
-  const [plan] = await db.insert(plans).values({ slug: `p-${slug}`, nameAr: "x", priceMonthly: 1, priceYearly: 1, limits: LIMITS }).returning();
+  const [plan] = await db.insert(plans).values({ slug: `p-${slug}`, nameAr: "x", price: 1, limits: LIMITS }).returning();
   const [u] = await db.insert(users).values({ phone: `0917${String(++n).padStart(6, "0")}`, name: "u", passwordHash: "x" }).returning();
   const r = await createStoreForUser(db, { userId: u!.id, name: slug, slug });
   if (!r.ok) throw new Error(r.error);

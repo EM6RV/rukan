@@ -11,7 +11,7 @@ const text = (body: string, status: number) => new Response(body, { status, head
 export async function GET(request: Request) {
   const auth = await actionContext("reports");
   if (!auth.ok) return text(auth.error, 403);
-  if (!auth.ctx.limits.reports) return text("التقارير متاحة في باقة «نمو» وما فوق.", 403);
+  if (!auth.ctx.limits.reports) return text("التقارير متاحة في باقة «سنوية» وما فوق.", 403);
   const sp = new URL(request.url).searchParams;
   const range = parseRange(sp.get("from") ?? undefined, sp.get("to") ?? undefined);
   if (!range) return text("الفترة غير صحيحة (الحد الأقصى سنة).", 400);

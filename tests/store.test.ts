@@ -26,21 +26,21 @@ const newUser = async () =>
 
 beforeAll(async () => {
   ({ db, close } = await makeTestDb());
-  await db.insert(plans).values({ slug: "growth", nameAr: "نمو", priceMonthly: 1, priceYearly: 1, limits: ALL });
+  await db.insert(plans).values({ slug: "yearly", nameAr: "سنوية", price: 1, limits: ALL });
   await db.insert(cities).values([{ nameAr: "طرابلس", region: "west" }, { nameAr: "بنغازي", region: "east" }, { nameAr: "سبها", region: "south" }]);
 });
 afterAll(() => close());
 
 describe("إنشاء المتجر", () => {
-  it("ينشئ المتجر بمحتوى افتراضي كامل وتجربة 14 يوم وباقة نمو", async () => {
+  it("ينشئ المتجر بمحتوى افتراضي كامل وتجربة 3 أيام وباقة التجربة (سنوية)", async () => {
     const u = await newUser();
     const r = await createStoreForUser(db, { userId: u.id, name: "عطور سارة", slug: "sara-perfume" });
     if (!r.ok) throw new Error(r.error);
     const store = (await db.select().from(stores).where(eq(stores.id, r.data.storeId)).get())!;
     expect(store).toMatchObject({ slug: "sara-perfume", status: "trial", onboardingStep: 2, onboardedAt: null, nextOrderNumber: 1001 });
     const days = (store.trialEndsAt!.getTime() - Date.now()) / 86_400_000;
-    expect(days).toBeGreaterThan(13.9);
-    expect(days).toBeLessThanOrEqual(14);
+    expect(days).toBeGreaterThan(2.9);
+    expect(days).toBeLessThanOrEqual(3);
     expect(store.planId).not.toBeNull();
 
     const member = await db.select().from(storeMembers).where(eq(storeMembers.storeId, store.id)).get();
@@ -141,10 +141,10 @@ describe("خطوات المعالج", () => {
     expect(await forStore(db, id).count(t.deliveryRates)).toBe(3);
   });
 
-  it("باقة بداية: قالب «جريء» ممنوع، والاقتراح يرجع للبسيط", async () => {
+  it("باقة اقتصادية: قالب «جريء» ممنوع، والاقتراح يرجع للبسيط", async () => {
     const id = await fresh("starter-store");
     expect(await saveBusinessType(db, id, "clothing", STARTER)).toMatchObject({ ok: true, data: { template: "simple" } });
-    expect(await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("نمو") });
+    expect(await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("سنوية") });
     expect((await saveIdentity(db, id, { template: "simple", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).ok).toBe(true);
   });
 

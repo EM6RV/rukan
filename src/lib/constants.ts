@@ -65,5 +65,7 @@ export const LIBYA_REGIONS = ["west", "east", "south", "center"] as const;
 export type LibyaRegion = (typeof LIBYA_REGIONS)[number];
 export const REGION_LABELS: Record<LibyaRegion, string> = { west: "الغرب", east: "الشرق", south: "الجنوب", center: "الوسط" };
 
-export const DEFAULT_TRIAL_DAYS = 14;
+export const DEFAULT_TRIAL_DAYS = 3;
+/** باقة التجربة الافتراضية (slug) لو الأدمن ما حدد غيرها */
+export const DEFAULT_TRIAL_PLAN_SLUG = "yearly";
 export const SESSION_DAYS = 30;

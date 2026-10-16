@@ -2,7 +2,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/db";
 import { auditLogs, plans, platformSettings, stores, users } from "@/db/schema/platform";
-import { DEFAULT_TRIAL_DAYS } from "@/lib/constants";
+import { DEFAULT_TRIAL_DAYS, DEFAULT_TRIAL_PLAN_SLUG } from "@/lib/constants";
 import { normalizeLibyanPhone } from "@/lib/phone";
 import { firstError } from "@/lib/validation";
 import { writeAudit } from "../audit";
@@ -14,7 +14,7 @@ export type PlatformConfig = { trialDays: number; trialPlanSlug: string; support
 export async function getPlatformConfig(db: Db): Promise<PlatformConfig> {
   const [trialDays, trialPlanSlug, supportWhatsapp] = await Promise.all([
     getPlatformSetting<number>(db, "trial_days", DEFAULT_TRIAL_DAYS),
-    getPlatformSetting<string>(db, "trial_plan_slug", "growth"),
+    getPlatformSetting<string>(db, "trial_plan_slug", DEFAULT_TRIAL_PLAN_SLUG),
     getPlatformSetting<string>(db, "support_whatsapp", ""),
   ]);
   return { trialDays, trialPlanSlug, supportWhatsapp: supportWhatsapp || null };

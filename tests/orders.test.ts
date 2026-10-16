@@ -24,7 +24,7 @@ let tripoli: string, benghazi: string, sebha: string;
 type Shop = { id: string; scope: StoreScope; slug: string };
 
 async function makeShop(slug: string, opts: { planLimits?: PlanLimits; freeOver?: number | null; bank?: boolean } = {}): Promise<Shop> {
-  const [plan] = await db.insert(plans).values({ slug: `plan-${slug}`, nameAr: "x", priceMonthly: 1, priceYearly: 1, limits: opts.planLimits ?? GROWTH }).returning();
+  const [plan] = await db.insert(plans).values({ slug: `plan-${slug}`, nameAr: "x", price: 1, limits: opts.planLimits ?? GROWTH }).returning();
   const [u] = await db.insert(users).values({ phone: `0913${String(++n).padStart(6, "0")}`, name: "u", passwordHash: "x" }).returning();
   const r = await createStoreForUser(db, { userId: u!.id, name: slug, slug });
   if (!r.ok) throw new Error(r.error);

@@ -136,7 +136,7 @@ describe("التصميم", () => {
     expect((await s.scope.from(t.storeSettings))[0]).toMatchObject({ primaryColor: "#112233", accentColor: "#aabbcc", fontKey: "cairo" });
     expect((await db.select().from(stores).where(eq(stores.id, s.id)))[0]).toMatchObject({ template: "bold", logoMediaId: logo });
 
-    expect(await saveDesignSettings(db, s.id, { ...good, template: "elegant" }, { ...ALL, allTemplates: false })).toEqual({ ok: false, error: expect.stringContaining("نمو") });
+    expect(await saveDesignSettings(db, s.id, { ...good, template: "elegant" }, { ...ALL, allTemplates: false })).toEqual({ ok: false, error: expect.stringContaining("سنوية") });
     expect((await saveDesignSettings(db, s.id, { ...good, template: "simple" }, { ...ALL, allTemplates: false })).ok).toBe(true);
     expect((await saveDesignSettings(db, s.id, { ...good, fontKey: "comic-sans" }, ALL)).ok).toBe(false);
     expect((await saveDesignSettings(db, s.id, { ...good, primaryColor: "red" }, ALL)).ok).toBe(false);

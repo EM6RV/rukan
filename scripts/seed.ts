@@ -11,21 +11,21 @@ import { normalizeLibyanPhone } from "../src/lib/phone";
 const env = getEnv();
 const { db, client } = createDb(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
 
-// الباقات (الأسعار بالدرهم: 49 د.ل = 49000)
+// الباقات: ثلاث باقات، لكل وحدة مدة وحدة (شهرية أو سنوية) وسعر واحد (بالدرهم: 100 د.ل = 100000)
 const PLANS = [
   {
-    slug: "starter", nameAr: "بداية", priceMonthly: 49_000, priceYearly: 490_000, sortOrder: 1,
-    descriptionAr: "للبداية: متجر بسيط برابط rukn.ly",
+    slug: "economy", nameAr: "اقتصادية", billingPeriod: "monthly" as const, price: 100_000, sortOrder: 1,
+    descriptionAr: "للبداية: متجر بسيط بسعر شهري",
     limits: { maxProducts: 50, maxStaff: 1, allTemplates: false, coupons: false, reports: false, customDomain: false, pixels: false, removeBranding: false },
   },
   {
-    slug: "growth", nameAr: "نمو", priceMonthly: 99_000, priceYearly: 990_000, sortOrder: 2,
+    slug: "yearly", nameAr: "سنوية", billingPeriod: "yearly" as const, price: 500_000, sortOrder: 2,
     descriptionAr: "كل القوالب والكوبونات والتقارير",
     limits: { maxProducts: 500, maxStaff: 3, allTemplates: true, coupons: true, reports: true, customDomain: false, pixels: false, removeBranding: false },
   },
   {
-    slug: "pro", nameAr: "احترافي", priceMonthly: 199_000, priceYearly: 1_990_000, sortOrder: 3,
-    descriptionAr: "غير محدود، دومين خاص وPixels وبدون شعار رُكن",
+    slug: "yearly-pro", nameAr: "سنوية برو", billingPeriod: "yearly" as const, price: 800_000, sortOrder: 3, isFeatured: true,
+    descriptionAr: "كل شي غير محدود، دومين خاص وPixels وبدون شعار رُكن",
     limits: { maxProducts: null, maxStaff: null, allTemplates: true, coupons: true, reports: true, customDomain: true, pixels: true, removeBranding: true },
   },
 ];
@@ -65,7 +65,7 @@ if (process.env.SEED_DEMO === "1") {
     [demoUser] = await db.insert(users).values({ phone: demoPhone, name: "بياع تجريبي", passwordHash: await hashPassword("demo-password-123") }).returning();
   }
   if (!(await db.select({ id: stores.id }).from(stores).where(eq(stores.slug, "demo")).get())) {
-    const growth = await db.select().from(plans).where(eq(plans.slug, "growth")).get();
+    const growth = await db.select().from(plans).where(eq(plans.slug, "yearly")).get();
     const [store] = await db.insert(stores).values({
       slug: "demo", name: "متجر تجريبي", ownerUserId: demoUser!.id, planId: growth?.id, template: "elegant",
       trialEndsAt: new Date(Date.now() + DEFAULT_TRIAL_DAYS * 86_400_000),

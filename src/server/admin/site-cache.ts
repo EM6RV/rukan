@@ -15,7 +15,7 @@ const cachedMarketingData = unstable_cache(
     const [content, plans, config] = await Promise.all([getSiteContent(db), listPlans(db), getPlatformConfig(db)]);
     return {
       content,
-      plans: plans.filter((p) => p.isActive).map((p) => ({ id: p.id, slug: p.slug, name: p.nameAr, description: p.descriptionAr, priceMonthly: p.priceMonthly, priceYearly: p.priceYearly, limits: p.limits })),
+      plans: plans.filter((p) => p.isActive).map((p) => ({ id: p.id, slug: p.slug, name: p.nameAr, description: p.descriptionAr, billingPeriod: p.billingPeriod, price: p.price, isFeatured: p.isFeatured, limits: p.limits })),
       trialDays: config.trialDays,
       supportWhatsapp: config.supportWhatsapp,
     };

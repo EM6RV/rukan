@@ -18,7 +18,7 @@ export async function getPlatformStats(db: Db, now = Date.now()) {
     const a = computeStoreAccess(r.s, now);
     byState[a.state]++;
     if (a.state === "active" && r.plan) {
-      mrr += r.s.billingCycle === "yearly" ? Math.round(r.plan.priceYearly / 12) : r.plan.priceMonthly;
+      mrr += r.plan.billingPeriod === "yearly" ? Math.round(r.plan.price / 12) : r.plan.price;
       const p = byPlan.get(r.plan.id) ?? { name: r.plan.nameAr, count: 0 };
       p.count++; byPlan.set(r.plan.id, p);
     }

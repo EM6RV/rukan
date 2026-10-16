@@ -30,3 +30,15 @@ export function upgradeRequestMessage(o: { storeName: string; slug: string; plan
 }
 
 export const daysBetween = (from: number, to: number) => Math.ceil((to - from) / DAY);
+
+export type BillingPeriod = "monthly" | "yearly";
+
+/** "شهر" أو "سنة" لعرض السعر: «100 د.ل / شهر» */
+export const periodUnit = (period: BillingPeriod) => (period === "yearly" ? "سنة" : "شهر");
+/** "شهرية" أو "سنوية" */
+export const periodLabel = (period: BillingPeriod) => (period === "yearly" ? "سنوية" : "شهرية");
+
+/** سعر الشهر التقريبي للباقة السنوية بالدرهم، مقرّب لأقرب دينار صحيح (500 د.ل ≈ 42 د.ل). الشهرية ترجع null. */
+export function approxMonthly(price: number, period: BillingPeriod): number | null {
+  return period === "yearly" ? Math.round(price / 12 / 1000) * 1000 : null;
+}

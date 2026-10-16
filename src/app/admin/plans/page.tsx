@@ -10,8 +10,8 @@ export default async function AdminPlans() {
   const plans = await listPlans(db);
   return (
     <>
-      <div><h1 className="text-2xl">الباقات</h1><p className="text-muted">الأسعار والحدود. التعديل يتطبق فوراً على كل المتاجر المشتركة في الباقة.</p></div>
-      <PlanManager plans={plans.map((p) => ({ id: p.id, slug: p.slug, nameAr: p.nameAr, descriptionAr: p.descriptionAr, priceMonthly: p.priceMonthly, priceYearly: p.priceYearly, sortOrder: p.sortOrder, isActive: p.isActive, limits: p.limits }))} />
+      <div><h1 className="text-2xl">الباقات</h1><p className="text-muted">الاسم والمدة والسعر والحدود والمميزات. التعديل يتطبق فوراً على كل المتاجر المشتركة في الباقة.</p></div>
+      <PlanManager plans={plans.map((p) => ({ id: p.id, slug: p.slug, nameAr: p.nameAr, descriptionAr: p.descriptionAr, billingPeriod: p.billingPeriod, price: p.price, isFeatured: p.isFeatured, sortOrder: p.sortOrder, isActive: p.isActive, limits: p.limits }))} />
     </>
   );
 }

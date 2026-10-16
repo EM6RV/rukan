@@ -3,7 +3,6 @@ import { z } from "zod";
 import { writeTransaction, type Db } from "@/db";
 import { media, plans, stores, subscriptionPayments, users } from "@/db/schema/platform";
 import { addMonths, cycleMonths } from "@/lib/billing";
-import { BILLING_CYCLES } from "@/lib/constants";
 import { firstError } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { fail, ok, type Result } from "../catalog/result";
@@ -18,7 +17,6 @@ export type TouchedStore = { id: string; slug: string };
 const paymentSchema = z.object({
   storeId: z.string().min(1),
   planId: z.string().min(1, "اختار الباقة"),
-  billingCycle: z.enum(BILLING_CYCLES, { error: "اختار دورة الدفع" }),
   amount: z.number({ error: "اكتب المبلغ" }).int("المبلغ لازم يكون رقم صحيح بالدرهم").min(1, "المبلغ لازم يكون أكبر من صفر").max(1_000_000_000),
   method: z.enum(["cash", "bank_transfer", "other"], { error: "اختار طريقة الدفع" }),
   receiptMediaId: z.string().min(1).nullish().transform((v) => v ?? null),
@@ -26,7 +24,7 @@ const paymentSchema = z.object({
 });
 
 /**
- * تسجيل دفعة اشتراك يدوية (كاش/تحويل): يفعّل الاشتراك ويمدّد الفترة تلقائياً.
+ * تسجيل دفعة اشتراك يدوية (كاش/تحويل): يفعّل الاشتراك ويمدّد الفترة تلقائياً بمدة الباقة (شهر أو سنة).
  * لو الاشتراك لسا ساري تبدا الفترة من نهايته (ما يضيعش اللي دفعه)، وإلا من الحين.
  */
 export async function recordPayment(db: Db, input: unknown, actor: Actor, now = Date.now()): Promise<Result<{ store: TouchedStore; periodEnd: number }>> {
@@ -48,19 +46,19 @@ export async function recordPayment(db: Db, input: unknown, actor: Actor, now = 
     const cur = await t.select().from(stores).where(eq(stores.id, store.id)).get();
     const stillRunning = cur?.currentPeriodEnd && cur.currentPeriodEnd.getTime() > now && cur.status !== "trial";
     const periodStart = stillRunning ? cur!.currentPeriodEnd!.getTime() : now;
-    const periodEnd = addMonths(periodStart, cycleMonths(d.billingCycle));
+    const periodEnd = addMonths(periodStart, cycleMonths(plan.billingPeriod));
     await t.insert(subscriptionPayments).values({
-      storeId: store.id, planId: d.planId, billingCycle: d.billingCycle, amount: d.amount, method: d.method, receiptMediaId: d.receiptMediaId,
+      storeId: store.id, planId: d.planId, billingCycle: plan.billingPeriod, amount: d.amount, method: d.method, receiptMediaId: d.receiptMediaId,
       periodStart: new Date(periodStart), periodEnd: new Date(periodEnd), note: d.note, recordedBy: actor.id,
     });
     await t.update(stores).set({
-      planId: d.planId, billingCycle: d.billingCycle, currentPeriodEnd: new Date(periodEnd),
+      planId: d.planId, billingCycle: plan.billingPeriod, currentPeriodEnd: new Date(periodEnd),
       // المتجر الموقوف يبقى موقوف (الأدمن يفعّله بنفسه)، والباقي يصير نشط
       status: cur?.status === "suspended" ? "suspended" : "active",
     }).where(eq(stores.id, store.id));
     return periodEnd;
   });
-  await writeAudit(db, { actorUserId: actor.id, storeId: store.id, action: "subscription.payment", entityType: "store", entityId: store.id, meta: { plan: plan.slug, cycle: d.billingCycle, amount: d.amount, method: d.method, periodEnd: result } });
+  await writeAudit(db, { actorUserId: actor.id, storeId: store.id, action: "subscription.payment", entityType: "store", entityId: store.id, meta: { plan: plan.slug, cycle: plan.billingPeriod, amount: d.amount, method: d.method, periodEnd: result } });
   return ok({ store: { id: store.id, slug: store.slug }, periodEnd: result });
 }
 

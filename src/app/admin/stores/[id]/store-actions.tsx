@@ -8,15 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Input, Select, Textarea } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
+import { periodLabel, type BillingPeriod } from "@/lib/billing";
 import { dirhamToInput, inputToDirham } from "@/lib/money";
 import { changePlanAction, extendTrialAction, recordPaymentAction, setSuspendedAction } from "../../actions";
 
-type PlanOpt = { id: string; name: string; priceMonthly: number; priceYearly: number };
-type Props = { storeId: string; suspended: boolean; currentPlanId: string | null; currentCycle: "monthly" | "yearly"; state: "trial" | "active" | "expired" | "suspended"; plans: PlanOpt[] };
+type PlanOpt = { id: string; name: string; billingPeriod: BillingPeriod; price: number };
+type Props = { storeId: string; suspended: boolean; currentPlanId: string | null; state: "trial" | "active" | "expired" | "suspended"; plans: PlanOpt[] };
 
-export function StoreActions({ storeId, suspended, currentPlanId, currentCycle, state, plans }: Props) {
+export function StoreActions({ storeId, suspended, currentPlanId, state, plans }: Props) {
   const defaultPlan = plans.find((p) => p.id === currentPlanId) ?? plans[0];
-  const [pay, setPay] = useState({ planId: defaultPlan?.id ?? "", cycle: currentCycle, amount: dirhamToInput(currentCycle === "yearly" ? defaultPlan?.priceYearly : defaultPlan?.priceMonthly), method: "cash", note: "" });
+  const [pay, setPay] = useState({ planId: defaultPlan?.id ?? "", amount: dirhamToInput(defaultPlan?.price), method: "cash", note: "" });
   const [receipt, setReceipt] = useState<{ id: string; url: string } | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [days, setDays] = useState("7");
@@ -28,23 +29,24 @@ export function StoreActions({ storeId, suspended, currentPlanId, currentCycle, 
   const planAct = useAct();
   const susAct = useAct();
 
-  const price = (planIdx: string, cycle: string) => { const p = plans.find((x) => x.id === planIdx); return dirhamToInput(cycle === "yearly" ? p?.priceYearly : p?.priceMonthly); };
+  const selected = plans.find((x) => x.id === pay.planId);
+  const price = (planIdx: string) => dirhamToInput(plans.find((x) => x.id === planIdx)?.price);
 
   function submitPay() {
     setLocalError(null);
     const amount = inputToDirham(pay.amount);
     if (amount === undefined || amount === null || amount <= 0) return setLocalError("اكتب مبلغ صحيح أكبر من صفر");
-    payAct.act(() => recordPaymentAction({ storeId, planId: pay.planId, billingCycle: pay.cycle, amount, method: pay.method, receiptMediaId: receipt?.id ?? null, note: pay.note }), "تم تسجيل الدفعة وتفعيل الاشتراك", () => { setReceipt(null); setPay((p) => ({ ...p, note: "" })); });
+    payAct.act(() => recordPaymentAction({ storeId, planId: pay.planId, amount, method: pay.method, receiptMediaId: receipt?.id ?? null, note: pay.note }), "تم تسجيل الدفعة وتفعيل الاشتراك", () => { setReceipt(null); setPay((p) => ({ ...p, note: "" })); });
   }
 
   return (
     <div className="space-y-4">
       <Card id="payment">
-        <CardHeader title="تسجيل دفعة" description="يفعّل الاشتراك ويمدد الفترة تلقائياً (من نهاية الاشتراك الحالي لو لسا ساري)." />
+        <CardHeader title="تسجيل دفعة" description="يفعّل الاشتراك ويمدد الفترة تلقائياً بمدة الباقة، من نهاية الاشتراك الحالي لو لسا ساري." />
         <CardBody className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <Select label="الباقة" value={pay.planId} onChange={(e) => setPay({ ...pay, planId: e.target.value, amount: price(e.target.value, pay.cycle) })}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
-            <Select label="الدورة" value={pay.cycle} onChange={(e) => setPay({ ...pay, cycle: e.target.value as "monthly" | "yearly", amount: price(pay.planId, e.target.value) })}><option value="monthly">شهري</option><option value="yearly">سنوي</option></Select>
+            <Select label="الباقة" value={pay.planId} onChange={(e) => setPay({ ...pay, planId: e.target.value, amount: price(e.target.value) })}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
+            <Input label="مدة الباقة" value={selected ? periodLabel(selected.billingPeriod) : "—"} readOnly hint="تتحدد من الباقة" />
             <Input label="المبلغ (د.ل)" inputMode="decimal" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
             <Select label="طريقة الدفع" value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value })}><option value="cash">كاش</option><option value="bank_transfer">تحويل مصرفي</option><option value="other">أخرى</option></Select>
           </div>
