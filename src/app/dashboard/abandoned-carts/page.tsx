@@ -5,6 +5,7 @@ import { getEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
 import { toWhatsappNumber } from "@/lib/phone";
 import { storeUrl } from "@/lib/store-url";
+import { currentRequest } from "@/server/request-origin";
 import { renderWhatsapp } from "@/lib/whatsapp-defaults";
 import { waLink } from "@/lib/whatsapp";
 import { listAbandonedCarts } from "@/server/marketing/abandoned-carts";
@@ -18,7 +19,8 @@ export const dynamic = "force-dynamic";
 export default async function AbandonedCartsPage() {
   const ctx = await requireStoreContext("customers");
   const [carts, templates] = await Promise.all([listAbandonedCarts(ctx.scope), getWhatsappTemplates(ctx.scope)]);
-  const link = `${storeUrl(ctx.store.slug, getEnv())}/cart`;
+  const req = await currentRequest();
+  const link = `${storeUrl(ctx.store.slug, getEnv(), req)}/cart`;
   const body = templates.abandoned_cart!.body;
   const rows = carts.map((c) => {
     const wa = toWhatsappNumber(c.phone);

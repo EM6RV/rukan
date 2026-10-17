@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/money";
 import { toWhatsappNumber } from "@/lib/phone";
 import { PAYMENT_METHOD_LABEL, STATE_LABEL, STATE_TONE } from "@/lib/store-state";
 import { storeUrl } from "@/lib/store-url";
+import { currentRequest } from "@/server/request-origin";
 import { waLink } from "@/lib/whatsapp";
 import { listPlans } from "@/server/admin/plans";
 import { getStoreDetail } from "@/server/admin/stores";
@@ -38,6 +39,7 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
   const wa = toWhatsappNumber(d.ownerPhone);
   const msg = renewalMessage({ ownerName: d.ownerName, storeName: store.name, daysLeft: access.daysLeft ?? 0, endDate: end ? formatDate(end) : "—", planName: d.plan?.nameAr });
 
+  const req = await currentRequest();
   return (
     <>
       <Link href="/admin/stores" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg"><ChevronRight className="size-4" aria-hidden /> كل المتاجر</Link>
@@ -47,7 +49,7 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
           <p dir="ltr" className="text-start text-muted">{store.slug}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href={storeUrl(store.slug, getEnv())} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-medium hover:bg-surface-2"><ExternalLink className="size-4" aria-hidden /> فتح المتجر</a>
+          <a href={storeUrl(store.slug, getEnv(), req)} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-medium hover:bg-surface-2"><ExternalLink className="size-4" aria-hidden /> فتح المتجر</a>
           {wa && <a href={waLink(wa, msg)} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-md bg-success px-3 text-sm font-semibold text-white hover:brightness-95"><MessageCircle className="size-4" aria-hidden /> واتساب المالك</a>}
         </div>
       </div>

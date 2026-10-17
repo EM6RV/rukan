@@ -14,7 +14,7 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
-      # --- الدومين (غيّرها لدومينك) ---
+      # --- الدومين (غيّرها لدومينك). لو لسا على دومين Render المجاني: APP_URL=https://<خدمتك>.onrender.com و ROOT_DOMAIN=<خدمتك>.onrender.com (المتاجر تكون /s/slug) ---
       - key: APP_URL
         value: https://rukn.ly
       - key: ROOT_DOMAIN

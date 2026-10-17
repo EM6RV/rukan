@@ -264,5 +264,12 @@ describe("أدوات صغيرة", () => {
   it("رابط المتجر", () => {
     expect(storeUrl("sara", { ROOT_DOMAIN: "rukn.ly", APP_URL: "https://rukn.ly" })).toBe("https://sara.rukn.ly");
     expect(storeUrl("sara", { ROOT_DOMAIN: "localhost:3000", APP_URL: "http://localhost:3000/" })).toBe("http://localhost:3000/s/sara");
+    // الإعدادات غلط (rukn.ly) لكن البياع فاتح اللوحة من دومين Render المجاني: الرابط يتبني على نفس الأصل
+    const wrong = { ROOT_DOMAIN: "rukn.ly", APP_URL: "https://rukn.ly" };
+    expect(storeUrl("sara", wrong, { host: "rukn-abc.onrender.com", proto: "https" })).toBe("https://rukn-abc.onrender.com/s/sara");
+    expect(storeUrl("sara", wrong, { host: "localhost:3000", proto: "http" })).toBe("http://localhost:3000/s/sara");
+    // فاتح من الدومين الأساسي الصحيح: ساب دومين عادي
+    expect(storeUrl("sara", wrong, { host: "rukn.ly", proto: "https" })).toBe("https://sara.rukn.ly");
+    expect(storeUrl("sara", wrong, { host: "www.rukn.ly", proto: "https" })).toBe("https://sara.rukn.ly");
   });
 });

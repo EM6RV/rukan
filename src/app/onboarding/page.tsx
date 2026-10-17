@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import { cities } from "@/db/schema/platform";
 import { getEnv } from "@/lib/env";
 import { storeUrl } from "@/lib/store-url";
+import { currentRequest } from "@/server/request-origin";
 import { DEFAULT_TRIAL_DAYS } from "@/lib/constants";
 import { requireUser } from "@/server/auth/current";
 import { getPlatformSetting } from "@/server/platform-settings";
@@ -27,6 +28,7 @@ export default async function OnboardingPage() {
   const trialDays = await getPlatformSetting<number>(db, "trial_days", DEFAULT_TRIAL_DAYS);
   const logoId = ctx?.store.logoMediaId;
 
+  const req = await currentRequest();
   return (
     <div data-theme="light" className="min-h-dvh bg-bg">
       <main className="mx-auto max-w-xl space-y-6 px-4 py-8">
@@ -43,7 +45,7 @@ export default async function OnboardingPage() {
           cityId={settings?.cityId ?? ""}
           cities={cityRows.map((c) => ({ id: c.id, name: c.nameAr }))}
           allTemplates={ctx?.limits.allTemplates ?? true}
-          urlPattern={storeUrl("{slug}", env)}
+          urlPattern={storeUrl("{slug}", env, req)}
           rootDomainLabel={env.ROOT_DOMAIN}
           trialDays={trialDays}
         />

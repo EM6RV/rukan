@@ -12,6 +12,7 @@ import { getDashboardStats } from "@/server/orders/stats";
 import { pushConfig } from "@/server/push";
 import { can } from "@/server/permissions";
 import { storeUrl } from "@/lib/store-url";
+import { currentRequest } from "@/server/request-origin";
 import { requireStoreContext } from "@/server/store-context";
 import { t } from "@/server/tenant";
 
@@ -36,6 +37,7 @@ export default async function DashboardHome() {
   ];
   const doneCount = checklist.filter((c) => c.done).length;
   const push = can(ctx.role, "orders") ? pushConfig() : null;
+  const req = await currentRequest();
 
   return (
     <div className="space-y-6">
@@ -83,7 +85,7 @@ export default async function DashboardHome() {
 
       <Card id="store-link" className="scroll-mt-20">
         <CardHeader title="رابط متجرك" description="شاركه في إنستغرام وتيك توك وواتساب." />
-        <CardBody><StoreLinkCard url={storeUrl(store.slug, getEnv())} name={store.name} /></CardBody>
+        <CardBody><StoreLinkCard url={storeUrl(store.slug, getEnv(), req)} name={store.name} /></CardBody>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
