@@ -9,9 +9,9 @@ export function TrustStrip({ freeOver, whatsapp }: { freeOver?: number | null; w
     ...(whatsapp ? [{ icon: MessageCircle, title: "كلمنا على واتساب", text: "نرد عليك بسرعة" }] : []),
   ];
   return (
-    <ul className="-mt-6 grid grid-cols-2 gap-3 md:-mt-10 lg:grid-cols-4" aria-label="مزايا الشراء">
+    <ul className="-mt-6 flex flex-wrap justify-center gap-3 md:-mt-10" aria-label="مزايا الشراء">
       {items.map(({ icon: Icon, title, text }) => (
-        <li key={title} className="flex items-center gap-3 rounded-2xl border border-(--sp-line) bg-white/80 p-3 backdrop-blur">
+        <li key={title} className="flex w-[calc(50%-0.375rem)] items-center gap-3 rounded-2xl border border-(--sp-line) bg-white p-3 shadow-soft lg:w-[calc(25%-0.75rem)]">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-(--sa-soft) text-(--sp)"><Icon className="size-5" aria-hidden /></span>
           <span className="min-w-0"><span className="block text-sm font-bold leading-tight">{title}</span><span className="block text-xs text-(--sp-muted)">{text}</span></span>
         </li>

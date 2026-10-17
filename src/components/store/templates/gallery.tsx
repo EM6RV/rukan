@@ -37,7 +37,7 @@ function Footer() {
 
 const Hero: Kit["Hero"] = ({ title, subtitle, ctaHref, ctaLabel, imageMediaId }) => (
   <section className="relative isolate -mx-4 overflow-hidden bg-(--sp) text-(--sp-fg) sm:mx-0 sm:rounded-3xl [--focus:var(--sp-fg)] [--focus-halo:transparent]">
-    {imageMediaId && <div className="absolute inset-0 -z-10"><MediaImage id={imageMediaId} alt="" priority sizes="100vw" widths={[640, 960, 1280, 1600]} /></div>}
+    {imageMediaId ? <div className="absolute inset-0 -z-10"><MediaImage id={imageMediaId} alt="" priority sizes="100vw" widths={[640, 960, 1280, 1600]} /></div> : <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_25%,var(--sa)_0,transparent_42%),radial-gradient(circle_at_88%_70%,rgb(255_255_255/0.22)_0,transparent_38%)] opacity-70" />}
     <div className="absolute inset-0 -z-10 bg-linear-to-t from-(--sp) via-(--sp)/45 to-transparent" />
     <div className="flex min-h-[26rem] flex-col justify-end px-6 pb-10 pt-32 md:min-h-[34rem] md:px-14 md:pb-14">
       <h1 className="max-w-2xl text-balance text-4xl font-bold leading-[1.1] tracking-tight md:text-6xl">{title}</h1>
