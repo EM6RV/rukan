@@ -85,7 +85,7 @@ export default async function BillingPage() {
           <ul className="divide-y divide-line">
             {payments.items.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
-                <div><p className="font-semibold">{formatMoney(p.amount)} <span className="font-normal text-muted">· {p.planName} · {p.billingCycle === "yearly" ? "سنوية" : "شهرية"} · {PAYMENT_METHOD_LABEL[p.method]}</span></p><p className="text-xs text-muted">الفترة {formatDate(p.periodStart)} — {formatDate(p.periodEnd)} · {formatDateTimeYear(p.createdAt)}</p></div>
+                <div><p className="font-semibold">{formatMoney(p.amount)} <span className="font-normal text-muted">· {p.planName} · {periodLabel(p.billingCycle)} · {PAYMENT_METHOD_LABEL[p.method]}</span></p><p className="text-xs text-muted">الفترة {formatDate(p.periodStart)} — {formatDate(p.periodEnd)} · {formatDateTimeYear(p.createdAt)}</p></div>
                 {p.receiptMediaId && <a href={`/api/media/${p.receiptMediaId}`} target="_blank" rel="noopener noreferrer" className="text-link">الإيصال</a>}
               </li>
             ))}

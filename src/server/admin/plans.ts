@@ -17,7 +17,7 @@ const schema = z.object({
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{1,23}$/, "الرمز حروف إنجليزية صغيرة وأرقام وشرطة (2 إلى 24)").optional(),
   nameAr: z.string({ error: "اكتب اسم الباقة" }).trim().min(2, "اسم الباقة قصير").max(30, "اسم الباقة طويل"),
   descriptionAr: z.string().trim().max(160, "الوصف طويل").nullish().transform((v) => v || null),
-  billingPeriod: z.enum(BILLING_CYCLES, { error: "اختار مدة الباقة (شهرية أو سنوية)" }),
+  billingPeriod: z.enum(BILLING_CYCLES, { error: "اختار مدة الباقة (شهرية أو ست شهور أو سنوية)" }),
   price: z.number({ error: "اكتب سعر الباقة" }).int("السعر لازم يكون رقم صحيح بالدرهم").min(0, "اكتب سعر 0 أو أكثر").max(1_000_000_000),
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).max(1000).default(0),

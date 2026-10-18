@@ -73,7 +73,7 @@ describe("إضافة الدومين", () => {
 
   it("الباقة بدون دومين خاص، ودومين المنصة، وغير صالح", async () => {
     const s = await shop("dm-2", basicPlan);
-    expect(await addDomain(db, s.id, "shop.example.com", NO, ROOT, s.userId)).toEqual({ ok: false, error: expect.stringContaining("سنوية برو") });
+    expect(await addDomain(db, s.id, "shop.example.com", NO, ROOT, s.userId)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
     const p = await shop("dm-3");
     expect(await addDomain(db, p.id, "shop.rukn.ly", PRO, ROOT, p.userId)).toEqual({ ok: false, error: expect.stringContaining("رُكن") });
     expect((await addDomain(db, p.id, "not a domain", PRO, ROOT, p.userId)).ok).toBe(false);

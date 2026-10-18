@@ -50,7 +50,7 @@ function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void })
         </div>
         <Textarea label="وصف قصير" rows={2} maxLength={160} value={v.descriptionAr} onChange={(e) => setV({ ...v, descriptionAr: e.target.value })} />
         <div className="grid grid-cols-3 gap-3">
-          <Select label="المدة" value={v.billingPeriod} onChange={(e) => setV({ ...v, billingPeriod: e.target.value as BillingPeriod })}><option value="monthly">شهرية</option><option value="yearly">سنوية</option></Select>
+          <Select label="المدة" value={v.billingPeriod} onChange={(e) => setV({ ...v, billingPeriod: e.target.value as BillingPeriod })}><option value="monthly">شهرية</option><option value="semiannual">ست شهور</option><option value="yearly">سنوية</option></Select>
           <Input label={`السعر (د.ل / ${periodUnit(v.billingPeriod)})`} inputMode="decimal" value={v.price} onChange={(e) => setV({ ...v, price: e.target.value })} />
           <Input label="الترتيب" inputMode="numeric" value={v.sortOrder} onChange={(e) => setV({ ...v, sortOrder: e.target.value })} />
         </div>

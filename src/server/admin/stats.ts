@@ -1,3 +1,4 @@
+import { cycleMonths } from "@/lib/billing";
 import { eq, gte, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import { plans, stores, subscriptionPayments, users } from "@/db/schema/platform";
@@ -18,7 +19,7 @@ export async function getPlatformStats(db: Db, now = Date.now()) {
     const a = computeStoreAccess(r.s, now);
     byState[a.state]++;
     if (a.state === "active" && r.plan) {
-      mrr += r.plan.billingPeriod === "yearly" ? Math.round(r.plan.price / 12) : r.plan.price;
+      mrr += Math.round(r.plan.price / cycleMonths(r.plan.billingPeriod));
       const p = byPlan.get(r.plan.id) ?? { name: r.plan.nameAr, count: 0 };
       p.count++; byPlan.set(r.plan.id, p);
     }

@@ -58,7 +58,7 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const PAYMENT_STATUSES = ["pending", "paid", "refunded"] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const BILLING_CYCLES = ["monthly", "yearly"] as const;
+export const BILLING_CYCLES = ["monthly", "semiannual", "yearly"] as const;
 export type BillingCycle = (typeof BILLING_CYCLES)[number];
 
 export const LIBYA_REGIONS = ["west", "east", "south", "center"] as const;
@@ -67,5 +67,5 @@ export const REGION_LABELS: Record<LibyaRegion, string> = { west: "الغرب", 
 
 export const DEFAULT_TRIAL_DAYS = 3;
 /** باقة التجربة الافتراضية (slug) لو الأدمن ما حدد غيرها */
-export const DEFAULT_TRIAL_PLAN_SLUG = "yearly";
+export const DEFAULT_TRIAL_PLAN_SLUG = "semiannual";
 export const SESSION_DAYS = 30;

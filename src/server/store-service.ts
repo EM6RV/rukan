@@ -123,7 +123,7 @@ export async function saveIdentity(
   input: { template: StoreTemplate; primaryColor: string; accentColor: string; logoMediaId: string | null },
   limits: PlanLimits,
 ): Promise<Result> {
-  if (!limits.allTemplates && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «سنوية» وما فوق. رقّي باقتك لتستعمله.");
+  if (!limits.allTemplates && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن الباقات الأعلى. رقّي باقتك لتستعمله.");
   if (!(await validateOwnMedia(db, storeId, input.logoMediaId))) return fail("ما قدرنا نقرا اللوجو. ارفع صورة JPG أو PNG أو WebP.");
   await bumpStep(db, storeId, 4, { template: input.template, logoMediaId: input.logoMediaId });
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: input.primaryColor, accentColor: input.accentColor });

@@ -1,3 +1,4 @@
+import { periodLabel } from "@/lib/billing";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CreditCard } from "lucide-react";
@@ -49,7 +50,7 @@ export default async function AdminPayments({ searchParams }: { searchParams: Pr
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface p-4 text-sm shadow-soft">
               <div className="min-w-0">
                 <Link href={`/admin/stores/${p.storeId}`} className="font-semibold hover:underline">{p.storeName}</Link>
-                <p className="text-muted">{p.planName} · {p.billingCycle === "yearly" ? "سنوي" : "شهري"} · {PAYMENT_METHOD_LABEL[p.method]} · الفترة {formatDate(p.periodStart)} — {formatDate(p.periodEnd)}</p>
+                <p className="text-muted">{p.planName} · {periodLabel(p.billingCycle)} · {PAYMENT_METHOD_LABEL[p.method]} · الفترة {formatDate(p.periodStart)} — {formatDate(p.periodEnd)}</p>
                 <p className="text-xs text-muted">{formatDateTimeYear(p.createdAt)} · {p.recordedBy}{p.note ? ` · ${p.note}` : ""}</p>
               </div>
               <div className="flex items-center gap-3"><b className="text-base">{formatMoney(p.amount)}</b>{p.receiptMediaId && <a href={`/api/media/${p.receiptMediaId}`} target="_blank" rel="noopener noreferrer" className="text-link">الإيصال</a>}</div>

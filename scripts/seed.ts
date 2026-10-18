@@ -11,21 +11,21 @@ import { normalizeLibyanPhone } from "../src/lib/phone";
 const env = getEnv();
 const { db, client } = createDb(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
 
-// الباقات: ثلاث باقات، لكل وحدة مدة وحدة (شهرية أو سنوية) وسعر واحد (بالدرهم: 100 د.ل = 100000)
+// الباقات: ثلاث باقات، لكل وحدة مدة وحدة (شهرية، ست شهور، سنوية) وسعر واحد (بالدرهم: 250 د.ل = 250000)
 const PLANS = [
   {
-    slug: "economy", nameAr: "اقتصادية", billingPeriod: "monthly" as const, price: 100_000, sortOrder: 1,
-    descriptionAr: "للبداية: متجر بسيط بسعر شهري",
-    limits: { maxProducts: 50, maxStaff: 1, allTemplates: false, coupons: false, reports: false, customDomain: false, pixels: false, removeBranding: false },
+    slug: "monthly", nameAr: "شهرية", billingPeriod: "monthly" as const, price: 250_000, sortOrder: 1,
+    descriptionAr: "نص المزايا: كل القوالب والكوبونات والتقارير",
+    limits: { maxProducts: 200, maxStaff: 2, allTemplates: true, coupons: true, reports: true, customDomain: false, pixels: false, removeBranding: false },
   },
   {
-    slug: "yearly", nameAr: "سنوية", billingPeriod: "yearly" as const, price: 500_000, sortOrder: 2,
-    descriptionAr: "كل القوالب والكوبونات والتقارير",
-    limits: { maxProducts: 500, maxStaff: 3, allTemplates: true, coupons: true, reports: true, customDomain: false, pixels: false, removeBranding: false },
+    slug: "semiannual", nameAr: "ست شهور", billingPeriod: "semiannual" as const, price: 650_000, sortOrder: 2,
+    descriptionAr: "أغلب المزايا مع Pixels للإعلانات",
+    limits: { maxProducts: 1000, maxStaff: 5, allTemplates: true, coupons: true, reports: true, customDomain: false, pixels: true, removeBranding: false },
   },
   {
-    slug: "yearly-pro", nameAr: "سنوية برو", billingPeriod: "yearly" as const, price: 800_000, sortOrder: 3, isFeatured: true,
-    descriptionAr: "كل شي غير محدود، دومين خاص وPixels وبدون شعار رُكن",
+    slug: "yearly", nameAr: "سنوية", billingPeriod: "yearly" as const, price: 1_250_000, sortOrder: 3, isFeatured: true,
+    descriptionAr: "فل مزايا: كل شي غير محدود، دومين خاص وPixels وبدون شعار رُكن",
     limits: { maxProducts: null, maxStaff: null, allTemplates: true, coupons: true, reports: true, customDomain: true, pixels: true, removeBranding: true },
   },
 ];
@@ -65,7 +65,7 @@ if (process.env.SEED_DEMO === "1") {
     [demoUser] = await db.insert(users).values({ phone: demoPhone, name: "بياع تجريبي", passwordHash: await hashPassword("demo-password-123") }).returning();
   }
   if (!(await db.select({ id: stores.id }).from(stores).where(eq(stores.slug, "demo")).get())) {
-    const growth = await db.select().from(plans).where(eq(plans.slug, "yearly")).get();
+    const growth = await db.select().from(plans).where(eq(plans.slug, "semiannual")).get();
     const [store] = await db.insert(stores).values({
       slug: "demo", name: "متجر تجريبي", ownerUserId: demoUser!.id, planId: growth?.id, template: "elegant",
       trialEndsAt: new Date(Date.now() + DEFAULT_TRIAL_DAYS * 86_400_000),

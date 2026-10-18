@@ -13,7 +13,7 @@ export function addMonths(ms: number, months: number): number {
   return d.getTime();
 }
 
-export const cycleMonths = (cycle: "monthly" | "yearly") => (cycle === "yearly" ? 12 : 1);
+export const cycleMonths = (cycle: "monthly" | "semiannual" | "yearly") => (cycle === "yearly" ? 12 : cycle === "semiannual" ? 6 : 1);
 
 /** "2026-03" بتوقيت ليبيا (لتجميع الإيرادات شهرياً) */
 export const monthKey = (ms: number) => new Date(ms + LIBYA_OFFSET).toISOString().slice(0, 7);
@@ -31,16 +31,16 @@ export function upgradeRequestMessage(o: { storeName: string; slug: string; plan
 
 export const daysBetween = (from: number, to: number) => Math.ceil((to - from) / DAY);
 
-export type BillingPeriod = "monthly" | "yearly";
+export type BillingPeriod = "monthly" | "semiannual" | "yearly";
 
-/** "شهر" أو "سنة" لعرض السعر: «100 د.ل / شهر» */
-export const periodUnit = (period: BillingPeriod) => (period === "yearly" ? "سنة" : "شهر");
-/** "شهرية" أو "سنوية" */
-export const periodLabel = (period: BillingPeriod) => (period === "yearly" ? "سنوية" : "شهرية");
+/** "شهر" أو "6 أشهر" أو "سنة" لعرض السعر: «250 د.ل / شهر» */
+export const periodUnit = (period: BillingPeriod) => (period === "yearly" ? "سنة" : period === "semiannual" ? "6 أشهر" : "شهر");
+/** "شهرية" أو "ست شهور" أو "سنوية" */
+export const periodLabel = (period: BillingPeriod) => (period === "yearly" ? "سنوية" : period === "semiannual" ? "ست شهور" : "شهرية");
 
-/** سعر الشهر التقريبي للباقة السنوية بالدرهم، مقرّب لأقرب دينار صحيح (500 د.ل ≈ 42 د.ل). الشهرية ترجع null. */
+/** سعر الشهر التقريبي للباقات الأطول من شهر بالدرهم، مقرّب لأقرب دينار صحيح (650 د.ل ÷ 6 ≈ 108 د.ل). الشهرية ترجع null. */
 export function approxMonthly(price: number, period: BillingPeriod): number | null {
-  return period === "yearly" ? Math.round(price / 12 / 1000) * 1000 : null;
+  return period === "monthly" ? null : Math.round(price / cycleMonths(period) / 1000) * 1000;
 }
 
 /** "3 أيام" / "يوم" / "14 يوم" (عدد الأيام بصيغة عربية سليمة) */

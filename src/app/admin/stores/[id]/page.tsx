@@ -1,3 +1,4 @@
+import { periodLabel } from "@/lib/billing";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -59,7 +60,7 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
           <CardHeader title="معلومات" />
           <dl className="divide-y divide-line text-sm">
             {([
-              ["المالك", `${d.ownerName}`], ["الهاتف", d.ownerPhone], ["الباقة", d.plan ? `${d.plan.nameAr} (${d.plan.billingPeriod === "yearly" ? "سنوية" : "شهرية"})` : "بدون باقة"],
+              ["المالك", `${d.ownerName}`], ["الهاتف", d.ownerPhone], ["الباقة", d.plan ? `${d.plan.nameAr} (${periodLabel(d.plan.billingPeriod)})` : "بدون باقة"],
               [store.status === "trial" ? "تنتهي التجربة" : "ينتهي الاشتراك", end ? `${formatDate(end)}${access.daysLeft !== null ? ` · ${access.daysLeft > 0 ? `باقي ${access.daysLeft} يوم` : "منتهي"}` : ""}` : "—"],
               ["القالب", store.template], ["تاريخ التسجيل", formatDateTimeYear(store.createdAt)],
               ["المنتجات", String(d.counts.products)], ["الطلبيات", String(d.counts.orders)], ["الزبائن", String(d.counts.customers)],
@@ -82,7 +83,7 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
           <ul className="divide-y divide-line">
             {d.payments.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
-                <div><p className="font-semibold">{formatMoney(p.amount)} <span className="font-normal text-muted">· {p.planName} · {p.billingCycle === "yearly" ? "سنوي" : "شهري"} · {PAYMENT_METHOD_LABEL[p.method]}</span></p><p className="text-xs text-muted">الفترة {formatDate(p.periodStart)} — {formatDate(p.periodEnd)} · سجّلها {p.recordedBy} · {formatDateTimeYear(p.createdAt)}</p>{p.note && <p className="text-xs">{p.note}</p>}</div>
+                <div><p className="font-semibold">{formatMoney(p.amount)} <span className="font-normal text-muted">· {p.planName} · {periodLabel(p.billingCycle)} · {PAYMENT_METHOD_LABEL[p.method]}</span></p><p className="text-xs text-muted">الفترة {formatDate(p.periodStart)} — {formatDate(p.periodEnd)} · سجّلها {p.recordedBy} · {formatDateTimeYear(p.createdAt)}</p>{p.note && <p className="text-xs">{p.note}</p>}</div>
                 {p.receiptMediaId && <a href={`/api/media/${p.receiptMediaId}`} target="_blank" rel="noopener noreferrer" className="text-link">الإيصال</a>}
               </li>
             ))}

@@ -29,7 +29,7 @@ export async function getStoreDomain(db: Db, storeId: string): Promise<DomainInf
   return r ? { id: r.id, domain: r.domain, status: r.status, token: r.id } : null;
 }
 
-const NO_PLAN = "الدومين الخاص متاح في باقة «سنوية برو».";
+const NO_PLAN = "الدومين الخاص متاح في الباقات الأعلى.";
 
 /**
  * يضيف دومين بحالة «pending». الحجز مؤقت: ما يصير حصري إلا بعد التحقق (TXT + توجيه)،

@@ -66,7 +66,7 @@ async function buildStore(spec: {
   if (!created.ok) throw new Error(created.error);
   const storeId = created.data.storeId;
   const scope = forStore(db, storeId);
-  const growth = await db.select().from(plans).where(eq(plans.slug, "yearly")).get();
+  const growth = await db.select().from(plans).where(eq(plans.slug, "semiannual")).get();
   const limits = growth!.limits;
 
   await saveBusinessType(db, storeId, spec.type, limits);

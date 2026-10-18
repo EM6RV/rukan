@@ -43,6 +43,13 @@
       "when": 1792194405278,
       "tag": "0005_plans_billing_period",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792285641575,
+      "tag": "0006_plans_three_tiers",
+      "breakpoints": true
     }
   ]
 }

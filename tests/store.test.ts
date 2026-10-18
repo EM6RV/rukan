@@ -26,13 +26,13 @@ const newUser = async () =>
 
 beforeAll(async () => {
   ({ db, close } = await makeTestDb());
-  await db.insert(plans).values({ slug: "yearly", nameAr: "سنوية", price: 1, limits: ALL });
+  await db.insert(plans).values({ slug: "semiannual", nameAr: "ست شهور", price: 1, limits: ALL });
   await db.insert(cities).values([{ nameAr: "طرابلس", region: "west" }, { nameAr: "بنغازي", region: "east" }, { nameAr: "سبها", region: "south" }]);
 });
 afterAll(() => close());
 
 describe("إنشاء المتجر", () => {
-  it("ينشئ المتجر بمحتوى افتراضي كامل وتجربة 3 أيام وباقة التجربة (سنوية)", async () => {
+  it("ينشئ المتجر بمحتوى افتراضي كامل وتجربة 3 أيام وباقة التجربة (ست شهور)", async () => {
     const u = await newUser();
     const r = await createStoreForUser(db, { userId: u.id, name: "عطور سارة", slug: "sara-perfume" });
     if (!r.ok) throw new Error(r.error);
@@ -141,10 +141,10 @@ describe("خطوات المعالج", () => {
     expect(await forStore(db, id).count(t.deliveryRates)).toBe(3);
   });
 
-  it("باقة اقتصادية: قالب «جريء» ممنوع، والاقتراح يرجع للبسيط", async () => {
+  it("باقة بدون كل القوالب: قالب «جريء» ممنوع، والاقتراح يرجع للبسيط", async () => {
     const id = await fresh("starter-store");
     expect(await saveBusinessType(db, id, "clothing", STARTER)).toMatchObject({ ok: true, data: { template: "simple" } });
-    expect(await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("سنوية") });
+    expect(await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
     expect((await saveIdentity(db, id, { template: "simple", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).ok).toBe(true);
   });
 
