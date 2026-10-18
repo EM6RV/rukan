@@ -13,7 +13,7 @@ const ICONS: Record<NavItem["icon"], LucideIcon> = {
   home: LayoutDashboard, orders: ShoppingBag, products: Package, categories: FolderTree, customers: Users, carts: ShoppingCart, couriers: Truck, returns: RotateCcw, coupons: Ticket, reports: BarChart3, services: Brush, content: PenLine, design: Palette, staff: UserCog, billing: CreditCard, settings: Settings,
 };
 
-const isActive = (pathname: string, href: string) => (href === "/dashboard" ? pathname === href : pathname.startsWith(href));
+const isActive = (pathname: string, href: string) => (href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
 
 function Badge({ n }: { n?: number }) {
   if (!n) return null;
