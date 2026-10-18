@@ -72,7 +72,7 @@ export function CashActions({ courier, writable }: { courier: Pick<CourierItem, 
         footer={<><Button variant="ghost" onClick={close} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={submit}>{mode === "settle" ? "سجّل الاستلام" : "احفظ التعديل"}</Button></>}
       >
         <div className="space-y-4">
-          <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">الكاش عنده الحين: <b>{formatMoney(courier.balance)}</b></p>
+          <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">فلوسك عنده الحين: <b>{formatMoney(courier.balance)}</b></p>
           {mode === "adjust" && <Select label="نوع التعديل" value={sign} onChange={(e) => setSign(e.target.value as "+" | "-")}><option value="-">خصم من رصيده (مثلاً غرامة أو فرق)</option><option value="+">إضافة لرصيده</option></Select>}
           <Input label="المبلغ (د.ل)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} hint={mode === "settle" ? "لو سلّمك جزء، اكتب الجزء بس" : undefined} />
           {mode === "settle" && (() => {
@@ -137,7 +137,7 @@ export function CourierList({ couriers, writable }: { couriers: CourierItem[]; w
                 <div className="flex items-center gap-1">{!c.isActive && <Badge>موقوف</Badge>}<Button size="sm" variant="ghost" disabled={!writable} onClick={() => setEditing(c)}>تعديل</Button></div>
               </div>
               <div className="grid grid-cols-2 gap-3 rounded-lg bg-surface-2 p-3 text-sm">
-                <div><p className="text-muted">الكاش عنده</p><p className={`text-lg font-bold ${c.balance > 0 ? "text-fg" : "text-muted"}`}>{formatMoney(c.balance)}</p></div>
+                <div><p className="text-muted">فلوسك عنده</p><p className={`text-lg font-bold ${c.balance > 0 ? "text-fg" : "text-muted"}`}>{formatMoney(c.balance)}</p></div>
                 <div><p className="text-muted">مع المندوب الحين</p><p className="text-lg font-bold">{c.pendingOrders} <span className="text-sm font-normal text-muted">({formatMoney(c.pendingCash)})</span></p></div>
               </div>
               <p className="text-xs text-muted">وصّل {c.deliveredCount} · رجّع {c.returnedCount}{c.lastSettlementAt ? ` · آخر تسوية ${formatDateTimeYear(c.lastSettlementAt)}` : ""}</p>

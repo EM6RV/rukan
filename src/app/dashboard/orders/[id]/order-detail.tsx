@@ -17,7 +17,7 @@ import { RETURN_REASONS, RETURN_REASON_LABELS } from "@/lib/order-flow";
 import { changeStatusAction, paymentStatusAction, registerReturnAction, reviewReceiptAction, updateOrderAction } from "../actions";
 
 type Props = {
-  writable: boolean; isCourier: boolean; statuses: OrderStatus[]; canReturn: boolean;
+  writable: boolean; isCourier: boolean; showCourier: boolean; statuses: OrderStatus[]; canReturn: boolean;
   messages: { key: string; label: string; href: string }[];
   couriers: { id: string; name: string }[];
   order: {
@@ -146,10 +146,10 @@ export function OrderDetailView(p: Props) {
               {order.notes && <div className="rounded-md bg-surface-2 p-3"><p className="text-xs text-muted">ملاحظة الزبون</p><p>{order.notes}</p></div>}
               <div className="flex flex-wrap gap-1.5"><PaymentBadge method={order.paymentMethod} status={order.paymentStatus} /></div>
               {!p.isCourier && order.paymentStatus !== "paid" && order.status !== "cancelled" && order.status !== "returned" && <MarkPaid orderId={order.id} disabled={locked} />}
-              <div className="border-t border-line pt-3">
+              {p.showCourier && <div className="border-t border-line pt-3">
                 <p className="text-xs text-muted">المندوب</p>
                 <p>{p.courierName ?? "ما تعيّنش"}{order.shipmentNumber ? <span className="text-muted"> · شحنة <span dir="ltr">{order.shipmentNumber}</span></span> : null}</p>
-              </div>
+              </div>}
             </CardBody>
           </Card>
           {!p.isCourier && <InternalNotes orderId={order.id} value={order.internalNotes ?? ""} disabled={locked} />}

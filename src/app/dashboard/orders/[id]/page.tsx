@@ -42,7 +42,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const keys = isCourier ? [] : [order.status, "new_order_confirm", ...Object.keys(templates)].filter((k, i, a) => k !== "abandoned_cart" && templates[k] && a.indexOf(k) === i);
   const messages = waNumber ? keys.map((k) => ({ key: k, label: WHATSAPP_KEY_LABELS[k] ?? k, href: waLink(waNumber, renderWhatsapp(templates[k]!.body, vars)) })) : [];
 
-  const statuses = nextStatuses(order.status).filter((s) => !isCourier || (s === "delivered" && order.status === "with_courier"));
+  const statuses = nextStatuses(order.status).filter((s) => (!isCourier || (s === "delivered" && order.status === "with_courier")) && (s !== "with_courier" || ctx.store.useCouriers));
   const canReturn = !isCourier && can(ctx.role, "returns") && (RETURNABLE_STATUSES as readonly string[]).includes(order.status);
   const remainingByItem = Object.fromEntries(d.items.map((i) => [i.id, i.quantity - (d.returnedQty[i.id] ?? 0)]));
 
@@ -52,6 +52,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       <OrderDetailView
         writable={ctx.access.writable}
         isCourier={isCourier}
+        showCourier={ctx.store.useCouriers || !!order.courierId}
         statuses={statuses}
         canReturn={canReturn}
         messages={messages}

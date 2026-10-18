@@ -34,7 +34,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         general={{ name: store.name, businessType: store.businessType, template: store.template, primary: s?.primaryColor ?? "#0D263E", accent: s?.accentColor ?? "#C19E58", logo: media(store.logoMediaId) }}
         contact={{ contactPhone: s?.contactPhone ?? "", whatsapp: s?.whatsapp ?? "", email: s?.email ?? "", address: s?.address ?? "", instagram: s?.instagram ?? "", tiktok: s?.tiktok ?? "", facebook: s?.facebook ?? "", snapchat: s?.snapchat ?? "" }}
         payment={{ bankTransfer: bank?.isEnabled ?? false, bankName: cfg.bankName ?? "", accountHolder: cfg.accountHolder ?? "", accountNumber: cfg.accountNumber ?? "", note: cfg.note ?? "" }}
-        delivery={delivery}
+        delivery={{ ...delivery, useCouriers: store.useCouriers }}
         domain={{ allowed: ctx.limits.customDomain, canManage: can(ctx.role, "billing"), target: (getEnv().CUSTOM_DOMAIN_TARGET || `cname.${getEnv().ROOT_DOMAIN}`).toLowerCase(), current: domain }}
         whatsapp={{ templates }}
         pixels={{ metaPixelId: s?.metaPixelId ?? "", tiktokPixelId: s?.tiktokPixelId ?? "", allowed: ctx.limits.pixels }}

@@ -64,7 +64,7 @@ export default async function DashboardHome() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <HomeStat tone="gold" href="/dashboard/orders?status=new" icon={<Inbox className="size-5" />} label="طلبيات جديدة" value={String(stats.newOrders)} highlight={stats.newOrders > 0} />
-          {can(ctx.role, "couriers") && <HomeStat tone="teal" href="/dashboard/couriers" icon={<Banknote className="size-5" />} label="كاش عند المندوبين" value={formatMoney(stats.cashWithCouriers)} hint={stats.pendingCash > 0 ? `+ ${formatMoney(stats.pendingCash)} في الطريق` : undefined} />}
+          {can(ctx.role, "couriers") && store.useCouriers && <HomeStat tone="teal" href="/dashboard/couriers" icon={<Banknote className="size-5" />} label="فلوسك عند المندوبين" value={formatMoney(stats.cashWithCouriers)} hint={stats.pendingCash > 0 ? `+ ${formatMoney(stats.pendingCash)} في الطريق` : undefined} />}
           {can(ctx.role, "returns") && <HomeStat tone="danger" href="/dashboard/returns" icon={<RotateCcw className="size-5" />} label="نسبة المرتجعات (30 يوم)" value={stats.returnRate === null ? "—" : `${Math.round(stats.returnRate * 100)}%`} />}
           {stats.pendingReceipts > 0 && <HomeStat tone="gold" href="/dashboard/orders?pay=bank_transfer" icon={<ReceiptText className="size-5" />} label="إيصالات بانتظار المراجعة" value={String(stats.pendingReceipts)} highlight />}
         </div>

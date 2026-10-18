@@ -1,0 +1,1 @@
+ALTER TABLE `stores` ADD `use_couriers` integer DEFAULT true NOT NULL;

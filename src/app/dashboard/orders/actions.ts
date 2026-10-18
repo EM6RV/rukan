@@ -38,6 +38,7 @@ export async function changeStatusAction(input: unknown): Promise<Result<{ statu
   const p = statusSchema.safeParse(input);
   if (!p.success) return bad();
   return run("orders", {}, async (ctx, restrict) => {
+    if (p.data.to === "with_courier" && !ctx.store.useCouriers) return { ok: false, error: "المندوبين مقفلين في متجرك. شغّلهم من الإعدادات ← التوصيل." };
     const r = await changeOrderStatus(ctx.scope, { ...p.data, note: p.data.note ?? null, courierId: p.data.courierId ?? null, shipmentNumber: p.data.shipmentNumber ?? null, actorUserId: ctx.user.id, restrictCourierId: restrict });
     if (r.ok && p.data.to === "with_courier") void notifyCourierAssigned(getDb(), ctx.store.id, [p.data.orderId]); // إشعار للمندوب
     return r;
@@ -53,6 +54,7 @@ export async function bulkAssignAction(orderIds: unknown, courierId: unknown) {
   const p = z.object({ ids: z.array(z.string().min(1)).min(1).max(200), courierId: z.string().min(1).nullable() }).safeParse({ ids: orderIds, courierId });
   if (!p.success) return bad();
   return run("orders", { staffOnly: true }, async (ctx) => {
+    if (!ctx.store.useCouriers) return { ok: false, error: "المندوبين مقفلين في متجرك. شغّلهم من الإعدادات ← التوصيل." };
     const r = await bulkAssignCourier(ctx.scope, p.data.ids, p.data.courierId, ctx.user.id);
     if (r.ok && p.data.courierId) void notifyCourierAssigned(getDb(), ctx.store.id, p.data.ids);
     return r;

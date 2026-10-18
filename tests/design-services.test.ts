@@ -97,8 +97,9 @@ describe("التحقق والرسالة والقائمة", () => {
 
   it("قائمة الأدمن: الأحدث أول مع بيانات المتجر والمستخدم", async () => {
     const s = await shop("ds-list");
-    await createDesignRequest(db, s.store, NONE, "yearly", s.userId, { service: "logo", note: "أول" });
-    await createDesignRequest(db, s.store, NONE, "yearly", s.userId, { service: "identity", note: "ثاني" });
+    const now = Date.now();
+    await db.insert(designRequests).values({ storeId: s.store.id, userId: s.userId, service: "logo", note: "أول", createdAt: new Date(now - 5000) });
+    await db.insert(designRequests).values({ storeId: s.store.id, userId: s.userId, service: "identity", note: "ثاني", createdAt: new Date(now) });
     const rows = (await listDesignRequests(db)).filter((r) => r.storeSlug === "ds-list");
     expect(rows.map((r) => r.note)).toEqual(["ثاني", "أول"]);
     expect(rows[0]).toMatchObject({ storeName: "ds-list", service: "identity", isFree: false });

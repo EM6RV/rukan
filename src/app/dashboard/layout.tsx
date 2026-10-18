@@ -42,7 +42,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const ctx = await requireStoreContext(null);
   // المندوب ما يشوف تنبيهات الطلبيات الجديدة (يشوف طلبياته بس)
   const pulse = can(ctx.role, "orders") && ctx.role !== "courier" ? await getOrdersPulse(ctx.scope) : null;
-  const items = ALL_ITEMS.filter((i) => can(ctx.role, i.permission)).map((i): NavItem => ({ href: i.href, label: i.label, icon: i.icon, badge: i.icon === "orders" ? pulse?.newCount : undefined }));
+  const items = ALL_ITEMS.filter((i) => can(ctx.role, i.permission) && (i.icon !== "couriers" || ctx.store.useCouriers || ctx.role === "courier")).map((i): NavItem => ({ href: i.href, label: i.label, icon: i.icon, badge: i.icon === "orders" ? pulse?.newCount : undefined }));
   const { access } = ctx;
   const announcements = await activeAnnouncementsFor(getDb(), ctx.user.id);
 

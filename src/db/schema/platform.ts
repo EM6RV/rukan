@@ -98,6 +98,8 @@ export const stores = sqliteTable(
     trialEndsAt: integer("trial_ends_at", { mode: "timestamp_ms" }),
     currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }),
     nextOrderNumber: integer("next_order_number").notNull().default(1001),
+    // يستعمل مندوبين/شركات توصيل (وكاش عندهم)؟ لو مقفل نخفي المندوبين والكاش من اللوحة (افتراضياً شغال)
+    useCouriers: integer("use_couriers", { mode: "boolean" }).notNull().default(true),
     logoMediaId: text("logo_media_id"),
     // معالج الإعداد: آخر خطوة تم حفظها، و onboardedAt لما يخلص المعالج
     onboardingStep: integer("onboarding_step").notNull().default(0),

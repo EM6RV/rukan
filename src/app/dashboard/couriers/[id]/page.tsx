@@ -34,7 +34,7 @@ export default async function CourierPage({ params, searchParams }: { params: Pr
         <DeleteCourier id={courier.id} name={courier.name} redirectTo="/dashboard/couriers" />
       </div>
       <Card><CardBody className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-sm text-muted">الكاش عنده الحين</p><p className="text-3xl font-bold">{formatMoney(courier.balance)}</p><p className="text-sm text-muted">وفي الطريق {courier.pendingOrders} طلبية ({formatMoney(courier.pendingCash)})</p></div>
+        <div><p className="text-sm text-muted">فلوسك عنده الحين</p><p className="text-3xl font-bold">{formatMoney(courier.balance)}</p><p className="text-sm text-muted">وفي الطريق {courier.pendingOrders} طلبية ({formatMoney(courier.pendingCash)})</p></div>
         <CashActions courier={courier} writable={ctx.access.writable} />
       </CardBody></Card>
       <Card>

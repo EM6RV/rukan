@@ -167,3 +167,14 @@ export async function saveDesignSettings(db: Db, storeId: string, input: unknown
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: d.primaryColor, accentColor: d.accentColor, fontKey: d.fontKey });
   return ok(undefined);
 }
+
+// ===== المندوبين والكاش (اختياري) =====
+const couriersSchema = z.object({ useCouriers: z.boolean({ error: "اختار شغّال أو مقفل" }) });
+
+/** تشغيل/إيقاف المندوبين والكاش للمتجر. الإيقاف يخفي الواجهات فقط: ما يمسح مندوبين ولا حركات كاش قديمة. */
+export async function saveCouriersSetting(db: Db, storeId: string, input: unknown): Promise<Result> {
+  const p = couriersSchema.safeParse(input);
+  if (!p.success) return fail(firstError(p.error));
+  await db.update(stores).set({ useCouriers: p.data.useCouriers }).where(eq(stores.id, storeId));
+  return ok(undefined);
+}
