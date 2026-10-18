@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Banknote, Check, BarChart3, MapPin, MessageCircle, Palette, RotateCcw, ShieldCheck, Smartphone, Store, Truck, Users, Zap, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Banknote, Check, BarChart3, Clapperboard, Gift, PenTool, MapPin, MessageCircle, Palette, RotateCcw, ShieldCheck, Smartphone, Store, Truck, Users, Zap, type LucideIcon } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { MockStore } from "@/components/marketing/mock-store";
 import { daysText } from "@/lib/billing";
@@ -114,6 +114,25 @@ export default async function Home() {
               );
             })}
           </ul>
+        </section>
+
+        <section id="design" className="relative overflow-hidden bg-navy py-16 text-white md:py-20">
+          <div aria-hidden className="pointer-events-none absolute -top-24 -start-24 size-72 rounded-full bg-gold/20 blur-3xl" />
+          <div className="relative mx-auto max-w-6xl px-4">
+            <div className="mx-auto mb-10 max-w-2xl text-center"><h2 className="text-3xl text-white md:text-4xl">{c.design.title}</h2><p className="mt-3 text-white/75">{c.design.subtitle}</p></div>
+            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {c.design.items.map((d, i) => {
+                const Icon = [Clapperboard, PenTool, Palette, Gift][i % 4]!;
+                return (
+                  <li key={d.title} className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur transition-colors hover:border-gold/50">
+                    <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-gold text-navy"><Icon className="size-5" aria-hidden /></div>
+                    <h3 className="text-lg text-white">{d.title}</h3><p className="mt-2 text-sm leading-7 text-white/75">{d.text}</p>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-8 text-center"><Link href="/register" className="inline-flex h-12 items-center rounded-md bg-gold px-7 font-semibold text-navy shadow-soft transition-all hover:brightness-95">{c.design.button}</Link></div>
+          </div>
         </section>
 
         {c.showcase.items.length > 0 && (

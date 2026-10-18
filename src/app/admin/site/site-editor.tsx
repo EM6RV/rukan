@@ -36,11 +36,11 @@ export function SiteEditor({ initial, heroImage }: { initial: SiteContent; heroI
   const reset = useAct();
 
   const set = <K extends keyof SiteContent>(k: K, patch: Partial<SiteContent[K]>) => setC((x) => ({ ...x, [k]: { ...x[k], ...patch } }));
-  const setItem = <K extends "features" | "showcase" | "steps" | "faq">(k: K, i: number, patch: Partial<SiteContent[K]["items"][number]>) =>
+  const setItem = <K extends "features" | "showcase" | "design" | "steps" | "faq">(k: K, i: number, patch: Partial<SiteContent[K]["items"][number]>) =>
     setC((x) => ({ ...x, [k]: { ...x[k], items: x[k].items.map((it, j) => (j === i ? { ...it, ...patch } : it)) } }) as SiteContent);
-  const move = <K extends "features" | "showcase" | "steps" | "faq">(k: K) => (from: number, to: number) => setC((x) => ({ ...x, [k]: { ...x[k], items: swap(x[k].items as never[], from, to) } }) as SiteContent);
-  const remove = <K extends "features" | "showcase" | "steps" | "faq">(k: K, i: number) => setC((x) => ({ ...x, [k]: { ...x[k], items: x[k].items.filter((_, j) => j !== i) } }) as SiteContent);
-  const add = <K extends "features" | "showcase" | "steps" | "faq">(k: K, item: SiteContent[K]["items"][number]) => setC((x) => ({ ...x, [k]: { ...x[k], items: [...x[k].items, item] } }) as SiteContent);
+  const move = <K extends "features" | "showcase" | "design" | "steps" | "faq">(k: K) => (from: number, to: number) => setC((x) => ({ ...x, [k]: { ...x[k], items: swap(x[k].items as never[], from, to) } }) as SiteContent);
+  const remove = <K extends "features" | "showcase" | "design" | "steps" | "faq">(k: K, i: number) => setC((x) => ({ ...x, [k]: { ...x[k], items: x[k].items.filter((_, j) => j !== i) } }) as SiteContent);
+  const add = <K extends "features" | "showcase" | "design" | "steps" | "faq">(k: K, item: SiteContent[K]["items"][number]) => setC((x) => ({ ...x, [k]: { ...x[k], items: [...x[k].items, item] } }) as SiteContent);
 
   const onSave = () => save.act(() => saveSiteContentAction({ ...c, hero: { ...c.hero, imageMediaId: img?.id ?? null } }), "تم حفظ محتوى الموقع");
 
@@ -78,6 +78,16 @@ export function SiteEditor({ initial, heroImage }: { initial: SiteContent; heroI
           </div>
         ))}
         {c.showcase.items.length < 6 && <Button variant="outline" size="sm" onClick={() => add("showcase", { name: "متجر جديد", category: "نشاط", primary: "#0D263E", accent: "#C19E58", template: "simple", href: "" })}><Plus className="size-4" aria-hidden /> مثال</Button>}
+      </CardBody></Card>
+
+      <Card><CardHeader title="خدمات التصميم" description="قسم في الصفحة الرئيسية يعلن عن الريلز واللوجو والهوية. الطلب نفسه يجي من لوحة البياع." /><CardBody className="space-y-4">
+        <Input label="العنوان" value={c.design.title} maxLength={80} onChange={(e) => set("design", { title: e.target.value })} />
+        <Input label="الوصف" value={c.design.subtitle} maxLength={250} onChange={(e) => set("design", { subtitle: e.target.value })} />
+        <Input label="نص الزر" value={c.design.button} maxLength={30} onChange={(e) => set("design", { button: e.target.value })} />
+        {c.design.items.map((it, i) => (
+          <div key={i} className="flex items-end gap-2 rounded-lg border border-line p-3"><div className="min-w-0 flex-1 space-y-3"><Input label={`الخدمة ${i + 1}`} value={it.title} maxLength={50} onChange={(e) => setItem("design", i, { title: e.target.value })} /><Input label="الوصف" value={it.text} maxLength={220} onChange={(e) => setItem("design", i, { text: e.target.value })} /></div><ListButtons i={i} n={c.design.items.length} move={move("design")} remove={() => remove("design", i)} /></div>
+        ))}
+        {c.design.items.length < 6 && <Button variant="outline" size="sm" onClick={() => add("design", { title: "خدمة جديدة", text: "" })}><Plus className="size-4" aria-hidden /> خدمة</Button>}
       </CardBody></Card>
 
       <Card><CardHeader title="الخطوات" /><CardBody className="space-y-4">

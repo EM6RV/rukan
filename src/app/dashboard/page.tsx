@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { isNull } from "drizzle-orm";
-import { Banknote, CheckCircle2, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
+import { Banknote, CheckCircle2, Clapperboard, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
 import { StoreLinkCard } from "@/components/dashboard/copy-link";
 import { PushToggle } from "@/components/dashboard/push-toggle";
 import { SalesChart } from "@/components/dashboard/sales-chart";
@@ -82,6 +82,18 @@ export default async function DashboardHome() {
           </Card>
         </div>
       </section>
+
+      {can(ctx.role, "settings") && (
+        <Card className="border-gold/60 bg-gold/10">
+          <CardBody className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-navy text-gold"><Clapperboard className="size-5" aria-hidden /></span>
+              <div><p className="font-semibold">نصمم لك ريلز ولوجو وهوية</p><p className="text-sm text-muted">اطلب تصميم لمتجرك، والسعر حسب الطلب{(limits.freeDesigns ?? 0) > 0 ? ". وباقتك فيها ريل أو لوجو مجاني." : "."}</p></div>
+            </div>
+            <Link href="/dashboard/design-services" className="inline-flex h-10 items-center rounded-md bg-navy px-4 text-sm font-semibold text-white hover:opacity-90">اطلب تصميم</Link>
+          </CardBody>
+        </Card>
+      )}
 
       <Card id="store-link" className="scroll-mt-20">
         <CardHeader title="رابط متجرك" description="شاركه في إنستغرام وتيك توك وواتساب." />

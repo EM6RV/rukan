@@ -386,6 +386,18 @@ describe("محتوى الموقع التسويقي", () => {
     expect(await getSiteContent(db)).toEqual(DEFAULT_SITE_CONTENT);
   });
 
+  it("محتوى محفوظ قبل قسم «خدمات التصميم» (بدون design) يبقى سليم ويأخذ الافتراضي للقسم الجديد", async () => {
+    const { siteContent } = await import("@/db/schema/platform");
+    const old = structuredClone(DEFAULT_SITE_CONTENT) as Record<string, unknown>;
+    delete old.design;
+    (old.hero as { title: string }).title = "عنوان قديم محفوظ";
+    await db.insert(siteContent).values({ key: "marketing", value: old }).onConflictDoUpdate({ target: siteContent.key, set: { value: old } });
+    const got = await getSiteContent(db);
+    expect(got.hero.title).toBe("عنوان قديم محفوظ"); // ما ضاع تعديل الأدمن
+    expect(got.design).toEqual(DEFAULT_SITE_CONTENT.design);
+    await resetSiteContent(db, adminId);
+  });
+
   it("رفض بيانات غلط، والصورة لازم تكون عامة من وسائط المنصة", async () => {
     const mut = (f: (c: typeof DEFAULT_SITE_CONTENT) => void) => { const c = structuredClone(DEFAULT_SITE_CONTENT); f(c); return saveSiteContent(db, c, adminId); };
     expect((await mut((c) => { c.hero.title = "ا"; })).ok).toBe(false);

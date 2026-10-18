@@ -9,6 +9,7 @@ export type SiteContent = {
   hero: { badge: string; title: string; subtitle: string; primaryCta: string; secondaryCta: string; imageMediaId: string | null };
   features: { title: string; subtitle: string; items: { icon: FeatureIcon; title: string; text: string }[] };
   showcase: { title: string; subtitle: string; items: { name: string; category: string; primary: string; accent: string; template: import("./constants").StoreTemplate; href: string }[] };
+  design: { title: string; subtitle: string; button: string; items: { title: string; text: string }[] };
   steps: { title: string; items: { title: string; text: string }[] };
   pricing: { title: string; subtitle: string; note: string };
   faq: { title: string; items: { q: string; a: string }[] };
@@ -48,6 +49,17 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       { name: "بيت الحلا", category: "حلويات وأكل بيتي", primary: "#7A3E12", accent: "#E0A030", template: "warm", href: "" },
       { name: "خيط", category: "أزياء وإكسسوارات", primary: "#111111", accent: "#C19E58", template: "editorial", href: "" },
       { name: "ذهب ليبيا", category: "عطور وذهب", primary: "#12372A", accent: "#D9B65C", template: "noir", href: "" },
+    ],
+  },
+  design: {
+    title: "نصمم لك ريلز ولوجو وهوية",
+    subtitle: "ما نكتفي بالمتجر: فريق رُكن يصمم لك اللي يخلي علامتك تبان احترافية في إنستغرام وتيك توك.",
+    button: "ابدأ واطلب تصميمك",
+    items: [
+      { title: "ريلز لمنتجاتك", text: "فيديوهات قصيرة لإنستغرام وتيك توك تبيّن منتجاتك بشكل يشد الزبون." },
+      { title: "لوجو لمتجرك", text: "لوجو يليق بنشاطك، بألوانك وبدون تعقيد." },
+      { title: "هوية كاملة", text: "لوجو وألوان وخطوط وشكل موحد لمتجرك وحساباتك." },
+      { title: "مجاناً مع الباقة السنوية", text: "ريل أو لوجو مجاني في كل فترة اشتراك سنوي. والسعر للباقي حسب طلبك." },
     ],
   },
   steps: {
