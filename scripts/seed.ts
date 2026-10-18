@@ -26,7 +26,7 @@ const PLANS = [
   {
     slug: "yearly", nameAr: "سنوية", billingPeriod: "yearly" as const, price: 1_250_000, sortOrder: 3, isFeatured: true,
     descriptionAr: "فل مزايا: كل شي غير محدود، دومين خاص وPixels وبدون شعار رُكن",
-    limits: { maxProducts: null, maxStaff: null, allTemplates: true, coupons: true, reports: true, customDomain: true, pixels: true, removeBranding: true },
+    limits: { maxProducts: null, maxStaff: null, allTemplates: true, coupons: true, reports: true, customDomain: true, pixels: true, removeBranding: true, freeDesigns: 1 },
   },
 ];
 

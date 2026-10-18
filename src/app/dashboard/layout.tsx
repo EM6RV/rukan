@@ -30,6 +30,7 @@ const ALL_ITEMS: (NavItem & { permission: Parameters<typeof can>[1] })[] = [
   { href: "/dashboard/reports", label: "التقارير", icon: "reports", permission: "reports" },
   { href: "/dashboard/content", label: "محتوى المتجر", icon: "content", permission: "settings" },
   { href: "/dashboard/design", label: "التصميم", icon: "design", permission: "settings" },
+  { href: "/dashboard/design-services", label: "خدمات التصميم", icon: "services", permission: "settings" },
   { href: "/dashboard/staff", label: "الموظفين", icon: "staff", permission: "staff" },
   { href: "/dashboard/billing", label: "الاشتراك", icon: "billing", permission: "billing" },
   { href: "/dashboard/settings", label: "الإعدادات", icon: "settings", permission: "settings" },

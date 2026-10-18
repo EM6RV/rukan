@@ -68,6 +68,7 @@ export default async function BillingPage() {
                   <ul className="space-y-1.5 text-sm">
                     <li>{p.limits.maxProducts === null ? "منتجات غير محدودة" : `${p.limits.maxProducts} منتج`}</li>
                     <li>{p.limits.maxStaff === null ? "موظفين غير محدودين" : `${p.limits.maxStaff} موظف`}</li>
+                    {(p.limits.freeDesigns ?? 0) > 0 && <li className="flex items-center gap-1.5"><Check className="size-4 text-success-fg" aria-hidden />ريل أو لوجو مجاناً</li>}
                     {FLAGS.map(([k, l]) => <li key={k} className={`flex items-center gap-1.5 ${p.limits[k] ? "" : "text-muted"}`}>{p.limits[k] ? <Check className="size-4 text-success-fg" aria-hidden /> : <X className="size-4" aria-hidden />}{l}</li>)}
                   </ul>
                   {link && !isCurrent && <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-semibold hover:bg-surface-2"><MessageCircle className="size-4" aria-hidden /> {higher ? "رقّي لهذي الباقة" : "حوّل لهذي الباقة"}</a>}

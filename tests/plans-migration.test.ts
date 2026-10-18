@@ -88,7 +88,9 @@ describe("ترحيل الباقات القديمة للثلاث الجديدة (
       expect(await setting("trial_plan_slug")).toBe('"yearly"');
 
       // الخطوة 2 (0006): الباقات النهائية: شهرية 250 / ست شهور 650 / سنوية 1250 (فل مزايا)
-      await migrate(db, { migrationsFolder: MIGRATIONS });
+      const six = join(dir, "six");
+      oldMigrations(six, "0006");
+      await migrate(db, { migrationsFolder: six });
       const finalPlans = (await client.execute("SELECT slug, name_ar AS name, billing_period AS period, price, is_featured AS featured, is_active AS active, sort_order AS ord, limits FROM plans WHERE is_active = 1 ORDER BY sort_order")).rows;
       expect(finalPlans.map((p) => ({ slug: p.slug, name: p.name, period: p.period, price: p.price, featured: p.featured }))).toEqual([
         { slug: "monthly", name: "شهرية", period: "monthly", price: 250_000, featured: 0 },
@@ -115,6 +117,14 @@ describe("ترحيل الباقات القديمة للثلاث الجديدة (
       expect(await setting("trial_days")).toBe("3");
       // سجل الدفعات يحتفظ بباقته (القديمة المخبّاة growth)
       expect(String((await client.execute("SELECT p.slug FROM subscription_payments sp JOIN plans p ON p.id = sp.plan_id")).rows[0]!.slug)).toBe("growth");
+
+      // الخطوة 3 (0007): جدول طلبات التصميم + تصميم مجاني للسنوية بس
+      await migrate(db, { migrationsFolder: MIGRATIONS });
+      const limits = Object.fromEntries((await client.execute("SELECT slug, limits FROM plans WHERE is_active = 1")).rows.map((r) => [String(r.slug), JSON.parse(String(r.limits))]));
+      expect(limits.yearly.freeDesigns).toBe(1);
+      expect(limits.semiannual.freeDesigns).toBeUndefined();
+      expect(limits.monthly.freeDesigns).toBeUndefined();
+      expect((await client.execute("SELECT COUNT(*) AS n FROM design_requests")).rows[0]!.n).toBe(0);
     } finally {
       client.close();
       rmSync(dir, { recursive: true, force: true });

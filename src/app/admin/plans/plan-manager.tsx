@@ -16,7 +16,7 @@ import { savePlanAction } from "../actions";
 
 type Plan = { id: string; slug: string; nameAr: string; descriptionAr: string | null; billingPeriod: BillingPeriod; price: number; isFeatured: boolean; sortOrder: number; isActive: boolean; limits: PlanLimits };
 
-const FLAGS: { key: keyof Omit<PlanLimits, "maxProducts" | "maxStaff">; label: string }[] = [
+const FLAGS: { key: keyof Omit<PlanLimits, "maxProducts" | "maxStaff" | "freeDesigns">; label: string }[] = [
   { key: "allTemplates", label: "كل القوالب" }, { key: "coupons", label: "الكوبونات" }, { key: "reports", label: "التقارير" },
   { key: "pixels", label: "Pixels" }, { key: "customDomain", label: "دومين خاص" }, { key: "removeBranding", label: "بدون شعار رُكن" },
 ];
@@ -26,7 +26,7 @@ function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void })
   const [v, setV] = useState({
     slug: initial?.slug ?? "", nameAr: initial?.nameAr ?? "", descriptionAr: initial?.descriptionAr ?? "",
     billingPeriod: (initial?.billingPeriod ?? "monthly") as BillingPeriod, price: dirhamToInput(initial?.price ?? 0) || "0", isFeatured: initial?.isFeatured ?? false, sortOrder: String(initial?.sortOrder ?? 0), isActive: initial?.isActive ?? true,
-    maxProducts: initial?.limits.maxProducts === null ? "" : String(initial?.limits.maxProducts ?? 50), maxStaff: initial?.limits.maxStaff === null ? "" : String(initial?.limits.maxStaff ?? 1),
+    maxProducts: initial?.limits.maxProducts === null ? "" : String(initial?.limits.maxProducts ?? 50), maxStaff: initial?.limits.maxStaff === null ? "" : String(initial?.limits.maxStaff ?? 1), freeDesigns: String(initial?.limits.freeDesigns ?? 0),
     flags: { allTemplates: initial?.limits.allTemplates ?? false, coupons: initial?.limits.coupons ?? false, reports: initial?.limits.reports ?? false, pixels: initial?.limits.pixels ?? false, customDomain: initial?.limits.customDomain ?? false, removeBranding: initial?.limits.removeBranding ?? false },
   });
   const [localError, setLocalError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void })
     const price = inputToDirham(v.price);
     if (price == null) return setLocalError("اكتب السعر بالدينار (أرقام)");
     const num = (s: string) => (s.trim() === "" ? null : Number(s));
-    act(() => savePlanAction({ id: initial?.id, slug: initial ? undefined : v.slug, nameAr: v.nameAr, descriptionAr: v.descriptionAr, billingPeriod: v.billingPeriod, price, isFeatured: v.isFeatured, sortOrder: Number(v.sortOrder) || 0, isActive: v.isActive, limits: { maxProducts: num(v.maxProducts), maxStaff: num(v.maxStaff), ...v.flags } }), "تم حفظ الباقة", onClose);
+    act(() => savePlanAction({ id: initial?.id, slug: initial ? undefined : v.slug, nameAr: v.nameAr, descriptionAr: v.descriptionAr, billingPeriod: v.billingPeriod, price, isFeatured: v.isFeatured, sortOrder: Number(v.sortOrder) || 0, isActive: v.isActive, limits: { maxProducts: num(v.maxProducts), maxStaff: num(v.maxStaff), freeDesigns: Number(v.freeDesigns) || 0, ...v.flags } }), "تم حفظ الباقة", onClose);
   }
 
   return (
@@ -58,6 +58,7 @@ function PlanForm({ initial, onClose }: { initial?: Plan; onClose: () => void })
           <Input label="حد المنتجات" inputMode="numeric" value={v.maxProducts} onChange={(e) => setV({ ...v, maxProducts: e.target.value })} hint="فاضي = غير محدود" />
           <Input label="حد الموظفين" inputMode="numeric" value={v.maxStaff} onChange={(e) => setV({ ...v, maxStaff: e.target.value })} hint="فاضي = غير محدود" />
         </div>
+        <Input label="تصاميم مجانية (ريل أو لوجو) في كل فترة اشتراك" inputMode="numeric" value={v.freeDesigns} onChange={(e) => setV({ ...v, freeDesigns: e.target.value })} hint="0 = ما فيه. تتجدد مع كل تجديد للاشتراك" />
         <fieldset className="space-y-3 rounded-lg border border-line p-3"><legend className="px-1 text-sm font-medium">المزايا</legend>
           {FLAGS.map((f) => <Toggle key={f.key} label={f.label} checked={v.flags[f.key]} onChange={(c) => setV({ ...v, flags: { ...v.flags, [f.key]: c } })} />)}
         </fieldset>
@@ -83,7 +84,7 @@ export function PlanManager({ plans }: { plans: Plan[] }) {
               <p className="text-2xl font-bold">{formatMoney(p.price)} <span className="text-sm font-normal text-muted">/ {periodUnit(p.billingPeriod)}</span></p>
               {approxMonthly(p.price, p.billingPeriod) ? <p className="text-sm text-muted">يعني تقريباً {formatMoney(approxMonthly(p.price, p.billingPeriod)!)} في الشهر</p> : null}
               <ul className="space-y-1.5 text-sm">
-                <li>{limitText(p.limits.maxProducts, "منتج")}</li><li>{limitText(p.limits.maxStaff, "موظف")}</li>
+                <li>{limitText(p.limits.maxProducts, "منتج")}</li><li>{limitText(p.limits.maxStaff, "موظف")}</li>{(p.limits.freeDesigns ?? 0) > 0 && <li className="flex items-center gap-1.5"><Check className="size-4 text-success-fg" aria-hidden />{p.limits.freeDesigns} تصميم مجاني (ريل أو لوجو)</li>}
                 {FLAGS.map((f) => <li key={f.key} className={`flex items-center gap-1.5 ${p.limits[f.key] ? "" : "text-muted"}`}>{p.limits[f.key] ? <Check className="size-4 text-success-fg" aria-hidden /> : <X className="size-4" aria-hidden />}{f.label}</li>)}
               </ul>
               <Button variant="outline" size="sm" onClick={() => setEditing(p)}>تعديل</Button>

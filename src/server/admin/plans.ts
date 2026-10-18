@@ -25,6 +25,7 @@ const schema = z.object({
   limits: z.object({
     maxProducts: nullableInt("حد المنتجات", 10_000_000),
     maxStaff: nullableInt("حد الموظفين", 100_000),
+    freeDesigns: z.number({ error: "عدد التصاميم المجانية لازم يكون رقم" }).int("عدد التصاميم المجانية لازم يكون رقم صحيح").min(0, "ما يكونش بالسالب").max(20, "عدد التصاميم المجانية كبير بزيادة").default(0),
     allTemplates: z.boolean(), coupons: z.boolean(), reports: z.boolean(), customDomain: z.boolean(), pixels: z.boolean(), removeBranding: z.boolean(),
   }),
 });

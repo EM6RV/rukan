@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CreditCard, Globe, KeyRound, LayoutDashboard, Layers, ScrollText, Settings, Store, type LucideIcon } from "lucide-react";
+import { Bell, Brush, CreditCard, Globe, KeyRound, LayoutDashboard, Layers, ScrollText, Settings, Store, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
@@ -12,6 +12,7 @@ const ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/plans", label: "الباقات", icon: Layers },
   { href: "/admin/announcements", label: "الإعلانات", icon: Bell },
   { href: "/admin/site", label: "موقع رُكن", icon: Globe },
+  { href: "/admin/design-requests", label: "طلبات التصميم", icon: Brush },
   { href: "/admin/password-resets", label: "طلبات كلمة السر", icon: KeyRound },
   { href: "/admin/audit", label: "سجل النشاط", icon: ScrollText },
   { href: "/admin/settings", label: "الإعدادات", icon: Settings },

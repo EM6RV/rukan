@@ -1,6 +1,6 @@
 import { blob, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createdAt, pk, updatedAt } from "./_helpers";
-import type { BillingCycle, BusinessType, LibyaRegion, StoreStatus, StoreTemplate } from "@/lib/constants";
+import type { BillingCycle, BusinessType, DesignService, LibyaRegion, StoreStatus, StoreTemplate } from "@/lib/constants";
 
 // ===== المستخدمون والجلسات =====
 
@@ -64,6 +64,8 @@ export type PlanLimits = {
   customDomain: boolean;
   pixels: boolean;
   removeBranding: boolean;
+  /** عدد التصاميم المجانية (ريل أو لوجو) في كل فترة اشتراك. غير موجود = 0 */
+  freeDesigns?: number;
 };
 
 export const plans = sqliteTable("plans", {
@@ -231,3 +233,18 @@ export const cities = sqliteTable("cities", {
   region: text("region").$type<LibyaRegion>().notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
 });
+
+// ===== طلبات التصميم (ريل/لوجو/هوية): الطلب يتسجل هنا والتفاصيل والملفات على واتساب =====
+export const designRequests = sqliteTable(
+  "design_requests",
+  {
+    id: pk(),
+    storeId: text("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    service: text("service").$type<DesignService>().notNull(),
+    note: text("note"),
+    isFree: integer("is_free", { mode: "boolean" }).notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("design_requests_store_idx").on(t.storeId, t.createdAt)],
+);

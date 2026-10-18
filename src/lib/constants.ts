@@ -61,6 +61,13 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export const BILLING_CYCLES = ["monthly", "semiannual", "yearly"] as const;
 export type BillingCycle = (typeof BILLING_CYCLES)[number];
 
+// خدمات التصميم (يطلبها البياع ويكمّل التفاصيل على واتساب)
+export const DESIGN_SERVICES = ["reel", "logo", "identity", "other"] as const;
+export type DesignService = (typeof DESIGN_SERVICES)[number];
+export const DESIGN_SERVICE_LABELS: Record<DesignService, string> = { reel: "ريل", logo: "لوجو", identity: "هوية كاملة", other: "تصميم ثاني" };
+/** الخدمات اللي ينفع تكون هي «التصميم المجاني» ضمن الباقة */
+export const FREE_DESIGN_SERVICES: readonly DesignService[] = ["reel", "logo"];
+
 export const LIBYA_REGIONS = ["west", "east", "south", "center"] as const;
 export type LibyaRegion = (typeof LIBYA_REGIONS)[number];
 export const REGION_LABELS: Record<LibyaRegion, string> = { west: "الغرب", east: "الشرق", south: "الجنوب", center: "الوسط" };

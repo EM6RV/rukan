@@ -4,7 +4,7 @@ import { approxMonthly, periodUnit, type BillingPeriod } from "@/lib/billing";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/money";
 
-type Plan = { id: string; slug: string; name: string; description: string | null; billingPeriod: BillingPeriod; price: number; isFeatured: boolean; limits: { maxProducts: number | null; maxStaff: number | null; allTemplates: boolean; coupons: boolean; reports: boolean; customDomain: boolean; pixels: boolean; removeBranding: boolean } };
+type Plan = { id: string; slug: string; name: string; description: string | null; billingPeriod: BillingPeriod; price: number; isFeatured: boolean; limits: { maxProducts: number | null; maxStaff: number | null; allTemplates: boolean; coupons: boolean; reports: boolean; customDomain: boolean; pixels: boolean; removeBranding: boolean; freeDesigns?: number } };
 const FLAGS = [["coupons", "كوبونات الخصم"], ["reports", "تقارير ومبيعات"], ["pixels", "Pixels للإعلانات"], ["customDomain", "دومين خاص"], ["removeBranding", "بدون شعار رُكن"]] as const;
 
 /** جدول الأسعار: كل باقة لها مدة وحدة وسعر واحد. الباقة المميزة يحددها الأدمن (isFeatured). */
@@ -25,6 +25,7 @@ export function Pricing({ plans, cta }: { plans: Plan[]; cta: string }) {
               <li className="flex items-center gap-2"><Check className={cn("size-4.5", hot ? "text-gold" : "text-success-fg")} aria-hidden />{p.limits.maxProducts === null ? "منتجات غير محدودة" : `${p.limits.maxProducts} منتج`}</li>
               <li className="flex items-center gap-2"><Check className={cn("size-4.5", hot ? "text-gold" : "text-success-fg")} aria-hidden />{p.limits.maxStaff === null ? "موظفين غير محدودين" : `${p.limits.maxStaff} ${p.limits.maxStaff === 1 ? "موظف" : "موظفين"}`}</li>
               <li className="flex items-center gap-2"><Check className={cn("size-4.5", hot ? "text-gold" : "text-success-fg")} aria-hidden />{p.limits.allTemplates ? "كل القوالب" : "قالب واحد"}</li>
+              {(p.limits.freeDesigns ?? 0) > 0 && <li className="flex items-center gap-2"><Check className={cn("size-4.5", hot ? "text-gold" : "text-success-fg")} aria-hidden />ريل أو لوجو مجاناً</li>}
               {FLAGS.map(([k, l]) => <li key={k} className={cn("flex items-center gap-2", !p.limits[k] && (hot ? "text-white/50 line-through" : "text-muted line-through decoration-muted/50"))}>{p.limits[k] ? <Check className={cn("size-4.5", hot ? "text-gold" : "text-success-fg")} aria-hidden /> : <X className="size-4.5" aria-hidden />}{l}</li>)}
             </ul>
             <Link href="/register" className={cn("inline-flex h-12 items-center justify-center rounded-md font-semibold transition-all duration-200", hot ? "bg-gold text-navy shadow-soft hover:brightness-95" : "border border-line hover:border-navy hover:bg-surface-2")}>{cta}</Link>
