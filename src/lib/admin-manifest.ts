@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 /** تطبيق الأدمن: أيقونة لوحدها على الشاشة الرئيسية تفتح /admin مباشرة (غير تطبيق لوحة المتجر). */
-export default function manifest(): MetadataRoute.Manifest {
+export function adminManifest(): MetadataRoute.Manifest {
   return {
     id: "/admin",
     name: "رُكن — الأدمن",

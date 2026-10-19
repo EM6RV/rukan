@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import adminManifest from "@/app/admin/manifest";
+import { GET } from "@/app/admin/manifest.webmanifest/route";
+import { adminManifest } from "@/lib/admin-manifest";
 import storeManifest from "@/app/manifest";
 
 describe("تطبيق الأدمن على الشاشة الرئيسية (PWA مستقل)", () => {
@@ -14,6 +15,13 @@ describe("تطبيق الأدمن على الشاشة الرئيسية (PWA مس
     expect(a.start_url).not.toBe(s.start_url);
     expect(a.name).not.toBe(s.name);
     expect(a.short_name).not.toBe(s.short_name);
+  });
+
+  it("الـ route يرجّع نفس الـ manifest كـ JSON عام", async () => {
+    const r = GET();
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toContain("manifest+json");
+    expect(await r.json()).toEqual(JSON.parse(JSON.stringify(a)));
   });
 
   it("كل روابط الاختصارات داخل /admin، والأيقونات موجودة ومختلفة عن أيقونات المتجر", () => {
