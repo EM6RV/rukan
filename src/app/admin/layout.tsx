@@ -5,17 +5,26 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { Logo } from "@/components/brand/logo";
 import { SkipLink } from "@/components/ui/skip-link";
 import { Badge } from "@/components/ui/badge";
+import { PwaSetup } from "@/components/dashboard/pwa";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { requireAdmin } from "@/server/auth/current";
 import { logoutAction } from "../(auth)/actions";
 
-export const metadata: Metadata = { title: { template: "%s | رُكن", default: "لوحة الأدمن | رُكن" }, robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: { template: "%s | رُكن", default: "لوحة الأدمن | رُكن" },
+  robots: { index: false, follow: false },
+  // تطبيق مستقل للأدمن على الشاشة الرئيسية (غير تطبيق لوحة المتجر): manifest وأيقونة واسم خاصين
+  manifest: "/admin/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "أدمن رُكن", statusBarStyle: "default" },
+  icons: { apple: "/icons/admin-192.png" },
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAdmin();
   return (
     <div className="min-h-dvh bg-bg">
       <SkipLink />
+      <PwaSetup app="admin" />
       <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
