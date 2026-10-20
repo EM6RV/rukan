@@ -63,7 +63,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         {[{ key: undefined, label: "الكل", n: result.allCount }, ...ORDER_STATUSES.filter((s) => s !== "with_courier" || ctx.store.useCouriers || status === s || (result.counts[s] ?? 0) > 0).map((s) => ({ key: s as string | undefined, label: ORDER_STATUS_LABELS[s], n: result.counts[s] ?? 0 }))].map((tab) => (
           <Link
             key={tab.key ?? "all"} href={href({ status: tab.key, page: undefined })} aria-current={status === tab.key ? "page" : undefined}
-            className={cn("flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors", status === tab.key ? "border-gold bg-gold/20" : "border-line bg-surface text-muted hover:text-fg")}
+            className={cn("flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors", status === tab.key ? "border-fg/60 bg-surface-2" : "border-line bg-surface text-muted hover:text-fg")}
           >
             {tab.label}<span className="rounded-full bg-surface-2 px-1.5 text-xs">{tab.n}</span>
           </Link>

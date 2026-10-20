@@ -64,6 +64,13 @@
       "when": 1792322588151,
       "tag": "0008_stores_use_couriers",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792535203574,
+      "tag": "0009_stores_enabled_modules",
+      "breakpoints": true
     }
   ]
 }

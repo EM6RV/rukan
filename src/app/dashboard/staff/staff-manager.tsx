@@ -81,7 +81,7 @@ export function StaffManager({ members, canAdd, writable }: { members: Member[];
         {members.map((m) => (
           <li key={m.id}>
             <Card className="flex flex-wrap items-center gap-3 p-4">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gold/20">{m.role === "owner" ? <Crown className="size-5" aria-hidden /> : <UserCog className="size-5" aria-hidden />}</div>
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-2">{m.role === "owner" ? <Crown className="size-5" aria-hidden /> : <UserCog className="size-5" aria-hidden />}</div>
               <div className="min-w-0 flex-1"><p className="font-semibold">{m.name}</p><p dir="ltr" className="text-start text-sm text-muted">{m.phone}</p></div>
               {m.role === "owner" ? <Badge tone="gold">{STAFF_ROLE_LABELS.owner}</Badge> : (
                 <div className="flex flex-wrap items-center gap-2">

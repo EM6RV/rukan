@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <Link href="/admin" aria-label="الأدمن"><Logo className="h-9" /></Link>
-            <Badge tone="gold"><ShieldCheck className="size-3.5" /> الأدمن</Badge>
+            <Badge tone="navy"><ShieldCheck className="size-3.5" /> الأدمن</Badge>
           </div>
           <div className="flex items-center gap-1">
             <span className="hidden text-sm text-muted sm:inline">{user.name}</span>

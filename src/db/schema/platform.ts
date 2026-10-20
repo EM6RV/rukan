@@ -1,6 +1,7 @@
+import { sql } from "drizzle-orm";
 import { blob, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createdAt, pk, updatedAt } from "./_helpers";
-import type { BillingCycle, BusinessType, DesignService, LibyaRegion, StoreStatus, StoreTemplate } from "@/lib/constants";
+import type { BillingCycle, BusinessType, DesignService, LibyaRegion, StoreModule, StoreStatus, StoreTemplate } from "@/lib/constants";
 
 // ===== المستخدمون والجلسات =====
 
@@ -66,6 +67,8 @@ export type PlanLimits = {
   removeBranding: boolean;
   /** عدد التصاميم المجانية (ريل أو لوجو) في كل فترة اشتراك. غير موجود = 0 */
   freeDesigns?: number;
+  /** الوحدات الاختيارية المسموحة في الباقة. غير محدد = مسموحة (القفل الفعلي بالباقة يتضبط في المرحلة 1) */
+  modules?: Partial<Record<StoreModule, boolean>>;
 };
 
 export const plans = sqliteTable("plans", {
@@ -100,6 +103,8 @@ export const stores = sqliteTable(
     nextOrderNumber: integer("next_order_number").notNull().default(1001),
     // يستعمل مندوبين/شركات توصيل (وكاش عندهم)؟ لو مقفل نخفي المندوبين والكاش من اللوحة (افتراضياً شغال)
     useCouriers: integer("use_couriers", { mode: "boolean" }).notNull().default(true),
+    /** الوحدات الاختيارية اللي فعّلها البياع. الطفي ما يمسح بياناتها. */
+    enabledModules: text("enabled_modules", { mode: "json" }).$type<StoreModule[]>().notNull().default(sql`'[]'`),
     logoMediaId: text("logo_media_id"),
     // معالج الإعداد: آخر خطوة تم حفظها، و onboardedAt لما يخلص المعالج
     onboardingStep: integer("onboarding_step").notNull().default(0),

@@ -67,7 +67,8 @@ export default async function Home() {
         <section className="relative isolate overflow-hidden bg-navy text-white [--focus:#e3c487] [--focus-halo:transparent]">
           {/* خلفية: توهّج ذهبي وتركوازي + شبكة نقاط خفيفة (زينة فقط) */}
           <div aria-hidden className="pointer-events-none absolute -top-40 -start-40 -z-10 size-[34rem] rounded-full bg-gold/25 blur-3xl" />
-          <div aria-hidden className="pointer-events-none absolute -bottom-48 -end-32 -z-10 size-[30rem] rounded-full bg-teal/30 blur-3xl" />
+          {/* مثبتة من فوق (مش من تحت) باش ما تتحركش لما القسم يطول أثناء التحميل (CLS) */}
+          <div aria-hidden className="pointer-events-none absolute top-[28rem] -end-32 -z-10 size-[30rem] rounded-full bg-teal/30 blur-3xl lg:top-[18rem]" />
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-[0.07] [background-image:radial-gradient(#fff_1px,transparent_1px)] [background-size:22px_22px]" />
           <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 md:py-24 lg:grid-cols-2">
             <div className="space-y-7 text-center lg:text-start">

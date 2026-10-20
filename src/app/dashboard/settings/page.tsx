@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Blocks } from "lucide-react";
 import { getEnv } from "@/lib/env";
 import { storeUrl } from "@/lib/store-url";
 import { currentRequest } from "@/server/request-origin";
@@ -20,12 +22,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const [[s], methods, delivery, templates, domain] = await Promise.all([scope.from(t.storeSettings).limit(1), scope.from(t.storePaymentMethods), getDeliveryConfig(getDb(), scope), getWhatsappTemplates(scope), getStoreDomain(getDb(), store.id)]);
   const bank = methods.find((m) => m.method === "bank_transfer");
   const cfg = (bank?.config ?? {}) as Record<string, string | undefined>;
-  const media = (id: string | null | undefined) => (id ? { id, url: `/api/media/${id}` } : null);
+  const media = (id: string | null | undefined) => (id ? { id, url: `/api/media/${id}?w=320` } : null);
 
   const req = await currentRequest();
   return (
     <div className="space-y-5">
-      <div><h1 className="text-2xl">الإعدادات</h1><p className="text-muted">معلومات متجرك وهويته وطرق الدفع.</p></div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div><h1 className="text-2xl">الإعدادات</h1><p className="text-muted">معلومات متجرك وهويته وطرق الدفع.</p></div>
+        <Link href="/dashboard/settings/modules" className="inline-flex h-10 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm font-semibold hover:border-fg/25"><Blocks className="size-4" aria-hidden />الوحدات</Link>
+      </div>
       <SettingsTabs
         writable={ctx.access.writable}
         defaultTab={["general", "contact", "payment", "delivery", "whatsapp", "pixels", "domain", "seo"].includes(tab ?? "") ? tab! : "general"}

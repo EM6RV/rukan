@@ -60,7 +60,7 @@ export default async function BillingPage() {
             const link = request(p.nameAr);
             return (
               <li key={p.id}>
-                <Card className={`h-full space-y-3 p-5 ${isCurrent ? "border-gold ring-2 ring-gold/30" : ""}`}>
+                <Card className={`h-full space-y-3 p-5 ${isCurrent ? "border-fg ring-1 ring-fg/20" : ""}`}>
                   <div className="flex items-center justify-between"><h3 className="text-lg">{p.nameAr}</h3>{isCurrent && <Badge tone="gold">باقتك</Badge>}</div>
                   {p.descriptionAr && <p className="text-sm text-muted">{p.descriptionAr}</p>}
                   <p className="text-2xl font-bold">{formatMoney(p.price)} <span className="text-sm font-normal text-muted">/ {periodUnit(p.billingPeriod)}</span></p>

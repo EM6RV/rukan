@@ -39,7 +39,7 @@ export function DesignServices({ writable, supportReady, free }: { writable: boo
   return (
     <div className="space-y-5">
       {free.total > 0 && (
-        <Card className="border-gold bg-gold/10"><CardBody className="flex items-start gap-3 text-sm">
+        <Card className="border-line bg-surface-2"><CardBody className="flex items-start gap-3 text-sm">
           <Gift className="mt-0.5 size-5 shrink-0" aria-hidden />
           <p>{free.remaining > 0 ? <>باقتك فيها <b>تصميم مجاني</b> (ريل أو لوجو) في كل فترة اشتراك. باقيلك {free.remaining} من {free.total}.</> : <>استعملت التصميم المجاني في فترة اشتراكك الحالية. يتجدد مع تجديد الاشتراك.</>}</p>
         </CardBody></Card>
@@ -50,7 +50,7 @@ export function DesignServices({ writable, supportReady, free }: { writable: boo
           <legend className="text-sm font-semibold">شن تبي نصمم لك؟</legend>
           <div className="grid gap-3 sm:grid-cols-2">
             {SERVICES.map(({ id, icon: Icon, text }) => (
-              <label key={id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-teal has-checked:border-gold has-checked:bg-gold/10", service === id ? "border-gold" : "border-line hover:border-gold/60")}>
+              <label key={id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-teal has-checked:border-gold has-checked:bg-gold/10", service === id ? "border-gold" : "border-line hover:border-fg/25")}>
                 <input type="radio" name="service" value={id} checked={service === id} onChange={() => { setService(id); setUseFree(false); }} className="sr-only" />
                 <Icon className="mt-0.5 size-5 shrink-0" aria-hidden />
                 <span className="space-y-0.5"><span className="block font-semibold">{DESIGN_SERVICE_LABELS[id]}</span><span className="block text-sm text-muted">{text}</span><span className="block text-xs text-muted">السعر حسب الطلب</span></span>

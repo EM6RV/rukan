@@ -39,7 +39,7 @@ export default async function AbandonedCartsPage() {
         <EmptyState icon={<ShoppingCart className="size-6" />} title="ما فيش سلات متروكة" description="لما زبون يكتب رقمه ويسيب السلة 30 دقيقة، تظهر هنا. الأرقام تتمسح بعد 30 يوم." />
       ) : (
         <>
-          <p className="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm">
+          <p className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm">
             <b className="tabular-nums">{rows.length}</b> سلة بقيمة <b className="tabular-nums">{formatMoney(total)}</b> بانتظار تذكير.
           </p>
           <CartList rows={rows} writable={ctx.access.writable} />

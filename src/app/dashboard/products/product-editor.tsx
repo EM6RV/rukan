@@ -49,7 +49,7 @@ export function ProductEditor({
   const [categoryIds, setCategoryIds] = useState<string[]>(initial?.categoryIds ?? []);
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
   const [isVisible, setIsVisible] = useState(initial?.isVisible ?? true);
-  const [images, setImages] = useState<Img[]>(initial?.imageMediaIds.map((id) => ({ id, url: `/api/media/${id}` })) ?? []);
+  const [images, setImages] = useState<Img[]>(initial?.imageMediaIds.map((id) => ({ id, url: `/api/media/${id}?w=320` })) ?? []);
   const [uploading, setUploading] = useState(0);
   const [price, setPrice] = useState(dirhamToInput(initial?.price));
   const [compareAt, setCompareAt] = useState(dirhamToInput(initial?.compareAtPrice));
@@ -187,7 +187,7 @@ export function ProductEditor({
                 {categories.map((c) => {
                   const on = categoryIds.includes(c.id);
                   return (
-                    <label key={c.id} className={cn("cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors", on ? "border-gold bg-gold/20 font-medium" : "border-line hover:border-gold/60")}>
+                    <label key={c.id} className={cn("cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors", on ? "border-fg/60 bg-surface-2 font-medium" : "border-line hover:border-fg/25")}>
                       <input type="checkbox" className="sr-only" checked={on} onChange={() => setCategoryIds((cur) => (on ? cur.filter((x) => x !== c.id) : [...cur, c.id]))} />
                       {c.name}
                     </label>
@@ -210,7 +210,7 @@ export function ProductEditor({
                   <div key={`up-${i}`} className="flex aspect-square items-center justify-center rounded-lg border border-line bg-surface-2"><Loader2 className="size-6 animate-spin text-muted" /></div>
                 ))}
                 {images.length + uploading < MAX_IMAGES && (
-                  <button type="button" onClick={() => fileInput.current?.click()} className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line text-sm text-muted transition-colors hover:border-gold hover:text-fg">
+                  <button type="button" onClick={() => fileInput.current?.click()} className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line text-sm text-muted transition-colors hover:border-fg/25 hover:text-fg">
                     <ImagePlus className="size-6" /> إضافة صور
                   </button>
                 )}
@@ -283,7 +283,7 @@ export function ProductEditor({
                           <input aria-label={`سعر ${label(v)}`} inputMode="decimal" value={v.price} onChange={(e) => patchVar(v.key, { price: e.target.value })} placeholder={price ? `${price} (الأساسي)` : "الأساسي"} className="h-10 min-w-0 rounded-md border border-line bg-surface px-3 text-sm" />
                           <input aria-label={`مخزون ${label(v)}`} inputMode="numeric" value={v.stock} onChange={(e) => patchVar(v.key, { stock: e.target.value })} className="h-10 min-w-0 rounded-md border border-line bg-surface px-3 text-sm" />
                           <input aria-label={`كود ${label(v)}`} dir="ltr" value={v.sku} maxLength={40} onChange={(e) => patchVar(v.key, { sku: e.target.value })} className="h-10 min-w-0 rounded-md border border-line bg-surface px-3 text-right text-sm" />
-                          <label className="flex items-center gap-2 text-sm sm:justify-center"><input type="checkbox" checked={v.isActive} onChange={(e) => patchVar(v.key, { isActive: e.target.checked })} className="size-4 accent-[var(--color-gold)]" /><span className="sm:sr-only">نشط</span></label>
+                          <label className="flex items-center gap-2 text-sm sm:justify-center"><input type="checkbox" checked={v.isActive} onChange={(e) => patchVar(v.key, { isActive: e.target.checked })} className="size-4 accent-[var(--color-teal)]" /><span className="sm:sr-only">نشط</span></label>
                         </li>
                       ))}
                     </ul>

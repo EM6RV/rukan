@@ -13,7 +13,7 @@ export default async function CategoriesPage() {
       writable={ctx.access.writable}
       initial={categories.map((c) => ({
         id: c.id, name: c.name, description: c.description, isVisible: c.isVisible, productCount: c.productCount,
-        image: c.imageMediaId ? { id: c.imageMediaId, url: `/api/media/${c.imageMediaId}` } : null,
+        image: c.imageMediaId ? { id: c.imageMediaId, url: `/api/media/${c.imageMediaId}?w=320` } : null,
       }))}
     />
   );

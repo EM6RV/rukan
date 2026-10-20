@@ -16,7 +16,7 @@ import { savePlanAction } from "../actions";
 
 type Plan = { id: string; slug: string; nameAr: string; descriptionAr: string | null; billingPeriod: BillingPeriod; price: number; isFeatured: boolean; sortOrder: number; isActive: boolean; limits: PlanLimits };
 
-const FLAGS: { key: keyof Omit<PlanLimits, "maxProducts" | "maxStaff" | "freeDesigns">; label: string }[] = [
+const FLAGS: { key: keyof Omit<PlanLimits, "maxProducts" | "maxStaff" | "freeDesigns" | "modules">; label: string }[] = [
   { key: "allTemplates", label: "كل القوالب" }, { key: "coupons", label: "الكوبونات" }, { key: "reports", label: "التقارير" },
   { key: "pixels", label: "Pixels" }, { key: "customDomain", label: "دومين خاص" }, { key: "removeBranding", label: "بدون شعار رُكن" },
 ];

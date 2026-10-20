@@ -72,7 +72,7 @@ export function PushToggle({ publicKey, courier = false }: { publicKey: string; 
   return (
     <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
       <div className="flex items-start gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gold/20 text-navy dark:text-gold">{state === "on" ? <Bell className="size-5" aria-hidden /> : <BellOff className="size-5" aria-hidden />}</span>
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-fg">{state === "on" ? <Bell className="size-5" aria-hidden /> : <BellOff className="size-5" aria-hidden />}</span>
         <div>
           <p className="font-semibold">{state === "on" ? (courier ? "إشعارات طلبياتك شغالة على هذا الجهاز" : "إشعارات الطلبيات شغالة على هذا الجهاز") : (courier ? "فعّل إشعارات طلبياتك" : "فعّل إشعارات الطلبيات")}</p>
           <p className="text-sm text-muted">

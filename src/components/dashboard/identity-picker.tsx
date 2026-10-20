@@ -44,7 +44,7 @@ export function IdentityPicker({ logo, onLogo, template, onTemplate, primary, ac
             return (
               <button
                 key={tpl} type="button" disabled={locked} onClick={() => onTemplate(tpl)} aria-pressed={on}
-                className={cn("relative space-y-2 rounded-xl border p-2 text-center text-xs transition-all disabled:opacity-50", on ? "border-gold ring-2 ring-gold/40" : "border-line hover:border-gold/60")}
+                className={cn("relative space-y-2 rounded-xl border p-2 text-center text-xs transition-all disabled:opacity-50", on ? "border-fg ring-2 ring-fg/15" : "border-line hover:border-fg/25")}
               >
                 <MockStore template={tpl} name="متجرك" primary={primary} accent={accent} className="pointer-events-none origin-top text-start" />
                 <span className="block text-sm font-semibold">{STORE_TEMPLATE_LABELS[tpl]}</span>
@@ -64,7 +64,7 @@ export function IdentityPicker({ logo, onLogo, template, onTemplate, primary, ac
             const on = p.primary.toLowerCase() === primary.toLowerCase() && p.accent.toLowerCase() === accent.toLowerCase();
             return (
               <button key={p.name} type="button" onClick={() => onColors(p.primary, p.accent)} aria-pressed={on} aria-label={p.name}
-                className={cn("flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs transition-all", on ? "border-gold ring-2 ring-gold/40" : "border-line hover:border-gold/60")}>
+                className={cn("flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs transition-all", on ? "border-fg ring-2 ring-fg/15" : "border-line hover:border-fg/25")}>
                 <span className="flex"><i className="size-4 rounded-full ring-1 ring-black/10" style={{ background: p.primary }} /><i className="-ms-1.5 size-4 rounded-full ring-1 ring-black/10" style={{ background: p.accent }} /></span>
                 {p.name}
               </button>

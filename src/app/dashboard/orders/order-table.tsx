@@ -43,7 +43,7 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
   return (
     <div className="space-y-3">
       {canBulk && selected.size > 0 && (
-        <div className="sticky top-14 z-20 animate-[fade-up_0.2s_ease-out_both] space-y-2 rounded-xl border border-gold/50 bg-surface p-3 shadow-lift lg:top-2">
+        <div className="sticky top-14 z-20 animate-[fade-up_0.2s_ease-out_both] space-y-2 rounded-xl border border-fg/20 bg-surface p-3 shadow-lift lg:top-2">
           <div className="flex flex-wrap items-end gap-2">
             <span className="pb-2.5 text-sm font-medium">{selected.size} محددة</span>
             <div className="min-w-40 flex-1">
@@ -60,10 +60,10 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
       )}
       <ul className="space-y-2">
         {rows.map((o, i) => (
-          <li key={o.id} style={enterDelay(i)} className={`${enterItem} flex items-stretch gap-2 rounded-2xl border bg-surface shadow-soft transition-colors hover:border-gold/60 ${selected.has(o.id) ? "border-gold bg-gold/5" : "border-line"}`}>
+          <li key={o.id} style={enterDelay(i)} className={`${enterItem} flex items-stretch gap-2 rounded-2xl border bg-surface shadow-soft transition-colors hover:border-fg/25 ${selected.has(o.id) ? "border-fg/40 bg-surface-2/60" : "border-line"}`}>
             {canBulk && (
               <label className="flex min-w-12 cursor-pointer items-center justify-center ps-1" aria-label={`تحديد الطلبية ${o.number}`}>
-                <input type="checkbox" className="size-5 accent-[var(--color-gold)]" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
+                <input type="checkbox" className="size-5 accent-[var(--color-teal)]" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
               </label>
             )}
             <Link href={`/dashboard/orders/${o.id}`} className="grid min-w-0 flex-1 gap-1.5 p-3 sm:grid-cols-[1fr_auto] sm:items-center">

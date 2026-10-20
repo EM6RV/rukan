@@ -27,11 +27,13 @@
   --font-heading: var(--font-alexandria), system-ui, sans-serif;
   --font-sans: var(--font-plex), system-ui, sans-serif;
 
+  /* نظام التصميم الأبيض: حواف 12–16px، ظلال خفيفة جداً (الحد الرمادي الرفيع هو اللي يفصل) */
   --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --shadow-soft: 0 1px 2px rgb(13 38 62 / 0.05), 0 4px 16px rgb(13 38 62 / 0.06);
-  --shadow-lift: 0 2px 4px rgb(13 38 62 / 0.06), 0 12px 32px rgb(13 38 62 / 0.12);
+  --radius-lg: 0.875rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1rem;
+  --shadow-soft: 0 1px 2px rgb(13 38 62 / 0.04);
+  --shadow-lift: 0 1px 2px rgb(13 38 62 / 0.04), 0 8px 24px rgb(13 38 62 / 0.08);
 }
 
 :root {
@@ -121,6 +123,8 @@
   ::selection {
     background: color-mix(in srgb, var(--color-gold) 40%, transparent);
   }
+  /* أيقونات بنفس السُمك في كل مكان */
+  svg.lucide { stroke-width: 1.75; }
   /* الأرقام والهواتف دايماً LTR */
   input[type="tel"], input[type="email"], input[type="url"], .ltr {
     direction: ltr;
@@ -141,8 +145,35 @@
   }
 }
 
+/* انتقال الصفحات (View Transitions): قصير وناعم، وبدون حركة مع «تقليل الحركة» */
+::view-transition-old(.page) { animation: 120ms ease-out both vt-out; }
+::view-transition-new(.page) { animation: 180ms ease-out both vt-in; }
+::view-transition-group(*) { animation-duration: 180ms; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+@keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(8px) scale(0.97); } }
+
 @keyframes modal-in {
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes drawer-in {
+  from { opacity: 0.6; transform: translateX(-24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes drawer-up {
+  from { opacity: 0.6; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rise {
+  from { opacity: 0.5; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 

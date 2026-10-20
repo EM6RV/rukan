@@ -28,7 +28,7 @@ export default async function AdminStores({ searchParams }: { searchParams: Prom
       <div><h1 className="text-2xl">المتاجر</h1><p className="text-muted">{r.total} متجر</p></div>
       <nav aria-label="حالة المتجر" className="flex flex-wrap gap-2">
         {[{ k: undefined, l: "الكل" }, ...STORE_STATE_FILTERS.map((k) => ({ k: k as string | undefined, l: STATE_LABEL[k] }))].map((t) => (
-          <Link key={t.l} href={href({ state: t.k, page: undefined })} aria-current={state === t.k ? "page" : undefined} className={cn("rounded-full border px-3.5 py-1.5 text-sm font-medium", state === t.k ? "border-gold bg-gold/20" : "border-line bg-surface text-muted hover:text-fg")}>{t.l}</Link>
+          <Link key={t.l} href={href({ state: t.k, page: undefined })} aria-current={state === t.k ? "page" : undefined} className={cn("rounded-full border px-3.5 py-1.5 text-sm font-medium", state === t.k ? "border-fg/60 bg-surface-2" : "border-line bg-surface text-muted hover:text-fg")}>{t.l}</Link>
         ))}
       </nav>
       <form method="get" action="/admin/stores" className="grid gap-3 rounded-xl border border-line bg-surface p-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
@@ -42,7 +42,7 @@ export default async function AdminStores({ searchParams }: { searchParams: Prom
         <ul className="space-y-2">
           {r.items.map((s) => (
             <li key={s.id}>
-              <Link href={`/admin/stores/${s.id}`} className="grid gap-1 rounded-xl border border-line bg-surface p-4 shadow-soft transition-colors hover:border-gold/60 sm:grid-cols-[1fr_auto] sm:items-center">
+              <Link href={`/admin/stores/${s.id}`} className="grid gap-1 rounded-xl border border-line bg-surface p-4 shadow-soft transition-colors hover:border-fg/25 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-2 font-semibold"><span className="truncate">{s.name}</span><Badge tone={STATE_TONE[s.state]}>{STATE_LABEL[s.state]}</Badge>{!s.onboarded && <Badge>ما كمّل الإعداد</Badge>}</p>
                   <p className="text-sm text-muted"><span dir="ltr">{s.slug}</span> · {s.ownerName} · <span dir="ltr">{s.ownerPhone}</span></p>

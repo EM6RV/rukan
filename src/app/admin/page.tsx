@@ -31,7 +31,7 @@ export default async function AdminHome() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {kpi.map(({ icon: Icon, label, value, hint }) => (
           <Card key={label} className="flex items-start gap-3 p-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gold/20"><Icon className="size-5" aria-hidden /></div>
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-2"><Icon className="size-5" aria-hidden /></div>
             <div className="min-w-0"><p className="text-sm text-muted">{label}</p><p className="text-xl font-bold">{value}</p>{hint && <p className="text-xs text-muted">{hint}</p>}</div>
           </Card>
         ))}
@@ -45,7 +45,7 @@ export default async function AdminHome() {
               {s.revenue.map((r, i) => (
                 <div key={r.month} className="flex flex-1 flex-col items-center gap-1.5">
                   <span className="text-xs text-muted">{r.total ? formatMoney(r.total).replace(" د.ل", "") : ""}</span>
-                  <div className={`w-full rounded-t-md ${i === s.revenue.length - 1 ? "bg-gold" : "bg-teal"}`} style={{ height: `${Math.max(3, (r.total / maxRev) * 120)}px`, opacity: r.total ? 1 : 0.25 }} title={`${r.month}: ${formatMoney(r.total)} (${r.payments} دفعة)`} />
+                  <div className={`w-full rounded-t-md ${i === s.revenue.length - 1 ? "bg-teal" : "bg-teal/45"}`} style={{ height: `${Math.max(3, (r.total / maxRev) * 120)}px`, opacity: r.total ? 1 : 0.25 }} title={`${r.month}: ${formatMoney(r.total)} (${r.payments} دفعة)`} />
                   <span className="text-xs text-muted">{r.month.slice(5)}</span>
                 </div>
               ))}

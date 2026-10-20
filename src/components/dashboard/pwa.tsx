@@ -46,7 +46,8 @@ export function PwaSetup({ app = "store" }: { app?: "store" | "admin" }) {
 
   if (!install && !ios) return null;
   return (
-    <div role="region" aria-label="تثبيت التطبيق" className="flex animate-[fade-up_0.25s_ease-out_both] items-center gap-3 border-b border-gold/40 bg-gold/15 px-4 py-2.5 text-sm">
+    // بطاقة عائمة فوق الشريط السفلي (مش داخل الصفحة) باش ظهورها المتأخر ما يحرّكش المحتوى (CLS)
+    <div role="region" aria-label="تثبيت التطبيق" className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 flex animate-[toast-in_0.2s_ease-out_both] items-center gap-3 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm shadow-lift lg:inset-x-auto lg:bottom-4 lg:end-4 lg:max-w-md">
       {install ? <Download className="size-5 shrink-0" aria-hidden /> : <Share className="size-5 shrink-0" aria-hidden />}
       <p className="min-w-0 flex-1">
         {install ? (app === "admin" ? "ثبّت لوحة الأدمن على جوالك: أيقونة لوحدها تفتح بنقرة." : "ثبّت رُكن على جوالك: يفتح بنقرة، وتوصلك إشعارات الطلبيات.") : `ثبّت ${name} على جوالك: من زر المشاركة اختر «إضافة إلى الشاشة الرئيسية».`}

@@ -50,7 +50,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     return (
       <div className="space-y-5">
         <h1 className="text-2xl">التقارير</h1>
-        <Card className="border-gold"><CardBody className="flex items-start gap-3"><Lock className="mt-0.5 size-5 shrink-0" aria-hidden /><div><p className="font-semibold">التقارير متاحة من الباقات الأعلى</p><p className="text-sm text-muted">تقارير المبيعات وأكثر المنتجات مبيعاً والمرتجعات والأرباح مع تصدير Excel.</p></div></CardBody></Card>
+        <Card className="bg-surface-2"><CardBody className="flex items-start gap-3"><Lock className="mt-0.5 size-5 shrink-0" aria-hidden /><div><p className="font-semibold">التقارير متاحة من الباقات الأعلى</p><p className="text-sm text-muted">تقارير المبيعات وأكثر المنتجات مبيعاً والمرتجعات والأرباح مع تصدير Excel.</p></div></CardBody></Card>
       </div>
     );
   }
@@ -74,7 +74,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
       <div className="space-y-3 rounded-xl border border-line bg-surface p-3">
         <nav aria-label="الفترة" className="flex flex-wrap gap-2">
-          {ps.map((p) => <Link key={p.label} href={`?from=${p.from}&to=${p.to}`} className={cn("rounded-full border px-3.5 py-1.5 text-sm font-medium", p.from === from && p.to === to ? "border-gold bg-gold/20" : "border-line text-muted hover:text-fg")}>{p.label}</Link>)}
+          {ps.map((p) => <Link key={p.label} href={`?from=${p.from}&to=${p.to}`} className={cn("rounded-full border px-3.5 py-1.5 text-sm font-medium", p.from === from && p.to === to ? "border-fg/60 bg-surface-2" : "border-line text-muted hover:text-fg")}>{p.label}</Link>)}
         </nav>
         <form method="get" className="flex flex-wrap items-end gap-3">
           <Input name="from" type="date" label="من" defaultValue={from} required />

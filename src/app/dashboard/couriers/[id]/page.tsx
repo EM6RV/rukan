@@ -11,7 +11,7 @@ import { formatDateTimeYear } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import { getLedger, listCouriers } from "@/server/orders/couriers";
 import { requireStoreContext } from "@/server/store-context";
-import { CashActions, DeleteCourier } from "../courier-manager";
+import { CashActions, CashBalance, CashScope, DeleteCourier } from "../courier-manager";
 
 export const metadata: Metadata = { title: "كشف حساب المندوب" };
 
@@ -33,10 +33,10 @@ export default async function CourierPage({ params, searchParams }: { params: Pr
         <div><h1 className="flex items-center gap-2 text-2xl">{courier.name}{!courier.isActive && <Badge>موقوف</Badge>}</h1>{courier.phone && <p dir="ltr" className="text-start text-muted">{courier.phone}</p>}</div>
         <DeleteCourier id={courier.id} name={courier.name} redirectTo="/dashboard/couriers" />
       </div>
-      <Card><CardBody className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-sm text-muted">فلوسك عنده الحين</p><p className="text-3xl font-bold">{formatMoney(courier.balance)}</p><p className="text-sm text-muted">وفي الطريق {courier.pendingOrders} طلبية ({formatMoney(courier.pendingCash)})</p></div>
+      <CashScope balance={courier.balance}><Card><CardBody className="flex flex-wrap items-end justify-between gap-4">
+        <div><p className="text-sm text-muted">فلوسك عنده الحين</p><CashBalance className="text-3xl font-bold" /><p className="text-sm text-muted">وفي الطريق {courier.pendingOrders} طلبية ({formatMoney(courier.pendingCash)})</p></div>
         <CashActions courier={courier} writable={ctx.access.writable} />
-      </CardBody></Card>
+      </CardBody></Card></CashScope>
       <Card>
         <CardHeader title="كشف الحساب" />
         {ledger.entries.length === 0 ? <CardBody className="text-center text-muted">ما فيش حركات لسا.</CardBody> : (

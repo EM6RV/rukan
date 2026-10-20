@@ -1,0 +1,1 @@
+ALTER TABLE `stores` ADD `enabled_modules` text DEFAULT '[]' NOT NULL;

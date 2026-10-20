@@ -5,7 +5,9 @@ import { Banknote, CheckCircle2, Clapperboard, Circle, FolderTree, Inbox, Packag
 import { StoreLinkCard } from "@/components/dashboard/copy-link";
 import { PushToggle } from "@/components/dashboard/push-toggle";
 import { SalesChart } from "@/components/dashboard/sales-chart";
+import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
 import { getEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
 import { getDashboardStats } from "@/server/orders/stats";
@@ -50,23 +52,21 @@ export default async function DashboardHome() {
 
       <section aria-label="المبيعات" className="space-y-4">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {/* مبيعات اليوم: البطاقة البطلة (كحلي) */}
-          <div className="relative col-span-2 isolate overflow-hidden rounded-2xl bg-navy p-5 text-white shadow-lift ring-1 ring-white/10">
-            <div aria-hidden className="pointer-events-none absolute -top-16 -start-10 -z-10 size-48 rounded-full bg-gold/25 blur-3xl" />
-            <div aria-hidden className="pointer-events-none absolute -bottom-20 -end-10 -z-10 size-48 rounded-full bg-teal/30 blur-3xl" />
-            <p className="text-sm font-medium text-white/75">مبيعات اليوم</p>
-            <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-gold md:text-4xl">{formatMoney(stats.sales.today.total)}</p>
-            <p className="mt-2 inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium tabular-nums ring-1 ring-white/15">{stats.sales.today.orders} طلبية</p>
-          </div>
+          {/* مبيعات اليوم: البطاقة البطلة */}
+          <Card className="col-span-2 p-5">
+            <p className="text-sm font-medium text-muted">مبيعات اليوم</p>
+            <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight md:text-4xl">{formatMoney(stats.sales.today.total)}</p>
+            <p className="mt-2 inline-flex items-center rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-medium tabular-nums">{stats.sales.today.orders} طلبية</p>
+          </Card>
           {([["آخر 7 أيام", stats.sales.week], ["آخر 30 يوم", stats.sales.month]] as const).map(([label, v]) => (
             <Card key={label} className="flex flex-col justify-between p-4"><p className="text-xs text-muted sm:text-sm">مبيعات {label}</p><p className="mt-2 text-lg font-bold tabular-nums tracking-tight sm:text-2xl">{formatMoney(v.total)}</p><p className="mt-1 text-xs tabular-nums text-muted">{v.orders} طلبية</p></Card>
           ))}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <HomeStat tone="gold" href="/dashboard/orders?status=new" icon={<Inbox className="size-5" />} label="طلبيات جديدة" value={String(stats.newOrders)} highlight={stats.newOrders > 0} />
-          {can(ctx.role, "couriers") && store.useCouriers && <HomeStat tone="teal" href="/dashboard/couriers" icon={<Banknote className="size-5" />} label="فلوسك عند المندوبين" value={formatMoney(stats.cashWithCouriers)} hint={stats.pendingCash > 0 ? `+ ${formatMoney(stats.pendingCash)} في الطريق` : undefined} />}
-          {can(ctx.role, "returns") && <HomeStat tone="danger" href="/dashboard/returns" icon={<RotateCcw className="size-5" />} label="نسبة المرتجعات (30 يوم)" value={stats.returnRate === null ? "—" : `${Math.round(stats.returnRate * 100)}%`} />}
-          {stats.pendingReceipts > 0 && <HomeStat tone="gold" href="/dashboard/orders?pay=bank_transfer" icon={<ReceiptText className="size-5" />} label="إيصالات بانتظار المراجعة" value={String(stats.pendingReceipts)} highlight />}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard href="/dashboard/orders?status=new" icon={<Inbox />} label="طلبيات جديدة" value={stats.newOrders} className={stats.newOrders > 0 ? "border-fg/30" : undefined} />
+          {can(ctx.role, "couriers") && store.useCouriers && <StatCard tone="teal" href="/dashboard/couriers" icon={<Banknote />} label="فلوسك عند المندوبين" value={formatMoney(stats.cashWithCouriers)} hint={stats.pendingCash > 0 ? `+ ${formatMoney(stats.pendingCash)} في الطريق` : undefined} />}
+          {can(ctx.role, "returns") && <StatCard tone="danger" href="/dashboard/returns" icon={<RotateCcw />} label="نسبة المرتجعات (30 يوم)" value={stats.returnRate === null ? "—" : `${Math.round(stats.returnRate * 100)}%`} />}
+          {stats.pendingReceipts > 0 && <StatCard href="/dashboard/orders?pay=bank_transfer" icon={<ReceiptText />} label="إيصالات بانتظار المراجعة" value={stats.pendingReceipts} className="border-fg/30" />}
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <Card><CardHeader title="المبيعات اليومية" description="آخر 7 أيام" /><CardBody><SalesChart data={stats.chart} /></CardBody></Card>
@@ -84,13 +84,13 @@ export default async function DashboardHome() {
       </section>
 
       {can(ctx.role, "settings") && (
-        <Card className="border-gold/60 bg-gold/10">
+        <Card>
           <CardBody className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex min-w-0 items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-navy text-gold"><Clapperboard className="size-5" aria-hidden /></span>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-2"><Clapperboard className="size-5" aria-hidden /></span>
               <div><p className="font-semibold">نصمم لك ريلز ولوجو وهوية</p><p className="text-sm text-muted">اطلب تصميم لمتجرك، والسعر حسب الطلب{(limits.freeDesigns ?? 0) > 0 ? ". وباقتك فيها ريل أو لوجو مجاني." : "."}</p></div>
             </div>
-            <Link href="/dashboard/design-services" className="inline-flex h-10 items-center rounded-md bg-navy px-4 text-sm font-semibold text-white hover:opacity-90">اطلب تصميم</Link>
+            <ButtonLink href="/dashboard/design-services" variant="outline" size="sm">اطلب تصميم</ButtonLink>
           </CardBody>
         </Card>
       )}
@@ -101,15 +101,15 @@ export default async function DashboardHome() {
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Stat tone="teal" href="/dashboard/products" icon={<Package className="size-5" />} label="المنتجات" value={productCount} limit={limits.maxProducts} />
-        <Stat tone="gold" href="/dashboard/categories" icon={<FolderTree className="size-5" />} label="الأقسام" value={categoryCount} />
+        <StatCard href="/dashboard/products" icon={<Package />} label="المنتجات" value={productCount} usage={{ used: productCount, limit: limits.maxProducts, unit: "منتج" }} />
+        <StatCard href="/dashboard/categories" icon={<FolderTree />} label="الأقسام" value={categoryCount} />
       </div>
 
       {doneCount < checklist.length && (
         <Card>
           <CardHeader title="ابدا من هنا" description={`${doneCount} من ${checklist.length} خلصت`} />
           <CardBody className="space-y-1 p-2">
-            <div className="mx-3 mb-2 h-2 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-gradient-to-l from-gold to-teal transition-all duration-500" style={{ width: `${(doneCount / checklist.length) * 100}%` }} /></div>
+            <div className="mx-3 mb-2 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-teal transition-all duration-500" style={{ width: `${(doneCount / checklist.length) * 100}%` }} /></div>
             {checklist.map((c) => (
               <Link key={c.label} href={c.href} className="flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-surface-2">
                 {c.done ? <CheckCircle2 className="size-5 text-success-fg" /> : <Circle className="size-5 text-muted" />}
@@ -120,37 +120,5 @@ export default async function DashboardHome() {
         </Card>
       )}
     </div>
-  );
-}
-
-const TONES = {
-  gold: { tile: "bg-gold/20 text-navy dark:text-gold", edge: "before:bg-gold" },
-  teal: { tile: "bg-teal/15 text-link-strong", edge: "before:bg-teal" },
-  danger: { tile: "bg-danger/15 text-danger-fg", edge: "before:bg-danger" },
-} as const;
-type Tone = keyof typeof TONES;
-
-function Stat({ href, icon, label, value, limit, tone = "gold" }: { href: string; icon: React.ReactNode; label: string; value: number; limit?: number | null; tone?: Tone }) {
-  return (
-    <Link href={href} className="group block">
-      <Card className="flex h-full items-center gap-4 p-5 transition-all duration-200 ease-out group-hover:-translate-y-0.5 group-hover:shadow-lift">
-        <div className={`flex size-12 items-center justify-center rounded-xl ${TONES[tone].tile}`}>{icon}</div>
-        <div>
-          <p className="text-sm text-muted">{label}</p>
-          <p className="text-2xl font-bold tabular-nums tracking-tight">{value}{limit ? <span className="text-sm font-normal text-muted"> / {limit}</span> : null}</p>
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
-function HomeStat({ href, icon, label, value, hint, highlight, tone = "gold" }: { href: string; icon: React.ReactNode; label: string; value: string; hint?: string; highlight?: boolean; tone?: Tone }) {
-  return (
-    <Link href={href} className="group block">
-      <Card className={`relative flex h-full items-center gap-3 overflow-hidden p-4 transition-all duration-200 ease-out before:absolute before:inset-y-0 before:start-0 before:w-1 group-hover:-translate-y-0.5 group-hover:shadow-lift ${TONES[tone].edge} ${highlight ? "border-gold bg-gold/10" : ""}`}>
-        <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${TONES[tone].tile}`}>{icon}</div>
-        <div className="min-w-0"><p className="truncate text-sm text-muted">{label}</p><p className="text-xl font-bold tabular-nums tracking-tight">{value}</p>{hint && <p className="text-xs tabular-nums text-muted">{hint}</p>}</div>
-      </Card>
-    </Link>
   );
 }

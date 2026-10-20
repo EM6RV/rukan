@@ -72,6 +72,18 @@ export const LIBYA_REGIONS = ["west", "east", "south", "center"] as const;
 export type LibyaRegion = (typeof LIBYA_REGIONS)[number];
 export const REGION_LABELS: Record<LibyaRegion, string> = { west: "الغرب", east: "الشرق", south: "الجنوب", center: "الوسط" };
 
+// ===== الوحدات الاختيارية (يفعّلها البياع من الإعدادات) =====
+export const STORE_MODULES = ["warehouses", "purchasing", "accounting", "marketplaceInbox"] as const;
+export type StoreModule = (typeof STORE_MODULES)[number];
+export const STORE_MODULE_INFO: Record<StoreModule, { title: string; description: string }> = {
+  warehouses: { title: "المخازن المتعددة", description: "أكثر من مخزن، جرد، ونقل البضاعة بين المخازن." },
+  purchasing: { title: "المشتريات والموردين", description: "فواتير الشراء، الموردين، ومتوسط التكلفة باش تعرف ربحك الحقيقي." },
+  accounting: { title: "الحسابات", description: "الخزنة والبنك والمصاريف والأرباح، من غير ما تكون محاسب." },
+  marketplaceInbox: { title: "صندوق الرسائل", description: "رسايل إنستغرام وفيسبوك وواتساب في مكان واحد، وتحويل المحادثة لطلبية." },
+};
+/** الوحدات اللي اتبنت فعلاً. الباقي يبان «قريباً» وما يتفعلش. */
+export const AVAILABLE_MODULES: readonly StoreModule[] = [];
+
 export const DEFAULT_TRIAL_DAYS = 3;
 /** باقة التجربة الافتراضية (slug) لو الأدمن ما حدد غيرها */
 export const DEFAULT_TRIAL_PLAN_SLUG = "semiannual";
