@@ -5,7 +5,8 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import { writeTransaction, type Db } from "@/db";
 import { cities, media, plans, stores } from "@/db/schema/platform";
-import { FALLBACK_LIMITS } from "@/lib/plan-limits";
+import { canUse } from "@/lib/entitlements";
+import { loadStoreLimits, ordersThisMonth } from "../entitlements";
 import { variantPrice } from "@/lib/pricing";
 import { firstError, nameSchema, phoneSchema } from "@/lib/validation";
 import { isUniqueViolation } from "../db-errors";
@@ -80,7 +81,7 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
   const row = await db.select({ store: stores, plan: plans }).from(stores).leftJoin(plans, eq(plans.id, stores.planId)).where(eq(stores.id, storeId)).get();
   if (!row) throw new OrderError("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
   if (!isStoreOpenToCustomers(computeStoreAccess(row.store))) throw new OrderError("المتجر مغلق حالياً ولا يستقبل طلبيات.");
-  const limits = row.plan?.limits ?? FALLBACK_LIMITS;
+  const limits = await loadStoreLimits(db, row.store, row.plan);
 
   // --- الأصناف: الأسعار والمخزون من القاعدة، ما نثقش في العميل ---
   const merged = new Map<string, number>();
@@ -108,7 +109,7 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
   let discount = 0;
   let coupon: { id: string; code: string } | null = null;
   if (input.couponCode) {
-    if (!limits.coupons) throw new OrderError("كود الخصم غير متاح في هذا المتجر.");
+    if (!canUse(limits, "coupons")) throw new OrderError("كود الخصم غير متاح في هذا المتجر.");
     const c = await checkCoupon(scope, input.couponCode, subtotal);
     if (!c.ok) throw new OrderError(c.error);
     discount = c.discount;
@@ -150,12 +151,14 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
   const [counter] = await db.update(stores).set({ nextOrderNumber: sql`${stores.nextOrderNumber} + 1` }).where(eq(stores.id, storeId)).returning({ next: stores.nextOrderNumber });
   const number = counter!.next - 1;
 
+  // ترتيبها في الشهر (لحد «طلبيات في الشهر»: الطلبية ما تتقفلش على الزبون، البياع يشوفها لما يرقّي)
+  const monthRank = (await ordersThisMonth(db, storeId)) + 1;
   const trackingToken = nanoid(20);
   const [order] = await scope.insert(t.orders, {
     number, trackingToken, customerId, customerName: input.name, customerPhone: input.phone,
     cityId: city.id, cityName: city.nameAr, address: input.address, notes: input.notes,
     status: "new", paymentMethod: input.paymentMethod, paymentStatus: "pending",
-    subtotal, discount, deliveryFee, total, couponId: coupon?.id ?? null, couponCode: coupon?.code ?? null, source: input.source,
+    subtotal, discount, deliveryFee, total, couponId: coupon?.id ?? null, couponCode: coupon?.code ?? null, source: input.source, monthRank,
   });
   const orderId = order!.id;
   await markCartRecovered(scope, input.phone); // لو كانت سلته متروكة: تنقفل

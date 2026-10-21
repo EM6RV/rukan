@@ -13,7 +13,36 @@ export function addMonths(ms: number, months: number): number {
   return d.getTime();
 }
 
-export const cycleMonths = (cycle: "monthly" | "semiannual" | "yearly") => (cycle === "yearly" ? 12 : cycle === "semiannual" ? 6 : 1);
+export type BillingPeriod = "monthly" | "quarterly" | "semiannual" | "yearly";
+export type DurationKey = "m1" | "m3" | "m6" | "m12";
+
+const MONTHS: Record<BillingPeriod, number> = { monthly: 1, quarterly: 3, semiannual: 6, yearly: 12 };
+export const cycleMonths = (cycle: BillingPeriod) => MONTHS[cycle];
+
+/** المدد بالترتيب: مفتاح السعر (m1…) ↔ مدة الاشتراك */
+export const DURATIONS: { key: DurationKey; cycle: BillingPeriod; months: number; toggle: string; unit: string }[] = [
+  { key: "m1", cycle: "monthly", months: 1, toggle: "شهري", unit: "شهر" },
+  { key: "m3", cycle: "quarterly", months: 3, toggle: "3 شهور", unit: "3 شهور" },
+  { key: "m6", cycle: "semiannual", months: 6, toggle: "6 شهور", unit: "6 شهور" },
+  { key: "m12", cycle: "yearly", months: 12, toggle: "سنوي", unit: "سنة" },
+];
+export const durationOf = (cycle: BillingPeriod) => DURATIONS.find((d) => d.cycle === cycle)!;
+export const durationByKey = (key: DurationKey) => DURATIONS.find((d) => d.key === key)!;
+
+type Priced = { prices: Partial<Record<DurationKey, number | null>>; comparePrices?: Partial<Record<DurationKey, number | null>> };
+/** سعر الباقة لمدة معينة بالدرهم، أو null لو ما تطلعش فيها */
+export const planPrice = (plan: Priced, cycle: BillingPeriod): number | null => plan.prices[durationOf(cycle).key] ?? null;
+/** المدد المتاحة للباقة */
+export const offeredCycles = (plan: Priced): BillingPeriod[] => DURATIONS.filter((d) => plan.prices[d.key] != null).map((d) => d.cycle);
+/** نسبة التوفير مقارنة بالسعر الشهري × عدد الشهور (0 لو ما فيه سعر شهري أو ما فيه توفير) */
+export function savingsPercent(plan: Priced, cycle: BillingPeriod): number {
+  const m1 = plan.prices.m1, price = planPrice(plan, cycle), months = cycleMonths(cycle);
+  if (months === 1 || m1 == null || price == null || m1 <= 0) return 0;
+  const pct = Math.round((1 - price / (m1 * months)) * 100);
+  return pct > 0 ? pct : 0;
+}
+/** السعر الشهري المكافئ بالدرهم، مقرّب لأقرب دينار */
+export const monthlyEquivalent = (price: number, cycle: BillingPeriod) => Math.round(price / cycleMonths(cycle) / 1000) * 1000;
 
 /** "2026-03" بتوقيت ليبيا (لتجميع الإيرادات شهرياً) */
 export const monthKey = (ms: number) => new Date(ms + LIBYA_OFFSET).toISOString().slice(0, 7);
@@ -31,17 +60,12 @@ export function upgradeRequestMessage(o: { storeName: string; slug: string; plan
 
 export const daysBetween = (from: number, to: number) => Math.ceil((to - from) / DAY);
 
-export type BillingPeriod = "monthly" | "semiannual" | "yearly";
-
-/** "شهر" أو "6 أشهر" أو "سنة" لعرض السعر: «250 د.ل / شهر» */
-export const periodUnit = (period: BillingPeriod) => (period === "yearly" ? "سنة" : period === "semiannual" ? "6 أشهر" : "شهر");
-/** "شهرية" أو "ست شهور" أو "سنوية" */
-export const periodLabel = (period: BillingPeriod) => (period === "yearly" ? "سنوية" : period === "semiannual" ? "ست شهور" : "شهرية");
-
-/** سعر الشهر التقريبي للباقات الأطول من شهر بالدرهم، مقرّب لأقرب دينار صحيح (650 د.ل ÷ 6 ≈ 108 د.ل). الشهرية ترجع null. */
-export function approxMonthly(price: number, period: BillingPeriod): number | null {
-  return period === "monthly" ? null : Math.round(price / cycleMonths(period) / 1000) * 1000;
-}
+/** "شهر" أو "3 شهور" أو "6 شهور" أو "سنة" لعرض السعر: «220 د.ل / شهر» */
+export const periodUnit = (period: BillingPeriod) => durationOf(period).unit;
+/** "شهري" أو "3 شهور" أو "6 شهور" أو "سنوي" */
+export const periodLabel = (period: BillingPeriod) => durationOf(period).toggle;
+/** «تدفع مرة وحدة X د.ل …» حسب المدة */
+export const payOnceText = (period: BillingPeriod) => (period === "yearly" ? "في السنة" : period === "monthly" ? "في الشهر" : `كل ${durationOf(period).unit}`);
 
 /** "3 أيام" / "يوم" / "14 يوم" (عدد الأيام بصيغة عربية سليمة) */
 export function daysText(n: number): string {

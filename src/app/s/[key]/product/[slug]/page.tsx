@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,7 +31,7 @@ export default async function ProductPage({ params }: Props) {
   if (!product) notFound();
 
   const { base, origin } = await getRequestContext(key);
-  const kit = getKit(sf.limits.allTemplates ? sf.template : "simple");
+  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : "simple");
   const related = await getRelated(sf.id, product.id, product.categories.map((c) => c.id));
   const inStock = product.variants.some((v) => v.stock > 0);
 

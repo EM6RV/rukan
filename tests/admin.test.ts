@@ -3,9 +3,9 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@/db";
 import { auditLogs, media, plans, stores, subscriptionPayments, users, type PlanLimits } from "@/db/schema/platform";
 import { activeAnnouncementsFor, deleteAnnouncement, dismissAnnouncement, listAnnouncements, saveAnnouncement } from "@/server/admin/announcements";
-import { savePlan, listPlans } from "@/server/admin/plans";
+import { savePlan, listPlans, publicPlans } from "@/server/admin/plans";
 import { getSiteContent, resetSiteContent, saveSiteContent } from "@/server/admin/site-content";
-import { getPlatformConfig, listAudit, savePlatformConfig } from "@/server/admin/settings";
+import { getPlatformConfig, listAudit, promoActive, savePlatformConfig, savePromo, setFreePlanEnabled } from "@/server/admin/settings";
 import { getPlatformStats } from "@/server/admin/stats";
 import { getStoreDetail, listStores } from "@/server/admin/stores";
 import { changePlan, extendTrial, listExpiring, listPayments, recordPayment, setSuspended } from "@/server/admin/subscriptions";
@@ -20,26 +20,27 @@ let db: Db;
 let close: () => void;
 let seq = 0;
 let adminId: string;
-let monthly: string, semi: string, yearly: string;
+let starter: string, growth: string, pro: string;
 
 async function shop(slug: string, patch: Partial<typeof stores.$inferInsert> = {}) {
   const [u] = await db.insert(users).values({ phone: `0914${String(++seq).padStart(6, "0")}`, name: `مالك ${slug}`, passwordHash: "x" }).returning();
   const r = await createStoreForUser(db, { userId: u!.id, name: slug, slug });
   if (!r.ok) throw new Error(r.error);
-  await db.update(stores).set({ onboardedAt: new Date(), planId: semi, ...patch }).where(eq(stores.id, r.data.storeId));
+  await db.update(stores).set({ onboardedAt: new Date(), planId: growth, ...patch }).where(eq(stores.id, r.data.storeId));
   return { id: r.data.storeId, ownerId: u!.id, phone: u!.phone };
 }
 const row = async (id: string) => (await db.select().from(stores).where(eq(stores.id, id)))[0]!;
 const actor = () => ({ id: adminId });
-const pay = (storeId: string, over: Record<string, unknown> = {}, now?: number) => recordPayment(db, { storeId, planId: monthly, amount: 250_000, method: "cash", ...over }, actor(), now);
+const pay = (storeId: string, over: Record<string, unknown> = {}, now?: number) => recordPayment(db, { storeId, planId: growth, cycle: "monthly", amount: 220_000, method: "cash", ...over }, actor(), now);
+const PR = (m1: number | null, m3: number | null, m6: number | null, m12: number | null) => ({ m1, m3, m6, m12 });
 
 beforeAll(async () => {
   ({ db, close } = await makeTestDb());
   adminId = (await db.insert(users).values({ phone: "0910000000", name: "الأدمن", passwordHash: "x", platformRole: "admin" }).returning())[0]!.id;
-  [monthly, semi, yearly] = (await db.insert(plans).values([
-    { slug: "monthly", nameAr: "شهرية", billingPeriod: "monthly", price: 250_000, limits: { ...LIMITS, maxProducts: 200, maxStaff: 2, pixels: false, customDomain: false, removeBranding: false }, sortOrder: 1 },
-    { slug: "semiannual", nameAr: "ست شهور", billingPeriod: "semiannual", price: 650_000, limits: LIMITS, sortOrder: 2 },
-    { slug: "yearly", nameAr: "سنوية", billingPeriod: "yearly", price: 1_250_000, limits: LIMITS, sortOrder: 3 },
+  [starter, growth, pro] = (await db.insert(plans).values([
+    { slug: "starter", nameAr: "بداية", prices: PR(120_000, 330_000, 620_000, 1_150_000), limits: { ...LIMITS, maxProducts: 100, maxStaff: 1 }, sortOrder: 1 },
+    { slug: "growth", nameAr: "نمو", prices: PR(220_000, 600_000, 1_150_000, 2_100_000), limits: LIMITS, sortOrder: 2 },
+    { slug: "pro", nameAr: "احترافي", prices: PR(null, null, 1_900_000, 3_400_000), limits: LIMITS, sortOrder: 3 },
   ]).returning()).map((p) => p.id) as [string, string, string];
 });
 afterAll(() => close());
@@ -66,10 +67,10 @@ describe("تسجيل الدفعات", () => {
     const r = await pay(s.id, {}, now);
     if (!r.ok) throw new Error(r.error);
     expect(r.data.periodEnd).toBe(addMonths(now, 1));
-    expect(await row(s.id)).toMatchObject({ status: "active", planId: monthly, billingCycle: "monthly" });
+    expect(await row(s.id)).toMatchObject({ status: "active", planId: growth, billingCycle: "monthly" });
     expect((await row(s.id)).currentPeriodEnd!.getTime()).toBe(addMonths(now, 1));
     const p = (await db.select().from(subscriptionPayments).where(eq(subscriptionPayments.storeId, s.id)))[0]!;
-    expect(p).toMatchObject({ amount: 250_000, method: "cash", recordedBy: adminId });
+    expect(p).toMatchObject({ amount: 220_000, method: "cash", recordedBy: adminId, billingCycle: "monthly" });
     expect((await db.select().from(auditLogs).where(eq(auditLogs.storeId, s.id))).map((a) => a.action)).toContain("subscription.payment");
   });
 
@@ -77,7 +78,7 @@ describe("تسجيل الدفعات", () => {
     const now = Date.now();
     const end = now + 10 * DAY;
     const s = await shop("pay-2", { status: "active", currentPeriodEnd: new Date(end) });
-    const r = await pay(s.id, { planId: yearly, amount: 1_250_000, method: "bank_transfer" }, now);
+    const r = await pay(s.id, { planId: pro, cycle: "yearly", amount: 3_400_000, method: "bank_transfer" }, now);
     if (!r.ok) throw new Error(r.error);
     expect(r.data.periodEnd).toBe(addMonths(end, 12));
     expect(await row(s.id)).toMatchObject({ billingCycle: "yearly" });
@@ -90,8 +91,8 @@ describe("تسجيل الدفعات", () => {
 
   it("الموقوف يبقى موقوف، وتغيير الباقة مع الدفعة", async () => {
     const s = await shop("pay-4", { status: "suspended", currentPeriodEnd: null });
-    await pay(s.id, { planId: monthly });
-    expect(await row(s.id)).toMatchObject({ status: "suspended", planId: monthly });
+    await pay(s.id, { planId: starter });
+    expect(await row(s.id)).toMatchObject({ status: "suspended", planId: starter });
   });
 
   it("الإيصال: خاص ومن نفس المتجر فقط", async () => {
@@ -103,24 +104,24 @@ describe("تسجيل الدفعات", () => {
     expect((await pay(a.id, { receiptMediaId: await priv(a.id) })).ok).toBe(true);
   });
 
-  it("المدة تتحدد من الباقة مش من العميل (دورة مرسلة تتجاهل)", async () => {
+  it("المدة يختارها الأدمن، ولازم تكون متاحة في الباقة؛ والتجديد بعدد شهورها", async () => {
     const now = Date.now();
     const s = await shop("pay-cycle", { status: "active", currentPeriodEnd: null });
-    const r = await pay(s.id, { planId: monthly, billingCycle: "yearly" }, now); // الشهرية 1 شهر، حتى لو أرسل «سنوي»
+    expect(await pay(s.id, { planId: pro, cycle: "monthly" }, now)).toEqual({ ok: false, error: expect.stringContaining("ما تطلعش") }); // الاحترافي 6 شهور وسنة بس
+    const r = await pay(s.id, { cycle: "quarterly", amount: 600_000 }, now);
     if (!r.ok) throw new Error(r.error);
-    expect(r.data.periodEnd).toBe(addMonths(now, 1));
-    expect(await row(s.id)).toMatchObject({ billingCycle: "monthly" });
-    const p = (await db.select().from(subscriptionPayments).where(eq(subscriptionPayments.storeId, s.id)))[0]!;
-    expect(p.billingCycle).toBe("monthly");
+    expect(r.data.periodEnd).toBe(addMonths(now, 3));
+    expect(await row(s.id)).toMatchObject({ billingCycle: "quarterly", planId: growth });
+    expect((await db.select().from(subscriptionPayments).where(eq(subscriptionPayments.storeId, s.id)))[0]!.billingCycle).toBe("quarterly");
   });
 
-  it("باقة ست شهور: التجديد 6 أشهر", async () => {
+  it("6 شهور: التجديد 6 أشهر، ورسالة تحويل الباقة تنمسح مع التجديد", async () => {
     const now = Date.now();
-    const s = await shop("pay-six", { status: "active", currentPeriodEnd: null });
-    const r = await pay(s.id, { planId: semi, amount: 650_000 }, now);
+    const s = await shop("pay-six", { status: "active", currentPeriodEnd: null, planNotice: "semiannual" });
+    const r = await pay(s.id, { cycle: "semiannual", amount: 1_150_000 }, now);
     if (!r.ok) throw new Error(r.error);
     expect(r.data.periodEnd).toBe(addMonths(now, 6));
-    expect(await row(s.id)).toMatchObject({ billingCycle: "semiannual", planId: semi });
+    expect(await row(s.id)).toMatchObject({ billingCycle: "semiannual", planId: growth, planNotice: null });
   });
 
   it("رفض مدخلات غلط", async () => {
@@ -131,6 +132,8 @@ describe("تسجيل الدفعات", () => {
     expect(await err({ amount: "99" })).toContain("المبلغ");
     expect(await err({ method: "visa" })).toContain("طريقة");
     expect(await err({ planId: "ghost" })).toContain("الباقة");
+    expect(await err({ cycle: "weekly" })).toContain("مدة");
+    expect(await err({ cycle: undefined })).toContain("مدة");
     expect(await err({ storeId: "ghost" })).toContain("المتجر");
     expect(await err({ note: "ا".repeat(301) })).toContain("الملاحظة");
   });
@@ -148,7 +151,7 @@ describe("تسجيل الدفعات", () => {
     for (let i = 0; i < 3; i++) await pay(s.id, { amount: 1000 + i });
     const all = await listPayments(db, { storeId: s.id });
     expect(all.total).toBe(3);
-    expect(all.items[0]).toMatchObject({ storeName: "pay-9", planName: "شهرية", recordedBy: "الأدمن" });
+    expect(all.items[0]).toMatchObject({ storeName: "pay-9", planName: "نمو", recordedBy: "الأدمن", billingCycle: "monthly" });
     expect((await listPayments(db, { storeId: s.id, pageSize: 2, page: 2 })).items).toHaveLength(1);
   });
 });
@@ -188,10 +191,10 @@ describe("التجربة والإيقاف والباقة", () => {
 
   it("تغيير الباقة يدوياً", async () => {
     const s = await shop("cp-1");
-    expect((await changePlan(db, s.id, monthly, actor())).ok).toBe(true);
-    expect((await row(s.id)).planId).toBe(monthly);
+    expect((await changePlan(db, s.id, starter, actor())).ok).toBe(true);
+    expect((await row(s.id)).planId).toBe(starter);
     expect((await changePlan(db, s.id, "ghost", actor())).ok).toBe(false);
-    expect((await changePlan(db, "ghost", monthly, actor())).ok).toBe(false);
+    expect((await changePlan(db, "ghost", starter, actor())).ok).toBe(false);
   });
 });
 
@@ -213,7 +216,7 @@ describe("قائمة المتاجر", () => {
     expect((await listStores(db, { q: t.phone }, now)).items.map((i) => i.slug)).toEqual(["ls-trial"]);
     expect((await listStores(db, { q: `+218${a.phone.slice(1)}` }, now)).total).toBe(0); // البحث بالصيغة المخزنة (09…) فقط
     expect((await listStores(db, { q: "%" }, now)).total).toBe(0);
-    expect((await listStores(db, { planId: monthly }, now)).items.filter((i) => i.slug.startsWith("ls-"))).toEqual([]);
+    expect((await listStores(db, { planId: starter }, now)).items.filter((i) => i.slug.startsWith("ls-"))).toEqual([]);
     const p1 = await listStores(db, { pageSize: 2, page: 1 }, now);
     expect(p1.items).toHaveLength(2);
     expect(p1.pageCount).toBe(Math.ceil(p1.total / 2));
@@ -225,7 +228,7 @@ describe("قائمة المتاجر", () => {
     await pay(s.id);
     const d = (await getStoreDetail(db, s.id))!;
     expect(d.ownerName).toBe("مالك dt-1");
-    expect(d.plan?.slug).toBe("monthly"); // الدفعة نقلته للباقة الشهرية
+    expect(d.plan?.slug).toBe("growth");
     expect(d.payments).toHaveLength(1);
     expect(d.counts).toEqual({ products: 0, orders: 0, customers: 0 });
     expect(d.members.map((m) => m.role)).toEqual(["owner"]);
@@ -246,7 +249,7 @@ describe("التنبيه قبل الانتهاء", () => {
     const list = (await listExpiring(db, {}, now)).filter((x) => x.slug.startsWith("ex-"));
     expect(list.map((x) => x.slug)).toEqual(["ex-recent", "ex-trial", "ex-soon"]);
     expect(list.map((x) => x.state)).toEqual(["expired", "trial", "active"]);
-    expect(list[2]).toMatchObject({ daysLeft: 3, ownerName: "مالك ex-soon", planName: "ست شهور" });
+    expect(list[2]).toMatchObject({ daysLeft: 3, ownerName: "مالك ex-soon", planName: "نمو" });
   });
 });
 
@@ -255,8 +258,8 @@ describe("إحصائيات المنصة", () => {
     const { db: d2, close: c2 } = await makeTestDb();
     try {
       const [admin] = await d2.insert(users).values({ phone: "0910000001", name: "أدمن", passwordHash: "x", platformRole: "admin" }).returning();
-      const [plM] = await d2.insert(plans).values({ slug: "m", nameAr: "شهرية", billingPeriod: "monthly", price: 100_000, limits: LIMITS }).returning();
-      const [pl] = await d2.insert(plans).values({ slug: "g", nameAr: "سنوية", billingPeriod: "yearly", price: 1_200_000, limits: LIMITS }).returning();
+      const [plM] = await d2.insert(plans).values({ slug: "m", nameAr: "شهرية", prices: PR(100_000, null, null, null), limits: LIMITS }).returning();
+      const [pl] = await d2.insert(plans).values({ slug: "g", nameAr: "سنوية", prices: PR(null, null, null, 1_200_000), limits: LIMITS }).returning();
       const now = Date.now();
       const mk = async (slug: string, patch: object) => {
         const [u] = await d2.insert(users).values({ phone: `0915${String(++seq).padStart(6, "0")}`, name: slug, passwordHash: "x" }).returning();
@@ -272,14 +275,14 @@ describe("إحصائيات المنصة", () => {
       await mk("su-s", { status: "suspended" });
       const [unfinished] = await d2.insert(users).values({ phone: "0915999999", name: "ناقص", passwordHash: "x" }).returning();
       await createStoreForUser(d2, { userId: unfinished!.id, name: "ناقص", slug: "unfinished" });
-      await recordPayment(d2, { storeId: m, planId: plM!.id, amount: 100_000, method: "cash" }, { id: admin!.id });
-      await recordPayment(d2, { storeId: m, planId: pl!.id, amount: 1_200_000, method: "bank_transfer" }, { id: admin!.id });
+      await recordPayment(d2, { storeId: m, planId: plM!.id, cycle: "monthly", amount: 100_000, method: "cash" }, { id: admin!.id });
+      await recordPayment(d2, { storeId: m, planId: pl!.id, cycle: "yearly", amount: 1_200_000, method: "bank_transfer" }, { id: admin!.id });
 
       const st = await getPlatformStats(d2, now);
       expect(st.byState).toEqual({ trial: 1, active: 2, expired: 1, suspended: 1 });
       expect(st.storesTotal).toBe(5);
       expect(st.unfinished).toBe(1);
-      expect(st.mrr).toBe(100_000 + 100_000); // شهري + (سنوي/12)
+      expect(st.mrr).toBe(100_000 + 100_000); // سنوي/12 لكل متجر
       expect(st.revenue).toHaveLength(6);
       expect(st.revenueThisMonth).toBe(1_300_000);
       expect(st.byPlan).toEqual([{ name: "سنوية", count: 2 }]);
@@ -290,19 +293,19 @@ describe("إحصائيات المنصة", () => {
 });
 
 describe("الباقات", () => {
-  const valid = { nameAr: "احترافي", descriptionAr: "للمتاجر الكبيرة", billingPeriod: "yearly", price: 800_000, isFeatured: false, sortOrder: 3, isActive: true, limits: { maxProducts: null, maxStaff: null, allTemplates: true, coupons: true, reports: true, customDomain: true, pixels: true, removeBranding: true } };
+  const valid = { nameAr: "متقدم", descriptionAr: "للمتاجر الكبيرة", prices: PR(null, null, 500_000, 800_000), isFeatured: false, sortOrder: 3, isActive: true, limits: { maxProducts: null, maxStaff: null, allTemplates: true, coupons: true, reports: true, customDomain: true, pixels: true, removeBranding: true } };
 
   it("إنشاء وتعديل (يرجّع المتاجر المتأثرة لتفريغ الكاش)", async () => {
-    const r = await savePlan(db, { ...valid, slug: "pro" }, adminId);
+    const r = await savePlan(db, { ...valid, slug: "adv" }, adminId);
     if (!r.ok) throw new Error(r.error);
     expect(r.data.affectedStores).toEqual([]);
     const s = await shop("pl-1", { planId: r.data.id });
-    const u = await savePlan(db, { ...valid, id: r.data.id, price: 700_000, limits: { ...valid.limits, maxStaff: 10 } }, adminId);
+    const u = await savePlan(db, { ...valid, id: r.data.id, prices: PR(80_000, null, 400_000, 700_000), comparePrices: { m12: 900_000 }, durationPerks: { m12: { freeDesigns: 1, note: "ريل مجاناً" } }, limits: { ...valid.limits, maxStaff: 10, maxOrdersPerMonth: 50, abandonedCarts: true, modules: { warehouses: true } } }, adminId);
     if (!u.ok) throw new Error(u.error);
     expect(u.data.affectedStores.map((x) => x.id)).toEqual([s.id]);
     const saved = (await listPlans(db)).find((p) => p.id === r.data.id)!;
-    expect(saved).toMatchObject({ slug: "pro", price: 700_000, billingPeriod: "yearly" });
-    expect(saved.limits.maxStaff).toBe(10);
+    expect(saved).toMatchObject({ slug: "adv", prices: PR(80_000, null, 400_000, 700_000), comparePrices: { m12: 900_000 }, durationPerks: { m12: { freeDesigns: 1, note: "ريل مجاناً" } } });
+    expect(saved.limits).toMatchObject({ maxStaff: 10, maxOrdersPerMonth: 50, abandonedCarts: true, bundles: false, modules: { warehouses: true, accounting: false } });
   });
 
   it("باقة وحدة بس مميزة، والسعر والمدة يتعدلوا", async () => {
@@ -312,9 +315,9 @@ describe("الباقات", () => {
     const all = await listPlans(db);
     expect(all.filter((p) => p.isFeatured).map((p) => p.id)).toEqual([b.data.id]);
     // تعديل المدة والسعر
-    const u = await savePlan(db, { ...valid, id: a.data.id, billingPeriod: "monthly", price: 100_000, isFeatured: true }, adminId);
+    const u = await savePlan(db, { ...valid, id: a.data.id, prices: PR(100_000, null, null, null), isFeatured: true }, adminId);
     if (!u.ok) throw new Error(u.error);
-    expect((await listPlans(db)).find((p) => p.id === a.data.id)).toMatchObject({ billingPeriod: "monthly", price: 100_000, isFeatured: true });
+    expect((await listPlans(db)).find((p) => p.id === a.data.id)).toMatchObject({ prices: PR(100_000, null, null, null), isFeatured: true });
     expect((await listPlans(db)).find((p) => p.id === b.data.id)!.isFeatured).toBe(false);
   });
 
@@ -322,14 +325,17 @@ describe("الباقات", () => {
     const err = async (over: Record<string, unknown>) => { const r = await savePlan(db, { ...valid, slug: `x${++seq}`, ...over }, adminId); return r.ok ? "OK" : r.error; };
     expect(await err({ nameAr: "x" })).toContain("اسم الباقة");
     expect(await err({ slug: "Bad Slug" })).toContain("الرمز");
-    expect(await err({ price: -1 })).toContain("0 أو أكثر");
-    expect(await err({ price: 10.5 })).toContain("رقم صحيح");
-    expect(await err({ billingPeriod: "weekly" })).toContain("مدة الباقة");
+    expect(await err({ prices: PR(-1, null, null, null) })).toContain("0 أو أكثر");
+    expect(await err({ prices: PR(10.5, null, null, null) })).toContain("رقم صحيح");
+    expect(await err({ prices: PR(null, null, null, null) })).toContain("سعر لمدة");
+    expect(await err({ prices: PR(null, null, null, null), isFree: true })).toBe("OK"); // المجانية بدون أسعار
+    expect(await err({ comparePrices: { m6: 400_000 } })).toContain("المشطوب"); // أقل من السعر الحالي
+    expect(await err({ comparePrices: { m1: 400_000 } })).toContain("المشطوب"); // مدة ما فيهاش سعر
     expect(await err({ limits: { ...valid.limits, maxProducts: -5 } })).toContain("حد المنتجات");
     expect(await err({ limits: { ...valid.limits, coupons: "yes" } })).not.toBe("OK");
-    expect(await savePlan(db, { ...valid, slug: "yearly" }, adminId)).toEqual({ ok: false, error: expect.stringContaining("مستعمل") });
+    expect(await savePlan(db, { ...valid, slug: "pro" }, adminId)).toEqual({ ok: false, error: expect.stringContaining("مستعمل") });
     expect((await savePlan(db, { ...valid }, adminId)).ok).toBe(false); // بدون رمز
-    expect(await savePlan(db, { ...valid, id: semi, isActive: false }, adminId)).toEqual({ ok: false, error: expect.stringContaining("باقة التجربة") });
+    expect(await savePlan(db, { ...valid, id: growth, isActive: false }, adminId)).toEqual({ ok: false, error: expect.stringContaining("باقة التجربة") });
     expect((await savePlan(db, { ...valid, id: "ghost" }, adminId)).ok).toBe(false);
   });
 });
@@ -427,15 +433,53 @@ describe("محتوى الموقع التسويقي", () => {
 
 describe("إعدادات المنصة وسجل النشاط", () => {
   it("حفظ وتحقق", async () => {
-    expect(await getPlatformConfig(db)).toMatchObject({ trialDays: 3, trialPlanSlug: "semiannual", supportWhatsapp: null });
-    expect((await savePlatformConfig(db, { trialDays: 21, trialPlanSlug: "monthly", supportWhatsapp: "+218 91 234 5678" }, adminId)).ok).toBe(true);
-    expect(await getPlatformConfig(db)).toEqual({ trialDays: 21, trialPlanSlug: "monthly", supportWhatsapp: "0912345678" });
-    const err = async (over: Record<string, unknown>) => { const r = await savePlatformConfig(db, { trialDays: 14, trialPlanSlug: "semiannual", supportWhatsapp: null, ...over }, adminId); return r.ok ? "OK" : r.error; };
+    expect(await getPlatformConfig(db)).toMatchObject({ trialDays: 3, trialPlanSlug: "growth", supportWhatsapp: null, freePlanEnabled: false, startMode: "trial", promo: { enabled: false } });
+    expect((await savePlatformConfig(db, { trialDays: 21, trialPlanSlug: "starter", supportWhatsapp: "+218 91 234 5678" }, adminId)).ok).toBe(true);
+    expect(await getPlatformConfig(db)).toMatchObject({ trialDays: 21, trialPlanSlug: "starter", supportWhatsapp: "0912345678" });
+    const err = async (over: Record<string, unknown>) => { const r = await savePlatformConfig(db, { trialDays: 14, trialPlanSlug: "growth", supportWhatsapp: null, ...over }, adminId); return r.ok ? "OK" : r.error; };
     expect(await err({ trialDays: 0 })).toContain("يوم");
     expect(await err({ trialDays: 91 })).toContain("90");
     expect(await err({ trialPlanSlug: "ghost" })).toContain("باقة التجربة");
     expect(await err({ supportWhatsapp: "0961234567" })).toContain("واتساب");
+    expect(await err({ startMode: "free" })).toContain("فعّل الباقة المجانية"); // مطفية
     expect(await err({})).toBe("OK");
+  });
+
+  it("الباقة المجانية: مطفية لين الأدمن يطلقها، والمتاجر الجديدة تبدا عليها لو اختارها", async () => {
+    // باقة مجانية وحدة بس (الاختبار اللي فات أنشأ وحدة)
+    const free = (await db.select().from(plans).where(eq(plans.isFree, true)))[0];
+    expect(free).toBeTruthy();
+    expect(await savePlan(db, { nameAr: "مجانية 2", slug: "free2", prices: PR(0, null, null, null), isFree: true, limits: LIMITS }, adminId)).toEqual({ ok: false, error: expect.stringContaining("مجانية من قبل") });
+    expect((await publicPlans(db, false)).some((p) => p.isFree)).toBe(false); // مخفية من الأسعار
+    expect((await setFreePlanEnabled(db, true, adminId)).ok).toBe(true);
+    expect((await publicPlans(db, true)).some((p) => p.isFree)).toBe(true);
+    expect((await savePlatformConfig(db, { trialDays: 3, trialPlanSlug: "growth", supportWhatsapp: null, startMode: "free" }, adminId)).ok).toBe(true);
+    const s = await createStoreForUser(db, { userId: (await db.insert(users).values({ phone: "0917777000", name: "جديد", passwordHash: "x" }).returning())[0]!.id, name: "مجاني", slug: "free-start" });
+    if (!s.ok) throw new Error(s.error);
+    expect(await row(s.data.storeId)).toMatchObject({ planId: free!.id, status: "active", trialEndsAt: null, currentPeriodEnd: null });
+    // الإيقاف يرجّع البداية للتجربة
+    expect((await setFreePlanEnabled(db, false, adminId)).ok).toBe(true);
+    expect(await getPlatformConfig(db)).toMatchObject({ freePlanEnabled: false, startMode: "trial" });
+    const t = await createStoreForUser(db, { userId: (await db.insert(users).values({ phone: "0917777001", name: "جديد2", passwordHash: "x" }).returning())[0]!.id, name: "تجربة", slug: "trial-start" });
+    if (!t.ok) throw new Error(t.error);
+    expect(await row(t.data.storeId)).toMatchObject({ planId: growth, status: "trial" });
+    expect((await setFreePlanEnabled(db, "yes", adminId)).ok).toBe(false);
+    // تحويل متجر للمجانية: نشط بدون تاريخ انتهاء
+    expect((await changePlan(db, t.data.storeId, free!.id, actor())).ok).toBe(true);
+    expect(await row(t.data.storeId)).toMatchObject({ status: "active", currentPeriodEnd: null });
+    expect((await recordPayment(db, { storeId: t.data.storeId, planId: free!.id, cycle: "monthly", amount: 1, method: "cash" }, actor())).ok).toBe(false);
+  });
+
+  it("العرض الترويجي: نص وتاريخ انتهاء", async () => {
+    const now = Date.now();
+    expect((await savePromo(db, { enabled: true, text: "" }, adminId)).ok).toBe(false);
+    expect((await savePromo(db, { enabled: true, text: "ا".repeat(141) }, adminId)).ok).toBe(false);
+    expect((await savePromo(db, { enabled: true, text: "أول شهر مجاني في أي باقة", linkLabel: "افتح متجرك", endsAt: now + DAY }, adminId)).ok).toBe(true);
+    const { promo } = await getPlatformConfig(db);
+    expect(promo).toMatchObject({ enabled: true, text: "أول شهر مجاني في أي باقة", linkLabel: "افتح متجرك" });
+    expect(promoActive(promo, now)).toBe(true);
+    expect(promoActive(promo, now + 2 * DAY)).toBe(false); // انتهى
+    expect(promoActive({ ...promo, enabled: false }, now)).toBe(false);
   });
 
   it("سجل النشاط: فلترة وصفحات", async () => {

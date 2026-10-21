@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { plans, storeMembers, stores, type PlanLimits } from "@/db/schema/platform";
-import { FALLBACK_LIMITS } from "@/lib/plan-limits";
+import { loadStoreLimits } from "./entitlements";
 import type { MemberRole } from "@/lib/constants";
 import { getCurrentUser } from "./auth/current";
 import { can, homeFor, type Permission } from "./permissions";
@@ -43,7 +43,7 @@ export const loadStoreContext = cache(async (): Promise<StoreContext | null> => 
     store: row.store,
     role: row.role,
     scope: forStore(db, row.store.id),
-    limits: row.plan?.limits ?? FALLBACK_LIMITS,
+    limits: await loadStoreLimits(db, row.store, row.plan),
     planName: row.plan?.nameAr ?? null,
     access: computeStoreAccess(row.store),
   };

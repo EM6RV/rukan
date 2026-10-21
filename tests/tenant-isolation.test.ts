@@ -11,6 +11,7 @@ import type { Db } from "@/db";
 // جداول المنصة اللي فيها عمود store_id لسبب مقصود وما تمر عبر forStore
 const PLATFORM_TABLES_WITH_STORE_ID = [
   "store_members", "store_domains", "subscription_payments", "design_requests", "audit_logs", "media",
+  "store_addons", // إضافات الاشتراك: يسجلها الأدمن مع الدفعة (مش بيانات البياع)
 ];
 
 

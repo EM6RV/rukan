@@ -18,6 +18,9 @@ import { can } from "@/server/permissions";
 import { requireStoreContext } from "@/server/store-context";
 import { OrderDetailView } from "./order-detail";
 
+import { LockedOrder } from "@/components/dashboard/locked-order";
+import { isOrderLocked } from "@/server/entitlements";
+
 export const metadata: Metadata = { title: "تفاصيل الطلبية" };
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,6 +29,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const restrict = await courierRestriction(ctx);
   const d = await getOrderDetail(ctx.scope, id, restrict);
   if (!d) notFound();
+  if (isOrderLocked(d.order, ctx.limits)) return <LockedOrder number={d.order.number} limit={ctx.limits.maxOrdersPerMonth!} />;
   const isCourier = ctx.role === "courier";
   const { order } = d;
 

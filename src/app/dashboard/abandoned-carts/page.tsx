@@ -12,12 +12,15 @@ import { listAbandonedCarts } from "@/server/marketing/abandoned-carts";
 import { getWhatsappTemplates } from "@/server/orders/whatsapp-templates";
 import { requireStoreContext } from "@/server/store-context";
 import { CartList } from "./cart-list";
+import { LockedPage } from "@/components/dashboard/locked-page";
+import { canUse } from "@/lib/entitlements";
 
 export const metadata: Metadata = { title: "السلات المتروكة" };
 export const dynamic = "force-dynamic";
 
 export default async function AbandonedCartsPage() {
   const ctx = await requireStoreContext("customers");
+  if (!canUse(ctx.limits, "abandonedCarts")) return <LockedPage feature="abandonedCarts" />;
   const [carts, templates] = await Promise.all([listAbandonedCarts(ctx.scope), getWhatsappTemplates(ctx.scope)]);
   const req = await currentRequest();
   const link = `${storeUrl(ctx.store.slug, getEnv(), req)}/cart`;

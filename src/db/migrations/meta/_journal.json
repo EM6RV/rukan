@@ -71,6 +71,13 @@
       "when": 1792535203574,
       "tag": "0009_stores_enabled_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792539746594,
+      "tag": "0010_plans_durations",
+      "breakpoints": true
     }
   ]
 }

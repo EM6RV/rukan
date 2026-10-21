@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, TriangleAlert, Truck } from "lucide-react";
+import { Lock, MapPin, TriangleAlert, Truck } from "lucide-react";
 import { OrderStatusBadge, PaymentBadge } from "@/components/dashboard/order-status";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
@@ -15,7 +15,7 @@ import { enterDelay, enterItem } from "@/components/ui/motion";
 import { bulkAssignAction } from "./actions";
 
 export type Row = {
-  id: string; number: number; customerName: string; customerPhone: string; cityName: string; total: number; status: OrderStatus;
+  id: string; number: number; customerName: string; customerPhone: string; cityName: string; total: number; status: OrderStatus; locked?: boolean;
   paymentMethod: string; paymentStatus: string; courierName: string | null; createdAt: number; flagged: boolean; itemCount: number;
 };
 
@@ -71,6 +71,7 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold" dir="ltr">#{o.number}</span>
                   <OrderStatusBadge status={o.status} />
+                  {o.locked && <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium"><Lock className="size-3" aria-hidden /> فوق حد باقتك</span>}
                   {o.flagged && <span className="inline-flex items-center gap-1 text-xs font-medium text-danger-fg"><TriangleAlert className="size-3.5" aria-hidden /> زبون مزعج</span>}
                 </div>
                 <p className="truncate">{o.customerName} <span dir="ltr" className="ms-2 text-sm text-muted">{o.customerPhone}</span></p>

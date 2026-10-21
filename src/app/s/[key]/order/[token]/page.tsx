@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,7 +23,7 @@ export default async function OrderPage({ params }: { params: Promise<{ key: str
   const order = await getOrderByToken(forStore(getDb(), sf.id), token);
   if (!order) notFound();
   const { base } = await getRequestContext(key);
-  const kit = getKit(sf.limits.allTemplates ? sf.template : "simple");
+  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : "simple");
   const wa = sf.settings.whatsapp ? toWhatsappNumber(sf.settings.whatsapp) : null;
   const waHref = wa ? waLink(wa, orderConfirmMessage({ storeName: sf.name, number: order.number, name: order.customerName, total: order.total, items: order.items })) : null;
 

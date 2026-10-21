@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -31,7 +32,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (!sf || !cat) notFound();
 
   const { base } = await getRequestContext(key);
-  const kit = getKit(sf.limits.allTemplates ? sf.template : "simple");
+  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : "simple");
   const sort = SORTS.some((s) => s.key === sp.sort) ? (sp.sort as CatalogSort) : "newest";
   const page = Math.max(1, Number(sp.page) || 1);
   const result = await getCatalog(sf.id, { categorySlug: slug, sort, page });

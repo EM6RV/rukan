@@ -15,7 +15,9 @@ import { PAYMENT_METHOD_LABEL, STATE_LABEL, STATE_TONE } from "@/lib/store-state
 import { storeUrl } from "@/lib/store-url";
 import { currentRequest } from "@/server/request-origin";
 import { waLink } from "@/lib/whatsapp";
-import { listPlans } from "@/server/admin/plans";
+import { listAddons, listPlans } from "@/server/admin/plans";
+import { storeAddons } from "@/db/schema/platform";
+import { eq } from "drizzle-orm";
 import { getStoreDetail } from "@/server/admin/stores";
 import { getStoreDomain } from "@/server/domains";
 import { DomainAdmin } from "./domain-admin";
@@ -33,7 +35,10 @@ const ACTION_LABEL: Record<string, string> = {
 export default async function StoreDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = getDb();
-  const [d, plans, domain] = await Promise.all([getStoreDetail(db, id), listPlans(db), getStoreDomain(db, id)]);
+  const [d, plans, domain, addonList, current] = await Promise.all([
+    getStoreDetail(db, id), listPlans(db), getStoreDomain(db, id), listAddons(db),
+    db.select({ addonId: storeAddons.addonId, quantity: storeAddons.quantity }).from(storeAddons).where(eq(storeAddons.storeId, id)),
+  ]);
   if (!d) notFound();
   const { store, access } = d;
   const end = store.status === "trial" ? store.trialEndsAt : store.currentPeriodEnd;
@@ -60,7 +65,8 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
           <CardHeader title="معلومات" />
           <dl className="divide-y divide-line text-sm">
             {([
-              ["المالك", `${d.ownerName}`], ["الهاتف", d.ownerPhone], ["الباقة", d.plan ? `${d.plan.nameAr} (${periodLabel(d.plan.billingPeriod)})` : "بدون باقة"],
+              ["المالك", `${d.ownerName}`], ["الهاتف", d.ownerPhone], ["الباقة", d.plan ? (d.plan.isFree ? `${d.plan.nameAr} (للأبد)` : `${d.plan.nameAr} (${periodLabel(store.billingCycle)})`) : "بدون باقة"],
+              ["الإضافات", current.length ? current.map((c) => `${addonList.find((a) => a.id === c.addonId)?.nameAr ?? "?"} × ${c.quantity}`).join("، ") : "—"],
               [store.status === "trial" ? "تنتهي التجربة" : "ينتهي الاشتراك", end ? `${formatDate(end)}${access.daysLeft !== null ? ` · ${access.daysLeft > 0 ? `باقي ${access.daysLeft} يوم` : "منتهي"}` : ""}` : "—"],
               ["القالب", store.template], ["تاريخ التسجيل", formatDateTimeYear(store.createdAt)],
               ["المنتجات", String(d.counts.products)], ["الطلبيات", String(d.counts.orders)], ["الزبائن", String(d.counts.customers)],
@@ -69,7 +75,10 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
         </Card>
         <StoreActions
           storeId={store.id} suspended={store.status === "suspended"} currentPlanId={store.planId} state={access.state}
-          plans={plans.filter((p) => p.isActive || p.id === store.planId).map((p) => ({ id: p.id, name: p.nameAr, billingPeriod: p.billingPeriod, price: p.price }))}
+          currentCycle={store.billingCycle}
+          plans={plans.filter((p) => (p.isActive && !p.slug.startsWith("legacy-")) || p.id === store.planId).map((p) => ({ id: p.id, name: p.nameAr, prices: p.prices, isFree: p.isFree }))}
+          addons={addonList.filter((a) => a.isActive).map((a) => ({ id: a.id, name: a.nameAr, monthlyPrice: a.monthlyPrice }))}
+          currentAddons={Object.fromEntries(current.map((c) => [c.addonId, c.quantity]))}
         />
       </div>
 

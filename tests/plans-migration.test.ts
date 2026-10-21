@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { describe, expect, it } from "vitest";
 import { createDb } from "@/db";
-import { addMonths, approxMonthly, cycleMonths, daysText, periodLabel, periodUnit } from "@/lib/billing";
+import { addMonths, cycleMonths, daysText, monthlyEquivalent, offeredCycles, payOnceText, periodLabel, periodUnit, planPrice, savingsPercent } from "@/lib/billing";
 
 const MIGRATIONS = "./src/db/migrations";
 const OLD = { starter: "p-starter", growth: "p-growth", pro: "p-pro" };
@@ -118,13 +118,48 @@ describe("ترحيل الباقات القديمة للثلاث الجديدة (
       // سجل الدفعات يحتفظ بباقته (القديمة المخبّاة growth)
       expect(String((await client.execute("SELECT p.slug FROM subscription_payments sp JOIN plans p ON p.id = sp.plan_id")).rows[0]!.slug)).toBe("growth");
 
-      // الخطوة 3 (0007): جدول طلبات التصميم + تصميم مجاني للسنوية بس
-      await migrate(db, { migrationsFolder: MIGRATIONS });
+      // الخطوة 3 (0007…0009): جدول طلبات التصميم + تصميم مجاني للسنوية بس
+      const nine = join(dir, "nine");
+      oldMigrations(nine, "0009");
+      await migrate(db, { migrationsFolder: nine });
       const limits = Object.fromEntries((await client.execute("SELECT slug, limits FROM plans WHERE is_active = 1")).rows.map((r) => [String(r.slug), JSON.parse(String(r.limits))]));
       expect(limits.yearly.freeDesigns).toBe(1);
       expect(limits.semiannual.freeDesigns).toBeUndefined();
       expect(limits.monthly.freeDesigns).toBeUndefined();
       expect((await client.execute("SELECT COUNT(*) AS n FROM design_requests")).rows[0]!.n).toBe(0);
+
+      // الخطوة 4 (0010): نظام المدد: بداية / نمو / احترافي + مجانية مخفية
+      // قبلها: sa نشط على شهرية، sb نشط على ست شهور (مع دفعة)، sc تجريبي على سنوية
+      const semi = String((await client.execute("SELECT id FROM plans WHERE slug='semiannual'")).rows[0]!.id);
+      await client.execute({ sql: "INSERT INTO subscription_payments (id, store_id, plan_id, billing_cycle, amount, method, period_start, period_end, recorded_by, created_at) VALUES ('pay2','sb',?,'semiannual',650000,'cash',1,2,'u1',2)", args: [semi] });
+      await client.execute({ sql: "UPDATE stores SET plan_id = ?, billing_cycle = 'semiannual' WHERE id = 'sb'", args: [semi] });
+      await migrate(db, { migrationsFolder: MIGRATIONS });
+      const p10 = (await client.execute("SELECT slug, name_ar AS name, prices, duration_perks AS perks, is_featured AS featured, is_free AS free, limits FROM plans WHERE is_active = 1 ORDER BY sort_order")).rows;
+      expect(p10.map((p) => [p.slug, p.name, p.featured, p.free])).toEqual([["free", "مجانية", 0, 1], ["starter", "بداية", 0, 0], ["growth", "نمو", 1, 0], ["pro", "احترافي", 0, 0]]);
+      const P = Object.fromEntries(p10.map((p) => [String(p.slug), { prices: JSON.parse(String(p.prices)), perks: JSON.parse(String(p.perks)), limits: JSON.parse(String(p.limits)) }]));
+      expect(P.starter!.prices).toEqual({ m1: 120_000, m3: 330_000, m6: 620_000, m12: 1_150_000 });
+      expect(P.growth!.prices).toEqual({ m1: 220_000, m3: 600_000, m6: 1_150_000, m12: 2_100_000 });
+      expect(P.pro!.prices).toEqual({ m1: null, m3: null, m6: 1_900_000, m12: 3_400_000 });
+      expect(P.pro!.perks).toEqual({ m12: { freeDesigns: 1, note: "ريل أو لوجو مجاناً" } });
+      expect(P.starter!.limits).toMatchObject({ maxProducts: 100, maxStaff: 1, coupons: false, reports: false, removeBranding: false });
+      expect(P.growth!.limits).toMatchObject({ maxProducts: null, maxStaff: 3, coupons: true, reports: true, abandonedCarts: true, removeBranding: true, customDomain: false });
+      expect(P.pro!.limits).toMatchObject({ customDomain: true, pixels: true, modules: { warehouses: true, purchasing: true, accounting: true } });
+      expect(P.free!.limits).toMatchObject({ maxProducts: 15, maxOrdersPerMonth: 30, maxStaff: 1, allTemplates: false, coupons: false, removeBranding: false });
+      // المتاجر: شهرية ← نمو شهر، ست شهور ← نمو 6 شهور، سنوية ← احترافي. نفس التواريخ، ورسالة للمشتركين بس
+      const st = (await client.execute("SELECT s.id, p.slug, s.billing_cycle AS cycle, s.plan_notice AS notice, s.status, s.current_period_end AS pe, s.trial_ends_at AS trial FROM stores s LEFT JOIN plans p ON p.id = s.plan_id ORDER BY s.id")).rows.map((r) => ({ ...r }));
+      expect(st).toEqual([
+        { id: "sa", slug: "growth", cycle: "monthly", notice: "monthly", status: "active", pe: end, trial: null },
+        { id: "sb", slug: "growth", cycle: "semiannual", notice: "semiannual", status: "active", pe: end, trial: null },
+        { id: "sc", slug: "pro", cycle: "monthly", notice: null, status: "trial", pe: null, trial: end },
+        { id: "sd", slug: null, cycle: "monthly", notice: null, status: "trial", pe: null, trial: end },
+      ]);
+      // الدفعات: دفعة «ست شهور» تولي على «نمو»، والقديمة تبقى على باقتها المخبّاة
+      const pays = (await client.execute("SELECT sp.id, p.slug, sp.amount FROM subscription_payments sp JOIN plans p ON p.id = sp.plan_id ORDER BY sp.id")).rows.map((r) => ({ ...r }));
+      expect(pays).toEqual([{ id: "pay1", slug: "legacy-growth", amount: 990_000 }, { id: "pay2", slug: "growth", amount: 650_000 }]);
+      expect(await setting("trial_plan_slug")).toBe('"growth"');
+      // التشغيل مرة ثانية ما يغيّرش شي (الشروط على prices = '{}')
+      await migrate(db, { migrationsFolder: MIGRATIONS });
+      expect((await client.execute("SELECT COUNT(*) AS n FROM plans WHERE slug = 'free'")).rows[0]!.n).toBe(1);
     } finally {
       client.close();
       rmSync(dir, { recursive: true, force: true });
@@ -156,20 +191,30 @@ describe("ترحيل الباقات القديمة للثلاث الجديدة (
 });
 
 describe("أدوات عرض الباقات", () => {
-  it("المدة والسعر التقريبي في الشهر", () => {
-    expect(periodUnit("monthly")).toBe("شهر");
-    expect(periodUnit("yearly")).toBe("سنة");
-    expect(periodLabel("monthly")).toBe("شهرية");
-    expect(periodLabel("yearly")).toBe("سنوية");
-    expect(approxMonthly(500_000, "yearly")).toBe(42_000); // 41.67 ← 42 د.ل
-    expect(approxMonthly(800_000, "yearly")).toBe(67_000); // 66.67 ← 67 د.ل
-    expect(approxMonthly(100_000, "monthly")).toBeNull();
-    expect(periodUnit("semiannual")).toBe("6 أشهر");
-    expect(periodLabel("semiannual")).toBe("ست شهور");
-    expect([cycleMonths("monthly"), cycleMonths("semiannual"), cycleMonths("yearly")]).toEqual([1, 6, 12]);
-    expect(approxMonthly(650_000, "semiannual")).toBe(108_000); // 108.3 ← 108 د.ل
-    expect(approxMonthly(1_250_000, "yearly")).toBe(104_000); // 104.2 ← 104 د.ل
+  const growth = { prices: { m1: 220_000, m3: 600_000, m6: 1_150_000, m12: 2_100_000 } };
+  const pro = { prices: { m1: null, m3: null, m6: 1_900_000, m12: 3_400_000 } };
+  it("المدد والتسميات", () => {
+    expect(["monthly", "quarterly", "semiannual", "yearly"].map((c) => periodUnit(c as never))).toEqual(["شهر", "3 شهور", "6 شهور", "سنة"]);
+    expect(["monthly", "quarterly", "semiannual", "yearly"].map((c) => periodLabel(c as never))).toEqual(["شهري", "3 شهور", "6 شهور", "سنوي"]);
+    expect([cycleMonths("monthly"), cycleMonths("quarterly"), cycleMonths("semiannual"), cycleMonths("yearly")]).toEqual([1, 3, 6, 12]);
+    expect(payOnceText("yearly")).toBe("في السنة");
+    expect(payOnceText("quarterly")).toBe("كل 3 شهور");
+  });
+  it("سعر المدة، والمدد المتاحة، ونسبة التوفير مقارنة بالشهري", () => {
+    expect(planPrice(growth, "quarterly")).toBe(600_000);
+    expect(planPrice(pro, "monthly")).toBeNull();
+    expect(offeredCycles(pro)).toEqual(["semiannual", "yearly"]);
+    expect(savingsPercent(growth, "monthly")).toBe(0);
+    expect(savingsPercent(growth, "quarterly")).toBe(9); // 600 / 660
+    expect(savingsPercent(growth, "semiannual")).toBe(13); // 1150 / 1320
+    expect(savingsPercent(growth, "yearly")).toBe(20); // 2100 / 2640
+    expect(savingsPercent(pro, "yearly")).toBe(0); // ما عندهاش سعر شهري
+    expect(monthlyEquivalent(2_100_000, "yearly")).toBe(175_000);
+    expect(monthlyEquivalent(1_900_000, "semiannual")).toBe(317_000);
+  });
+  it("تواريخ وأيام", () => {
     expect(new Date(addMonths(Date.UTC(2026, 7, 31), 6)).toISOString().slice(0, 10)).toBe("2027-02-28");
+    expect(new Date(addMonths(Date.UTC(2026, 10, 30), 3)).toISOString().slice(0, 10)).toBe("2027-02-28");
     expect([1, 2, 3, 10, 14].map(daysText)).toEqual(["يوم", "يومين", "3 أيام", "10 أيام", "14 يوم"]);
   });
 });

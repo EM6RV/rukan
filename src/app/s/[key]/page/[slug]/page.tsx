@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MessageCircle, Phone } from "lucide-react";
@@ -22,7 +23,7 @@ export default async function ContentPage({ params }: Props) {
   if (!sf) notFound();
   const page = await getPage(sf.id, decodeKey(slug));
   if (!page) notFound();
-  const kit = getKit(sf.limits.allTemplates ? sf.template : "simple");
+  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : "simple");
   const wa = sf.settings.whatsapp ? toWhatsappNumber(sf.settings.whatsapp) : null;
 
   return (

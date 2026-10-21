@@ -26,13 +26,13 @@ const newUser = async () =>
 
 beforeAll(async () => {
   ({ db, close } = await makeTestDb());
-  await db.insert(plans).values({ slug: "semiannual", nameAr: "ست شهور", price: 1, limits: ALL });
+  await db.insert(plans).values({ slug: "growth", nameAr: "نمو", prices: { m1: 1 }, limits: ALL });
   await db.insert(cities).values([{ nameAr: "طرابلس", region: "west" }, { nameAr: "بنغازي", region: "east" }, { nameAr: "سبها", region: "south" }]);
 });
 afterAll(() => close());
 
 describe("إنشاء المتجر", () => {
-  it("ينشئ المتجر بمحتوى افتراضي كامل وتجربة 3 أيام وباقة التجربة (ست شهور)", async () => {
+  it("ينشئ المتجر بمحتوى افتراضي كامل وتجربة 3 أيام وباقة التجربة (نمو)", async () => {
     const u = await newUser();
     const r = await createStoreForUser(db, { userId: u.id, name: "عطور سارة", slug: "sara-perfume" });
     if (!r.ok) throw new Error(r.error);

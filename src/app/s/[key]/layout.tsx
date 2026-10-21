@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import { SkipLink } from "@/components/ui/skip-link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -57,7 +58,7 @@ export default async function StoreLayout({ children, params }: Props) {
   }
 
   const { base } = await getRequestContext(key);
-  const template = sf.limits.allTemplates ? sf.template : "simple"; // لو نزلت الباقة، القوالب الإضافية ترجع للبسيط
+  const template = canUse(sf.limits, "allTemplates") ? sf.template : "simple"; // لو نزلت الباقة، القوالب الإضافية ترجع للبسيط
   const kit = getKit(template);
   const s = sf.settings;
   const info: StoreInfo = {
@@ -68,8 +69,8 @@ export default async function StoreLayout({ children, params }: Props) {
     pages: sf.pages,
     social: { instagram: s.instagram, tiktok: s.tiktok, facebook: s.facebook, snapchat: s.snapchat },
     contact: { phone: s.contactPhone, email: s.email, address: s.address },
-    footerText: s.footerText, showBranding: !sf.limits.removeBranding,
-    pixels: { meta: sf.limits.pixels ? s.metaPixelId : null, tiktok: sf.limits.pixels ? s.tiktokPixelId : null },
+    footerText: s.footerText, showBranding: !canUse(sf.limits, "removeBranding"),
+    pixels: { meta: canUse(sf.limits, "pixels") ? s.metaPixelId : null, tiktok: canUse(sf.limits, "pixels") ? s.tiktokPixelId : null },
     freeDeliveryOver: s.freeDeliveryOver,
   };
 

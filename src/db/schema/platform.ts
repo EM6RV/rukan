@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import { blob, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createdAt, pk, updatedAt } from "./_helpers";
-import type { BillingCycle, BusinessType, DesignService, LibyaRegion, StoreModule, StoreStatus, StoreTemplate } from "@/lib/constants";
+import type { AddonKind, BillingCycle, BusinessType, DesignService, LibyaRegion, StoreModule, StoreStatus, StoreTemplate } from "@/lib/constants";
+export type { AddonKind } from "@/lib/constants";
+import type { DurationKey } from "@/lib/billing";
 
 // ===== المستخدمون والجلسات =====
 
@@ -11,6 +13,8 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
   platformRole: text("platform_role", { enum: ["admin"] }),
+  /** متى اتأكد الرقم بكود (SMS/واتساب). null = ما اتأكدش (التحقق مطفي حالياً) */
+  phoneVerifiedAt: integer("phone_verified_at", { mode: "timestamp_ms" }),
   status: text("status", { enum: ["active", "blocked"] }).notNull().default("active"),
   createdAt: createdAt(),
   lastLoginAt: integer("last_login_at", { mode: "timestamp_ms" }),
@@ -48,6 +52,22 @@ export const passwordResetRequests = sqliteTable(
   (t) => [index("pwreset_user_idx").on(t.userId, t.status), uniqueIndex("pwreset_token_uq").on(t.tokenHash)],
 );
 
+/** أكواد التحقق من الهاتف (SMS/واتساب). الكود نفسه ما ينحفظش: sha256 بس، وصالح دقائق ولعدد محاولات محدود. */
+export const phoneVerifications = sqliteTable(
+  "phone_verifications",
+  {
+    id: pk(),
+    phone: text("phone").notNull(),
+    codeHash: text("code_hash").notNull(),
+    channel: text("channel", { enum: ["sms", "whatsapp"] }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    verifiedAt: integer("verified_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("phone_verifications_phone_idx").on(t.phone, t.createdAt)],
+);
+
 export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").primaryKey(),
   count: integer("count").notNull().default(0),
@@ -59,25 +79,48 @@ export const rateLimits = sqliteTable("rate_limits", {
 export type PlanLimits = {
   maxProducts: number | null; // null = غير محدود
   maxStaff: number | null;
+  /** طلبيات في الشهر (بتوقيت ليبيا). غير موجود/null = غير محدود */
+  maxOrdersPerMonth?: number | null;
+  /** عدد المخازن (وحدة المخازن). غير موجود = 1، null = غير محدود */
+  maxWarehouses?: number | null;
   allTemplates: boolean;
   coupons: boolean;
   reports: boolean;
   customDomain: boolean;
   pixels: boolean;
   removeBranding: boolean;
+  // مميزات جديدة (غير موجودة = مقفولة)
+  abandonedCarts?: boolean;
+  bundles?: boolean;
+  customRoles?: boolean;
+  advancedReports?: boolean;
+  analytics?: boolean;
   /** عدد التصاميم المجانية (ريل أو لوجو) في كل فترة اشتراك. غير موجود = 0 */
   freeDesigns?: number;
-  /** الوحدات الاختيارية المسموحة في الباقة. غير محدد = مسموحة (القفل الفعلي بالباقة يتضبط في المرحلة 1) */
+  /** الوحدات الاختيارية المسموحة في الباقة (غير موجودة = مقفولة) */
   modules?: Partial<Record<StoreModule, boolean>>;
 };
+
+/** سعر كل مدة بالدرهم. null/غير موجود = الباقة ما تطلعش في المدة هذي */
+export type PlanPrices = Partial<Record<DurationKey, number | null>>;
+/** ميزة إضافية لمدة معينة (مثلاً ريل أو لوجو مجاناً في السنوية بس) */
+export type DurationPerks = Partial<Record<DurationKey, { freeDesigns?: number; note?: string }>>;
 
 export const plans = sqliteTable("plans", {
   id: pk(),
   slug: text("slug").notNull().unique(),
   nameAr: text("name_ar").notNull(),
   descriptionAr: text("description_ar"),
-  billingPeriod: text("billing_period").$type<BillingCycle>().notNull().default("monthly"), // مدة الباقة: شهرية أو سنوية
-  price: integer("price").notNull().default(0), // سعر المدة كاملة، بالدرهم (1 د.ل = 1000)
+  /** @deprecated من المرحلة 1: الأسعار في prices. باقي للتوافق مع البيانات القديمة بس */
+  billingPeriod: text("billing_period").$type<BillingCycle>().notNull().default("monthly"),
+  /** @deprecated من المرحلة 1: الأسعار في prices */
+  price: integer("price").notNull().default(0),
+  prices: text("prices", { mode: "json" }).$type<PlanPrices>().notNull().default(sql`'{}'`),
+  /** السعر الأصلي (يبان مشطوب) لكل مدة، اختياري */
+  comparePrices: text("compare_prices", { mode: "json" }).$type<PlanPrices>().notNull().default(sql`'{}'`),
+  durationPerks: text("duration_perks", { mode: "json" }).$type<DurationPerks>().notNull().default(sql`'{}'`),
+  /** الباقة المجانية للأبد. تبان بس لما الأدمن يفعّلها من الإعدادات */
+  isFree: integer("is_free", { mode: "boolean" }).notNull().default(false),
   isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false), // الباقة المميزة في صفحة الأسعار
   limits: text("limits", { mode: "json" }).$type<PlanLimits>().notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -105,6 +148,8 @@ export const stores = sqliteTable(
     useCouriers: integer("use_couriers", { mode: "boolean" }).notNull().default(true),
     /** الوحدات الاختيارية اللي فعّلها البياع. الطفي ما يمسح بياناتها. */
     enabledModules: text("enabled_modules", { mode: "json" }).$type<StoreModule[]>().notNull().default(sql`'[]'`),
+    /** رسالة تحويل الباقة (نظام الباقات الجديد) تبان في اللوحة لين يقفلها: "from:to:cycle" */
+    planNotice: text("plan_notice"),
     logoMediaId: text("logo_media_id"),
     // معالج الإعداد: آخر خطوة تم حفظها، و onboardedAt لما يخلص المعالج
     onboardingStep: integer("onboarding_step").notNull().default(0),
@@ -149,6 +194,8 @@ export const subscriptionPayments = sqliteTable(
     amount: integer("amount").notNull(),
     method: text("method", { enum: ["cash", "bank_transfer", "other"] }).notNull(),
     receiptMediaId: text("receipt_media_id"),
+    /** لقطة الإضافات المدفوعة مع الدفعة */
+    addons: text("addons", { mode: "json" }).$type<{ addonId: string; slug: string; quantity: number }[]>(),
     periodStart: integer("period_start", { mode: "timestamp_ms" }).notNull(),
     periodEnd: integer("period_end", { mode: "timestamp_ms" }).notNull(),
     note: text("note"),
@@ -156,6 +203,33 @@ export const subscriptionPayments = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [index("sub_payments_store_idx").on(t.storeId, t.createdAt)],
+);
+
+// ===== الإضافات (Add-ons): موظف إضافي، مخزن إضافي، حزمة منتجات، دومين خاص =====
+export const addons = sqliteTable("addons", {
+  id: pk(),
+  slug: text("slug").notNull().unique(),
+  nameAr: text("name_ar").notNull(),
+  kind: text("kind").$type<AddonKind>().notNull(),
+  /** كم يزيد الحد مع كل وحدة (مثلاً 500 منتج). الدومين ما يحتاجش */
+  units: integer("units").notNull().default(1),
+  /** سعر الوحدة في الشهر بالدرهم */
+  monthlyPrice: integer("monthly_price").notNull().default(0),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+/** الإضافات المفعّلة لكل متجر (تتسجل مع دفعة الاشتراك وتمشي مع فترته) */
+export const storeAddons = sqliteTable(
+  "store_addons",
+  {
+    id: pk(),
+    storeId: text("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    addonId: text("addon_id").notNull().references(() => addons.id),
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("store_addons_uq").on(t.storeId, t.addonId)],
 );
 
 // ===== إعلانات ومحتوى الموقع =====

@@ -11,8 +11,12 @@ export default async function AdminSettings() {
   const [config, plans] = await Promise.all([getPlatformConfig(db), listPlans(db)]);
   return (
     <>
-      <div><h1 className="text-2xl">إعدادات المنصة</h1><p className="text-muted">التجربة المجانية ووسيلة التواصل للدعم.</p></div>
-      <SettingsForm config={config} plans={plans.filter((p) => p.isActive).map((p) => ({ slug: p.slug, name: p.nameAr }))} />
+      <div><h1 className="text-2xl">إعدادات المنصة</h1><p className="text-muted">بداية المتاجر الجديدة، الباقة المجانية، العرض الترويجي، ووسيلة التواصل للدعم.</p></div>
+      <SettingsForm
+        config={config}
+        plans={plans.filter((p) => p.isActive && !p.isFree && !p.slug.startsWith("legacy-")).map((p) => ({ slug: p.slug, name: p.nameAr }))}
+        freePlan={(() => { const f = plans.find((p) => p.isFree); return f ? { name: f.nameAr, isActive: f.isActive } : null; })()}
+      />
     </>
   );
 }

@@ -10,6 +10,7 @@ import { SkipLink } from "@/components/ui/skip-link";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { can } from "@/server/permissions";
 import { Announcements } from "@/components/dashboard/announcements";
+import { PlanNotice } from "@/components/dashboard/plan-notice";
 import { OfflineBanner } from "@/components/dashboard/offline-banner";
 import { PwaSetup } from "@/components/dashboard/pwa";
 import { OrdersWatcher } from "@/components/dashboard/orders-watcher";
@@ -74,6 +75,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             {can(ctx.role, "billing") && access.state !== "suspended" && <Link href="/dashboard/billing" className="shrink-0 rounded-md bg-fg px-3 py-1 text-xs font-semibold text-bg hover:opacity-90">جدّد الاشتراك</Link>}
           </div>
         )}
+        {ctx.store.planNotice && can(ctx.role, "billing") && <PlanNotice notice={ctx.store.planNotice} cycle={ctx.store.billingCycle} planName={ctx.planName} />}
         <OfflineBanner />
         <PwaSetup />
         <Announcements items={announcements} />

@@ -1,38 +1,26 @@
 import { eq } from "drizzle-orm";
 import { createDb } from "../src/db";
-import { cities, platformSettings, plans, storeMembers, stores, users } from "../src/db/schema/platform";
+import { addons, cities, platformSettings, plans, storeMembers, stores, users } from "../src/db/schema/platform";
+import { DEFAULT_ADDONS, DEFAULT_PLANS } from "../src/lib/plan-catalog";
 import { storeSettings } from "../src/db/schema/tenant";
 import { getEnv, isDeployed } from "../src/lib/env";
 import { LIBYA_CITIES } from "../src/lib/libya-cities";
-import { DEFAULT_TRIAL_DAYS } from "../src/lib/constants";
+import { DEFAULT_TRIAL_DAYS, DEFAULT_TRIAL_PLAN_SLUG } from "../src/lib/constants";
 import { hashPassword } from "../src/server/auth/password";
 import { normalizeLibyanPhone } from "../src/lib/phone";
 
 const env = getEnv();
 const { db, client } = createDb(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
 
-// الباقات: ثلاث باقات، لكل وحدة مدة وحدة (شهرية، ست شهور، سنوية) وسعر واحد (بالدرهم: 250 د.ل = 250000)
-const PLANS = [
-  {
-    slug: "monthly", nameAr: "شهرية", billingPeriod: "monthly" as const, price: 250_000, sortOrder: 1,
-    descriptionAr: "نص المزايا: كل القوالب والكوبونات والتقارير",
-    limits: { maxProducts: 200, maxStaff: 2, allTemplates: true, coupons: true, reports: true, customDomain: false, pixels: false, removeBranding: false },
-  },
-  {
-    slug: "semiannual", nameAr: "ست شهور", billingPeriod: "semiannual" as const, price: 650_000, sortOrder: 2,
-    descriptionAr: "أغلب المزايا مع Pixels للإعلانات",
-    limits: { maxProducts: 1000, maxStaff: 5, allTemplates: true, coupons: true, reports: true, customDomain: false, pixels: true, removeBranding: false },
-  },
-  {
-    slug: "yearly", nameAr: "سنوية", billingPeriod: "yearly" as const, price: 1_250_000, sortOrder: 3, isFeatured: true,
-    descriptionAr: "فل مزايا: كل شي غير محدود، دومين خاص وPixels وبدون شعار رُكن",
-    limits: { maxProducts: null, maxStaff: null, allTemplates: true, coupons: true, reports: true, customDomain: true, pixels: true, removeBranding: true, freeDesigns: 1 },
-  },
-];
-
-for (const p of PLANS) {
-  await db.insert(plans).values(p).onConflictDoNothing({ target: plans.slug });
+// الباقات: بداية / نمو / احترافي (سعر لكل مدة) + المجانية المخفية. القيم من src/lib/plan-catalog.ts وتتعدل بعدين من الأدمن.
+// onConflictDoNothing: ما نغطّوش على تعديلات الأدمن في قاعدة موجودة.
+for (const p of DEFAULT_PLANS) {
+  const base = p.prices.m1 ?? p.prices.m6 ?? 0; // الأعمدة القديمة (للتوافق بس)
+  await db.insert(plans).values({ ...p, billingPeriod: "monthly", price: base }).onConflictDoNothing({ target: plans.slug });
 }
+
+// الإضافات الافتراضية (أسعار شهرية مبدئية تتعدل من الأدمن)
+for (const a of DEFAULT_ADDONS) await db.insert(addons).values(a).onConflictDoNothing({ target: addons.slug });
 
 for (const [i, c] of LIBYA_CITIES.entries()) {
   await db.insert(cities).values({ nameAr: c.name, region: c.region, sortOrder: i }).onConflictDoNothing({ target: cities.nameAr });
@@ -65,7 +53,7 @@ if (process.env.SEED_DEMO === "1") {
     [demoUser] = await db.insert(users).values({ phone: demoPhone, name: "بياع تجريبي", passwordHash: await hashPassword("demo-password-123") }).returning();
   }
   if (!(await db.select({ id: stores.id }).from(stores).where(eq(stores.slug, "demo")).get())) {
-    const growth = await db.select().from(plans).where(eq(plans.slug, "semiannual")).get();
+    const growth = await db.select().from(plans).where(eq(plans.slug, DEFAULT_TRIAL_PLAN_SLUG)).get();
     const [store] = await db.insert(stores).values({
       slug: "demo", name: "متجر تجريبي", ownerUserId: demoUser!.id, planId: growth?.id, template: "elegant",
       trialEndsAt: new Date(Date.now() + DEFAULT_TRIAL_DAYS * 86_400_000),

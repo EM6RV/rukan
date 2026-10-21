@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { isNull } from "drizzle-orm";
-import { Banknote, CheckCircle2, Clapperboard, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
+import { ordersThisMonth } from "@/server/entitlements";
+import { Banknote, ShoppingBag, CheckCircle2, Clapperboard, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
+import { getDb } from "@/db";
 import { StoreLinkCard } from "@/components/dashboard/copy-link";
 import { PushToggle } from "@/components/dashboard/push-toggle";
 import { SalesChart } from "@/components/dashboard/sales-chart";
@@ -24,6 +26,7 @@ export default async function DashboardHome() {
   const ctx = await requireStoreContext("dashboard");
   const { scope, store, limits } = ctx;
 
+  const ordersMonth = limits.maxOrdersPerMonth != null ? await ordersThisMonth(getDb(), store.id) : 0;
   const [stats, productCount, categoryCount, [settings]] = await Promise.all([
     getDashboardStats(scope),
     scope.count(t.products, isNull(t.products.deletedAt)),
@@ -102,6 +105,7 @@ export default async function DashboardHome() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <StatCard href="/dashboard/products" icon={<Package />} label="المنتجات" value={productCount} usage={{ used: productCount, limit: limits.maxProducts, unit: "منتج" }} />
+        {limits.maxOrdersPerMonth != null && <StatCard href="/dashboard/orders" icon={<ShoppingBag />} label="طلبيات هذا الشهر" value={ordersMonth} usage={{ used: ordersMonth, limit: limits.maxOrdersPerMonth, unit: "طلبية" }} />}
         <StatCard href="/dashboard/categories" icon={<FolderTree />} label="الأقسام" value={categoryCount} />
       </div>
 

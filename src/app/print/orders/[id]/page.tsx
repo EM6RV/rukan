@@ -9,13 +9,15 @@ import { requireStoreContext } from "@/server/store-context";
 import { t } from "@/server/tenant";
 import { PrintButton } from "./print-button";
 
+import { isOrderLocked } from "@/server/entitlements";
+
 export const metadata: Metadata = { title: "طباعة الطلبية", robots: { index: false } };
 
 export default async function PrintPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kind?: string }> }) {
   const [{ id }, { kind }] = await Promise.all([params, searchParams]);
   const ctx = await requireStoreContext("orders");
   const d = await getOrderDetail(ctx.scope, id, await courierRestriction(ctx));
-  if (!d) notFound();
+  if (!d || isOrderLocked(d.order, ctx.limits)) notFound(); // المقفولة (فوق حد الباقة) ما تنطبعش
   const [settings] = await ctx.scope.from(t.storeSettings).limit(1);
   const { order, items } = d;
   const waybill = kind === "waybill" && ctx.role !== "courier";

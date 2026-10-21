@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { asc } from "drizzle-orm";
@@ -44,7 +45,7 @@ export default async function OnboardingPage() {
           logo={logoId ? { id: logoId, url: `/api/media/${logoId}` } : null}
           cityId={settings?.cityId ?? ""}
           cities={cityRows.map((c) => ({ id: c.id, name: c.nameAr }))}
-          allTemplates={ctx?.limits.allTemplates ?? true}
+          allTemplates={ctx ? canUse(ctx.limits, "allTemplates") : true}
           urlPattern={storeUrl("{slug}", env, req)}
           rootDomainLabel={env.ROOT_DOMAIN}
           trialDays={trialDays}

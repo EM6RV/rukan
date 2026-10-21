@@ -1,5 +1,6 @@
 "use server";
 
+import { canUse } from "@/lib/entitlements";
 import { getDb } from "@/db";
 import { z } from "zod";
 import { phoneSchema } from "@/lib/validation";
@@ -32,7 +33,7 @@ export async function checkCouponAction(key: string, code: string, items: unknow
   const sf = await openStore(key);
   const parsed = cartItems.safeParse(items);
   if (!sf || !parsed.success) return { ok: false, error: "السلة غير صحيحة" };
-  if (!sf.limits.coupons) return { ok: false, error: "كود الخصم غير متاح في هذا المتجر" };
+  if (!canUse(sf.limits, "coupons")) return { ok: false, error: "كود الخصم غير متاح في هذا المتجر" };
   const ip = (await getClientIp()) ?? "unknown";
   const limit = await hitRateLimit(getDb(), `coupon:${sf.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
   if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
@@ -91,7 +92,8 @@ export async function trackOrderAction(key: string, orderNumber: string, rawPhon
 export async function captureCartAction(key: string, input: unknown): Promise<{ ok: boolean }> {
   const sf = await openStore(key);
   const parsed = z.object({ phone: z.string(), name: z.string().max(80).nullish(), items: cartItems }).safeParse(input);
-  if (!sf || !parsed.success) return { ok: false };
+  // المتجر اللي باقته ما فيهاش السلات المتروكة: ما نحفظوش أرقام الزباين أصلاً
+  if (!sf || !parsed.success || !canUse(sf.limits, "abandonedCarts")) return { ok: false };
   const db = getDb();
   const ip = (await getClientIp()) ?? "unknown";
   const byIp = await hitRateLimit(db, `cart:ip:${sf.id}:${ip}`, { limit: 30, windowMs: 60 * 60_000 });

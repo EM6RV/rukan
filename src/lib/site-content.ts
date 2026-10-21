@@ -11,7 +11,7 @@ export type SiteContent = {
   showcase: { title: string; subtitle: string; items: { name: string; category: string; primary: string; accent: string; template: import("./constants").StoreTemplate; href: string }[] };
   design: { title: string; subtitle: string; button: string; items: { title: string; text: string }[] };
   steps: { title: string; items: { title: string; text: string }[] };
-  pricing: { title: string; subtitle: string; note: string };
+  pricing: { title: string; subtitle: string; note: string; popularBadge: string; compareTitle: string; compareSubtitle: string; rows: Record<string, string> };
   faq: { title: string; items: { q: string; a: string }[] };
   cta: { title: string; subtitle: string; button: string };
   footer: { text: string };
@@ -70,7 +70,11 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       { title: "شارك الرابط", text: "حطه في البايو على إنستغرام وتيك توك وابدأ استقبال الطلبيات." },
     ],
   },
-  pricing: { title: "أسعار واضحة", subtitle: "جرّب مجاناً أول، وادفع كاش أو تحويل لما تعجبك.", note: "الدفع يدوي (كاش أو تحويل) والاشتراك يتفعل مباشرة بعد التأكيد." },
+  pricing: {
+    title: "أسعار واضحة", subtitle: "جرّب مجاناً أول، وادفع كاش أو تحويل لما تعجبك. كل ما طوّلت المدة، كل ما وفّرت.",
+    note: "الدفع يدوي (كاش أو تحويل) والاشتراك يتفعل مباشرة بعد التأكيد.",
+    popularBadge: "الأكثر طلباً", compareTitle: "قارن الباقات", compareSubtitle: "كل الميزات في جدول واحد.", rows: {},
+  },
   faq: {
     title: "أسئلة شائعة",
     items: [

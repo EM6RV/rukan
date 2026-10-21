@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { PlanLimits } from "@/db/schema/platform";
@@ -51,7 +52,7 @@ const schema = z.object({
 });
 
 export async function saveCoupon(scope: StoreScope, input: unknown, limits: Pick<PlanLimits, "coupons">, now = Date.now()): Promise<Result<{ id: string }>> {
-  if (!limits.coupons) return fail(NO_PLAN);
+  if (!canUse(limits, "coupons")) return fail(NO_PLAN);
   const parsed = schema.safeParse(input);
   if (!parsed.success) return fail(firstError(parsed.error));
   const { id, ...d } = parsed.data;

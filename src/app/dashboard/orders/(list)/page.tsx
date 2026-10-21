@@ -35,7 +35,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const toStart = dayStart(sp.to);
   const filters = {
     status, q: sp.q, cityId: sp.city, courierId: sp.courier, payment: sp.pay === "cod" || sp.pay === "bank_transfer" ? sp.pay : undefined,
-    from, to: toStart !== undefined ? toStart + DAY - 1 : undefined, page: Number(sp.page) || 1, restrictCourierId: restrict,
+    from, to: toStart !== undefined ? toStart + DAY - 1 : undefined, page: Number(sp.page) || 1, restrictCourierId: restrict, maxOrdersPerMonth: ctx.limits.maxOrdersPerMonth,
   } as const;
   const [result, couriers, delivery] = await Promise.all([
     listOrders(ctx.scope, filters),

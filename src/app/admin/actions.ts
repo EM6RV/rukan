@@ -3,9 +3,9 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { deleteAnnouncement, saveAnnouncement } from "@/server/admin/announcements";
-import { savePlan } from "@/server/admin/plans";
+import { saveAddon, savePlan } from "@/server/admin/plans";
 import { SITE_TAG } from "@/server/admin/site-cache";
-import { savePlatformConfig } from "@/server/admin/settings";
+import { savePlatformConfig, savePromo, setFreePlanEnabled } from "@/server/admin/settings";
 import { resetSiteContent, saveSiteContent } from "@/server/admin/site-content";
 import { changePlan, extendTrial, recordPayment, setSuspended, type TouchedStore } from "@/server/admin/subscriptions";
 import { adminResetPassword } from "@/server/admin/users";
@@ -59,6 +59,10 @@ export async function savePlanAction(input: unknown) {
   return run(({ db, userId }) => savePlan(db, input, userId), (d) => { d.affectedStores.forEach(touch); revalidateTag(SITE_TAG, { expire: 0 }); revalidatePath("/"); });
 }
 
+export async function saveAddonAction(input: unknown) {
+  return run(({ db, userId }) => saveAddon(db, input, userId), (d) => d.affectedStores.forEach(touch));
+}
+
 // ===== الإعلانات =====
 export async function saveAnnouncementAction(input: unknown) {
   return run(({ db, userId }) => saveAnnouncement(db, input, userId));
@@ -79,6 +83,13 @@ export async function resetSiteContentAction() {
 }
 export async function savePlatformConfigAction(input: unknown) {
   return run(({ db, userId }) => savePlatformConfig(db, input, userId), refreshSite);
+}
+/** إطلاق/إيقاف الباقة المجانية: تطلع (أو تختفي) فوراً في الأسعار والمقارنة والتسجيل */
+export async function setFreePlanAction(enabled: unknown) {
+  return run(({ db, userId }) => setFreePlanEnabled(db, enabled, userId), refreshSite);
+}
+export async function savePromoAction(input: unknown) {
+  return run(({ db, userId }) => savePromo(db, input, userId), refreshSite);
 }
 
 

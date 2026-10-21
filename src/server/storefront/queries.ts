@@ -1,7 +1,8 @@
 import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import { cities, plans, stores, storeDomains } from "@/db/schema/platform";
-import { FALLBACK_LIMITS } from "@/lib/plan-limits";
+import { canUse } from "@/lib/entitlements";
+import { loadStoreLimits } from "../entitlements";
 import { priceRange, variantCompareAt, variantPrice } from "@/lib/pricing";
 import { forStore, t, type StoreScope } from "../tenant";
 import type { CardProduct, CartLine, CatalogPage, CatalogQuery, DeliveryRate, ProductDetail, Storefront } from "./types";
@@ -16,7 +17,7 @@ const ms = (d: Date | null | undefined) => (d ? d.getTime() : null);
 export async function resolveDomainSlug(db: Db, host: string): Promise<string | null> {
   const row = (
     await db
-      .select({ slug: stores.slug, plan: plans })
+      .select({ store: stores, plan: plans })
       .from(storeDomains)
       .innerJoin(stores, eq(stores.id, storeDomains.storeId))
       .leftJoin(plans, eq(plans.id, stores.planId))
@@ -24,7 +25,7 @@ export async function resolveDomainSlug(db: Db, host: string): Promise<string | 
       .limit(1)
   )[0];
   // الدومين الخاص ميزة باقة: لو نزلت الباقة، الدومين يتوقف (المتجر يبقى على الساب دومين)
-  return row && (row.plan?.limits ?? FALLBACK_LIMITS).customDomain ? row.slug : null;
+  return row && canUse(await loadStoreLimits(db, row.store, row.plan), "customDomain") ? row.store.slug : null;
 }
 
 /** يحل مفتاح (slug أو دومين خاص متحقق منه) إلى بيانات المتجر العامة كاملة. */
@@ -77,7 +78,7 @@ export async function loadStorefront(db: Db, rawKey: string): Promise<Storefront
       thanksMessage: s?.thanksMessage ?? null, announcementBar: s?.announcementBar ?? null, footerText: s?.footerText ?? null,
       freeDeliveryOver: s?.freeDeliveryOver ?? null, cityId: s?.cityId ?? null,
     },
-    limits: plan?.limits ?? FALLBACK_LIMITS,
+    limits: await loadStoreLimits(db, store, plan ?? null),
     pages: pages.map((p) => ({ slug: p.slug, title: p.title })),
     categories: categories.map((c) => ({ id: c.id, slug: c.slug, name: c.name, imageMediaId: c.imageMediaId ?? fallbackImages.get(c.id) ?? null })),
     homeSections: sections.map((x) => ({ id: x.id, type: x.type, config: x.config })),

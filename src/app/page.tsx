@@ -4,7 +4,9 @@ import { ArrowLeft, Banknote, Check, BarChart3, Clapperboard, Gift, PenTool, Map
 import { Logo } from "@/components/brand/logo";
 import { MockStore } from "@/components/marketing/mock-store";
 import { daysText } from "@/lib/billing";
-import { Pricing } from "@/components/marketing/pricing";
+import { CompareTable } from "@/components/pricing/compare-table";
+import { PricingTable } from "@/components/pricing/pricing-table";
+import { promoActive } from "@/server/admin/settings";
 import { ButtonLink } from "@/components/ui/button";
 import { SkipLink } from "@/components/ui/skip-link";
 import { FadeIn } from "@/components/ui/motion";
@@ -37,13 +39,18 @@ function SectionHead({ title, subtitle, light }: { title: string; subtitle?: str
 }
 
 export default async function Home() {
-  const { content: c, plans, supportWhatsapp, trialDays } = await getMarketingData();
+  const { content: c, plans, supportWhatsapp, trialDays, promo } = await getMarketingData();
   const support = supportWhatsapp ? toWhatsappNumber(supportWhatsapp) : null;
   const heroImg = c.hero.imageMediaId;
   const demo = c.showcase.items[0];
 
   return (
     <div data-theme="light" className="min-h-dvh bg-bg text-fg">
+      {promoActive(promo) && (
+        <div role="region" aria-label="عرض" className="bg-gold px-4 py-2 text-center text-sm font-semibold text-navy">
+          {promo.text}{promo.linkLabel && <> <a href="/register" className="underline underline-offset-4">{promo.linkLabel}</a></>}
+        </div>
+      )}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd([
         { "@context": "https://schema.org", "@type": "Organization", name: "رُكن", url: "/", logo: "/brand/rukn-logo.png", slogan: "ركنك في السوق… أونلاين." },
         { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: c.faq.items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
@@ -167,8 +174,14 @@ export default async function Home() {
         <section id="pricing" className="scroll-mt-20 bg-surface-2 py-16 md:py-20">
           <div className="mx-auto max-w-6xl px-4">
             <SectionHead title={c.pricing.title} subtitle={c.pricing.subtitle} />
-            {plans.length > 0 ? <Pricing plans={plans} cta={c.hero.primaryCta} /> : <p className="text-center text-muted">الأسعار قريباً.</p>}
+            {plans.length > 0 ? <PricingTable plans={plans} cta={{ kind: "register", label: c.hero.primaryCta }} labels={{ popularBadge: c.pricing.popularBadge, rows: c.pricing.rows }} /> : <p className="text-center text-muted">الأسعار قريباً.</p>}
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted">{c.pricing.note}</p>
+            {plans.length > 0 && (
+              <div className="mt-16">
+                <SectionHead title={c.pricing.compareTitle} subtitle={c.pricing.compareSubtitle} />
+                <CompareTable plans={plans} rows={c.pricing.rows} />
+              </div>
+            )}
           </div>
         </section>
 

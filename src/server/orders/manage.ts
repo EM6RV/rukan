@@ -299,6 +299,8 @@ export type OrderFilters = {
   pageSize?: number;
   /** تقييد المندوب بطلبياته */
   restrictCourierId?: string | null;
+  /** حد «طلبيات في الشهر»: الطلبيات اللي ترتيبها فوقه تتعلّم مقفولة وبياناتها مخفية */
+  maxOrdersPerMonth?: number | null;
 };
 
 const likeTerm = (q: string) => `%${q.trim().replace(/[\\%_]/g, "\\$&")}%`;
@@ -326,6 +328,8 @@ export type OrderListItem = {
   id: string; number: number; customerName: string; customerPhone: string; cityName: string; address: string; total: number;
   status: OrderStatus; paymentMethod: string; paymentStatus: string; courierId: string | null; courierName: string | null;
   createdAt: number; flagged: boolean; itemCount: number;
+  /** فوق حد الباقة الشهري: بيانات الزبون مخفية لين البياع يرقّي */
+  locked: boolean;
 };
 
 export async function listOrders(scope: StoreScope, f: OrderFilters = {}) {
@@ -350,14 +354,17 @@ export async function listOrders(scope: StoreScope, f: OrderFilters = {}) {
     customerIds.length ? scope.from(t.customers, inArray(t.customers.id, customerIds)) : [],
     rows.length ? scope.from(t.orderItems, inArray(t.orderItems.orderId, rows.map((r) => r.id))) : [],
   ]);
-  const items2: OrderListItem[] = rows.map((r) => ({
-    id: r.id, number: r.number, customerName: r.customerName, customerPhone: r.customerPhone, cityName: r.cityName, address: r.address, total: r.total,
+  const items2: OrderListItem[] = rows.map((r) => {
+    const locked = f.maxOrdersPerMonth != null && r.monthRank !== null && r.monthRank > f.maxOrdersPerMonth;
+    return {
+    id: r.id, number: r.number, customerName: locked ? "طلبية مقفولة" : r.customerName, customerPhone: locked ? "" : r.customerPhone, cityName: locked ? "—" : r.cityName, address: locked ? "" : r.address, total: r.total, locked,
     status: r.status, paymentMethod: r.paymentMethod, paymentStatus: r.paymentStatus,
     courierId: r.courierId, courierName: couriers.find((c) => c.id === r.courierId)?.name ?? null,
     createdAt: r.createdAt.getTime(),
     flagged: customers.find((c) => c.id === r.customerId)?.flag === "problematic",
     itemCount: items.filter((i) => i.orderId === r.id).reduce((s, i) => s + i.quantity, 0),
-  }));
+  };
+  });
   return { items: items2, total, page, pageCount, counts, allCount: Object.values(counts).reduce((s, n) => s + (n ?? 0), 0) };
 }
 

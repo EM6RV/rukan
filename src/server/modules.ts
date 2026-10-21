@@ -7,8 +7,8 @@ import { fail, ok, type Result } from "./catalog/result";
 
 export type ModuleState = "on" | "off" | "locked" | "soon";
 
-/** الباقة تسمح بالوحدة؟ (غير محدد في الباقة = مسموحة لين تتضبط حدود الوحدات في المرحلة 1) */
-export const planAllowsModule = (limits: PlanLimits, key: StoreModule) => limits.modules?.[key] ?? true;
+/** الباقة تسمح بالوحدة؟ (غير محدد في الباقة = لا) */
+export const planAllowsModule = (limits: PlanLimits, key: StoreModule) => limits.modules?.[key] === true;
 
 /** حالة الوحدة للمتجر: قريباً (مش مبنية) ← مقفولة بالباقة ← شغّالة/مطفية حسب اختيار البياع */
 export function moduleState(enabled: readonly StoreModule[], limits: PlanLimits, key: StoreModule, available: readonly StoreModule[] = AVAILABLE_MODULES): ModuleState {

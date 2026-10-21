@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import { and, eq, sql } from "drizzle-orm";
 import { writeTransaction, type Db } from "@/db";
 import { cities, media, plans, storeMembers, stores, type PlanLimits } from "@/db/schema/platform";
@@ -39,7 +40,10 @@ export async function createStoreForUser(db: Db, input: { userId: string; name: 
 
   const trialDays = await getPlatformSetting<number>(db, "trial_days", DEFAULT_TRIAL_DAYS);
   const planSlug = await getPlatformSetting<string>(db, "trial_plan_slug", DEFAULT_TRIAL_PLAN_SLUG);
-  const plan = await db.select({ id: plans.id }).from(plans).where(eq(plans.slug, planSlug)).get();
+  // البداية: تجربة مجانية (الافتراضي)، أو الباقة المجانية للأبد لو الأدمن أطلقها واختارها
+  const freeStart = (await getPlatformSetting<boolean>(db, "free_plan_enabled", false)) && (await getPlatformSetting<string>(db, "start_mode", "trial")) === "free";
+  const freePlan = freeStart ? await db.select({ id: plans.id }).from(plans).where(and(eq(plans.isFree, true), eq(plans.isActive, true))).get() : undefined;
+  const plan = freePlan ?? (await db.select({ id: plans.id }).from(plans).where(eq(plans.slug, planSlug)).get());
 
   try {
     return await writeTransaction(db, async (tx) => {
@@ -51,7 +55,7 @@ export async function createStoreForUser(db: Db, input: { userId: string; name: 
           name: name.data,
           ownerUserId: input.userId,
           planId: plan?.id ?? null,
-          trialEndsAt: new Date(Date.now() + trialDays * DAY),
+          ...(freePlan ? { status: "active" as const, trialEndsAt: null } : { trialEndsAt: new Date(Date.now() + trialDays * DAY) }),
           onboardingStep: 2,
         })
         .returning({ id: stores.id });
@@ -105,7 +109,7 @@ export async function saveStoreBasics(db: Db, storeId: string, input: { name: st
 export async function saveBusinessType(db: Db, storeId: string, type: BusinessType, limits: PlanLimits): Promise<Result<{ template: StoreTemplate; primary: string; accent: string }>> {
   const preset = BUSINESS_PRESETS[type];
   if (!preset) return fail("نوع النشاط غير صحيح.");
-  const template = limits.allTemplates ? preset.template : BASE_TEMPLATE;
+  const template = canUse(limits, "allTemplates") ? preset.template : BASE_TEMPLATE;
   await bumpStep(db, storeId, 3, { businessType: type, template });
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: preset.palette.primary, accentColor: preset.palette.accent });
   return { ok: true, data: { template, primary: preset.palette.primary, accent: preset.palette.accent } };
@@ -123,7 +127,7 @@ export async function saveIdentity(
   input: { template: StoreTemplate; primaryColor: string; accentColor: string; logoMediaId: string | null },
   limits: PlanLimits,
 ): Promise<Result> {
-  if (!limits.allTemplates && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن الباقات الأعلى. رقّي باقتك لتستعمله.");
+  if (!canUse(limits, "allTemplates") && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن الباقات الأعلى. رقّي باقتك لتستعمله.");
   if (!(await validateOwnMedia(db, storeId, input.logoMediaId))) return fail("ما قدرنا نقرا اللوجو. ارفع صورة JPG أو PNG أو WebP.");
   await bumpStep(db, storeId, 4, { template: input.template, logoMediaId: input.logoMediaId });
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: input.primaryColor, accentColor: input.accentColor });

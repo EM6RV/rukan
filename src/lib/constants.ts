@@ -58,7 +58,8 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const PAYMENT_STATUSES = ["pending", "paid", "refunded"] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const BILLING_CYCLES = ["monthly", "semiannual", "yearly"] as const;
+// مدد الاشتراك. كل باقة لها سعر لكل مدة (plans.prices بمفاتيح m1/m3/m6/m12)، والمدة اللي سعرها null ما تطلعش.
+export const BILLING_CYCLES = ["monthly", "quarterly", "semiannual", "yearly"] as const;
 export type BillingCycle = (typeof BILLING_CYCLES)[number];
 
 // خدمات التصميم (يطلبها البياع ويكمّل التفاصيل على واتساب)
@@ -84,7 +85,12 @@ export const STORE_MODULE_INFO: Record<StoreModule, { title: string; description
 /** الوحدات اللي اتبنت فعلاً. الباقي يبان «قريباً» وما يتفعلش. */
 export const AVAILABLE_MODULES: readonly StoreModule[] = [];
 
+// الإضافات المدفوعة فوق الباقة
+export const ADDON_KINDS = ["staff", "warehouse", "products", "custom_domain"] as const;
+export type AddonKind = (typeof ADDON_KINDS)[number];
+export const ADDON_KIND_LABELS: Record<AddonKind, string> = { staff: "موظف إضافي", warehouse: "مخزن إضافي", products: "منتجات إضافية", custom_domain: "دومين خاص" };
+
 export const DEFAULT_TRIAL_DAYS = 3;
 /** باقة التجربة الافتراضية (slug) لو الأدمن ما حدد غيرها */
-export const DEFAULT_TRIAL_PLAN_SLUG = "semiannual";
+export const DEFAULT_TRIAL_PLAN_SLUG = "growth";
 export const SESSION_DAYS = 30;

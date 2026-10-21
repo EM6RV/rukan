@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { writeTransaction, type Db } from "@/db";
-import { media, plans, stores, subscriptionPayments, users } from "@/db/schema/platform";
-import { addMonths, cycleMonths } from "@/lib/billing";
+import { addons, media, plans, storeAddons, stores, subscriptionPayments, users, type PlanPrices } from "@/db/schema/platform";
+import { addMonths, cycleMonths, periodLabel, planPrice, type BillingPeriod } from "@/lib/billing";
+import { BILLING_CYCLES } from "@/lib/constants";
 import { firstError } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { fail, ok, type Result } from "../catalog/result";
@@ -17,15 +18,24 @@ export type TouchedStore = { id: string; slug: string };
 const paymentSchema = z.object({
   storeId: z.string().min(1),
   planId: z.string().min(1, "اختار الباقة"),
+  cycle: z.enum(BILLING_CYCLES, { error: "اختار مدة الاشتراك" }),
+  addons: z.array(z.object({ addonId: z.string().min(1), quantity: z.number().int().min(0).max(1000) })).max(20).default([]),
   amount: z.number({ error: "اكتب المبلغ" }).int("المبلغ لازم يكون رقم صحيح بالدرهم").min(1, "المبلغ لازم يكون أكبر من صفر").max(1_000_000_000),
   method: z.enum(["cash", "bank_transfer", "other"], { error: "اختار طريقة الدفع" }),
   receiptMediaId: z.string().min(1).nullish().transform((v) => v ?? null),
   note: z.string().trim().max(300, "الملاحظة طويلة").nullish().transform((v) => v || null),
 });
 
+/** المبلغ المقترح: سعر الباقة للمدة + سعر الإضافات الشهري × عدد الشهور (الأدمن يقدر يعدّله) */
+export function suggestedAmount(plan: { prices: PlanPrices }, cycle: BillingPeriod, lines: { monthlyPrice: number; quantity: number }[]): number | null {
+  const base = planPrice(plan, cycle);
+  if (base === null) return null;
+  return base + lines.reduce((s, l) => s + l.monthlyPrice * l.quantity, 0) * cycleMonths(cycle);
+}
+
 /**
- * تسجيل دفعة اشتراك يدوية (كاش/تحويل): يفعّل الاشتراك ويمدّد الفترة تلقائياً بمدة الباقة (شهر أو سنة).
- * لو الاشتراك لسا ساري تبدا الفترة من نهايته (ما يضيعش اللي دفعه)، وإلا من الحين.
+ * تسجيل دفعة اشتراك يدوية (كاش/تحويل): يفعّل الاشتراك ويمدّد الفترة بالمدة المختارة (شهر/3/6/سنة)،
+ * ويحفظ الإضافات المدفوعة (تمشي مع نفس الفترة). لو الاشتراك لسا ساري تبدا الفترة من نهايته (ما يضيعش اللي دفعه)، وإلا من الحين.
  */
 export async function recordPayment(db: Db, input: unknown, actor: Actor, now = Date.now()): Promise<Result<{ store: TouchedStore; periodEnd: number }>> {
   const p = paymentSchema.safeParse(input);
@@ -36,6 +46,12 @@ export async function recordPayment(db: Db, input: unknown, actor: Actor, now = 
   if (!store) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
   const plan = await db.select().from(plans).where(eq(plans.id, d.planId)).get();
   if (!plan) return fail("ما لقينا الباقة. يمكن انحذف، حدّث الصفحة.");
+  if (plan.isFree) return fail("الباقة المجانية ما تحتاجش دفعة. استعمل «تغيير الباقة».");
+  if (planPrice(plan, d.cycle) === null) return fail(`باقة «${plan.nameAr}» ما تطلعش في مدة «${periodLabel(d.cycle)}». اختار مدة ثانية.`);
+  const lines = d.addons.filter((a) => a.quantity > 0);
+  const addonRows = lines.length ? await db.select().from(addons).where(inArray(addons.id, lines.map((l) => l.addonId))) : [];
+  if (addonRows.length !== new Set(lines.map((l) => l.addonId)).size) return fail("فيه إضافة مش موجودة. حدّث الصفحة.");
+  const snapshot = lines.map((l) => ({ addonId: l.addonId, slug: addonRows.find((a) => a.id === l.addonId)!.slug, quantity: l.quantity }));
   if (d.receiptMediaId) {
     const m = await db.select({ id: media.id }).from(media).where(and(eq(media.id, d.receiptMediaId), eq(media.storeId, store.id), eq(media.isPrivate, true))).get();
     if (!m) return fail("ما قدرنا نقرا صورة الإيصال. ارفع صورة JPG أو PNG أو WebP.");
@@ -46,19 +62,23 @@ export async function recordPayment(db: Db, input: unknown, actor: Actor, now = 
     const cur = await t.select().from(stores).where(eq(stores.id, store.id)).get();
     const stillRunning = cur?.currentPeriodEnd && cur.currentPeriodEnd.getTime() > now && cur.status !== "trial";
     const periodStart = stillRunning ? cur!.currentPeriodEnd!.getTime() : now;
-    const periodEnd = addMonths(periodStart, cycleMonths(plan.billingPeriod));
+    const periodEnd = addMonths(periodStart, cycleMonths(d.cycle));
     await t.insert(subscriptionPayments).values({
-      storeId: store.id, planId: d.planId, billingCycle: plan.billingPeriod, amount: d.amount, method: d.method, receiptMediaId: d.receiptMediaId,
-      periodStart: new Date(periodStart), periodEnd: new Date(periodEnd), note: d.note, recordedBy: actor.id,
+      storeId: store.id, planId: d.planId, billingCycle: d.cycle, amount: d.amount, method: d.method, receiptMediaId: d.receiptMediaId,
+      addons: snapshot.length ? snapshot : null, periodStart: new Date(periodStart), periodEnd: new Date(periodEnd), note: d.note, recordedBy: actor.id,
     });
+    // الإضافات: اللي اندفعت مع الدفعة هي اللي تبقى مفعّلة
+    await t.delete(storeAddons).where(eq(storeAddons.storeId, store.id));
+    if (snapshot.length) await t.insert(storeAddons).values(snapshot.map((a) => ({ storeId: store.id, addonId: a.addonId, quantity: a.quantity })));
     await t.update(stores).set({
-      planId: d.planId, billingCycle: plan.billingPeriod, currentPeriodEnd: new Date(periodEnd),
+      // التجديد بالأسعار الجديدة: رسالة تحويل الباقة ما عادش لها لزوم
+      planId: d.planId, billingCycle: d.cycle, currentPeriodEnd: new Date(periodEnd), planNotice: null,
       // المتجر الموقوف يبقى موقوف (الأدمن يفعّله بنفسه)، والباقي يصير نشط
       status: cur?.status === "suspended" ? "suspended" : "active",
     }).where(eq(stores.id, store.id));
     return periodEnd;
   });
-  await writeAudit(db, { actorUserId: actor.id, storeId: store.id, action: "subscription.payment", entityType: "store", entityId: store.id, meta: { plan: plan.slug, cycle: plan.billingPeriod, amount: d.amount, method: d.method, periodEnd: result } });
+  await writeAudit(db, { actorUserId: actor.id, storeId: store.id, action: "subscription.payment", entityType: "store", entityId: store.id, meta: { plan: plan.slug, cycle: d.cycle, addons: snapshot, amount: d.amount, method: d.method, periodEnd: result } });
   return ok({ store: { id: store.id, slug: store.slug }, periodEnd: result });
 }
 
@@ -99,7 +119,8 @@ export async function changePlan(db: Db, storeId: string, planId: string, actor:
   const [store, plan] = await Promise.all([db.select().from(stores).where(eq(stores.id, storeId)).get(), db.select().from(plans).where(eq(plans.id, planId)).get()]);
   if (!store) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
   if (!plan) return fail("ما لقينا الباقة. يمكن انحذف، حدّث الصفحة.");
-  await db.update(stores).set({ planId }).where(eq(stores.id, storeId));
+  // الباقة المجانية للأبد: المتجر يولي نشط بدون تاريخ انتهاء (إلا لو موقوف)
+  await db.update(stores).set(plan.isFree ? { planId, status: store.status === "suspended" ? "suspended" : "active", currentPeriodEnd: null, planNotice: null } : { planId }).where(eq(stores.id, storeId));
   await writeAudit(db, { actorUserId: actor.id, storeId, action: "store.change_plan", entityType: "store", entityId: storeId, meta: { from: store.planId, to: planId, plan: plan.slug } });
   return ok({ store: { id: store.id, slug: store.slug } });
 }

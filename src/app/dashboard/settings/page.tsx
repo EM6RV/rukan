@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Blocks } from "lucide-react";
@@ -34,15 +35,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <SettingsTabs
         writable={ctx.access.writable}
         defaultTab={["general", "contact", "payment", "delivery", "whatsapp", "pixels", "domain", "seo"].includes(tab ?? "") ? tab! : "general"}
-        allTemplates={ctx.limits.allTemplates}
+        allTemplates={canUse(ctx.limits, "allTemplates")}
         storeLink={storeUrl(store.slug, getEnv(), req)}
         general={{ name: store.name, businessType: store.businessType, template: store.template, primary: s?.primaryColor ?? "#0D263E", accent: s?.accentColor ?? "#C19E58", logo: media(store.logoMediaId) }}
         contact={{ contactPhone: s?.contactPhone ?? "", whatsapp: s?.whatsapp ?? "", email: s?.email ?? "", address: s?.address ?? "", instagram: s?.instagram ?? "", tiktok: s?.tiktok ?? "", facebook: s?.facebook ?? "", snapchat: s?.snapchat ?? "" }}
         payment={{ bankTransfer: bank?.isEnabled ?? false, bankName: cfg.bankName ?? "", accountHolder: cfg.accountHolder ?? "", accountNumber: cfg.accountNumber ?? "", note: cfg.note ?? "" }}
         delivery={{ ...delivery, useCouriers: store.useCouriers }}
-        domain={{ allowed: ctx.limits.customDomain, canManage: can(ctx.role, "billing"), target: (getEnv().CUSTOM_DOMAIN_TARGET || `cname.${getEnv().ROOT_DOMAIN}`).toLowerCase(), current: domain }}
+        domain={{ allowed: canUse(ctx.limits, "customDomain"), canManage: can(ctx.role, "billing"), target: (getEnv().CUSTOM_DOMAIN_TARGET || `cname.${getEnv().ROOT_DOMAIN}`).toLowerCase(), current: domain }}
         whatsapp={{ templates }}
-        pixels={{ metaPixelId: s?.metaPixelId ?? "", tiktokPixelId: s?.tiktokPixelId ?? "", allowed: ctx.limits.pixels }}
+        pixels={{ metaPixelId: s?.metaPixelId ?? "", tiktokPixelId: s?.tiktokPixelId ?? "", allowed: canUse(ctx.limits, "pixels") }}
         seo={{ seoTitle: s?.seoTitle ?? "", seoDescription: s?.seoDescription ?? "", og: media(s?.ogMediaId) }}
       />
     </div>

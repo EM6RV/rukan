@@ -381,6 +381,8 @@ export const orders = sqliteTable(
     shipmentNumber: text("shipment_number"),
     internalNotes: text("internal_notes"),
     source: text("source"), // instagram, tiktok, direct…
+    /** ترتيب الطلبية في شهرها (بتوقيت ليبيا) وقت إنشائها: لحد «طلبيات في الشهر». null = قديمة (ظاهرة دايماً) */
+    monthRank: integer("month_rank"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

@@ -26,7 +26,14 @@ const schema = z.object({
   showcase: z.object({ title: str(80, "عنوان الأمثلة", 2), subtitle: str(200, "وصف الأمثلة"), items: z.array(z.object({ name: str(40, "اسم المتجر", 2), category: str(40, "نوع النشاط"), primary: hexColorSchema, accent: hexColorSchema, template: z.enum(STORE_TEMPLATES, { error: "قالب غير صحيح" }), href: link })).max(6, "الحد الأقصى 6 أمثلة") }),
   design: z.object({ title: str(80, "عنوان خدمات التصميم", 2), subtitle: str(250, "وصف خدمات التصميم"), button: str(30, "نص زر خدمات التصميم", 2), items: z.array(z.object({ title: str(50, "عنوان الخدمة", 2), text: str(220, "نص الخدمة") })).min(1, "خدمة وحدة على الأقل").max(6, "الحد الأقصى 6 خدمات") }).default(DEFAULT_SITE_CONTENT.design),
   steps: z.object({ title: str(80, "عنوان الخطوات", 2), items: z.array(z.object({ title: str(40, "عنوان الخطوة", 2), text: str(180, "نص الخطوة") })).min(1).max(5, "الحد الأقصى 5 خطوات") }),
-  pricing: z.object({ title: str(80, "عنوان الأسعار", 2), subtitle: str(200, "وصف الأسعار"), note: str(250, "ملاحظة الأسعار") }),
+  pricing: z.object({
+    title: str(80, "عنوان الأسعار", 2), subtitle: str(200, "وصف الأسعار"), note: str(250, "ملاحظة الأسعار"),
+    // حقول جديدة (المرحلة 1): المحتوى المحفوظ قبلها ياخذ الافتراضي
+    popularBadge: str(24, "شارة الأكثر طلباً", 2).default(DEFAULT_SITE_CONTENT.pricing.popularBadge),
+    compareTitle: str(60, "عنوان المقارنة", 2).default(DEFAULT_SITE_CONTENT.pricing.compareTitle),
+    compareSubtitle: str(160, "وصف المقارنة").default(DEFAULT_SITE_CONTENT.pricing.compareSubtitle),
+    rows: z.record(z.string().max(40), z.string().trim().max(50, "اسم الميزة طويل")).default({}),
+  }),
   faq: z.object({ title: str(80, "عنوان الأسئلة", 2), items: z.array(z.object({ q: str(120, "السؤال", 2), a: str(500, "الجواب", 2) })).max(12, "الحد الأقصى 12 سؤال") }),
   cta: z.object({ title: str(80, "عنوان الدعوة", 2), subtitle: str(200, "وصف الدعوة"), button: str(30, "نص الزر", 2) }),
   footer: z.object({ text: str(160, "نص الفوتر") }),
