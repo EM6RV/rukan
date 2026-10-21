@@ -29,7 +29,9 @@ export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   courier: "مندوب",
 };
 
-export const STORE_TEMPLATES = ["simple", "elegant", "bold", "warm", "editorial", "noir", "pop", "gallery"] as const;
+// القوالب الجديدة (المرحلة 2): نقاء، مخمل، نبض، سوق، حكاية، لمسة. القديمة (الثمانية) تتشال بعد موافقة الأدمن على خريطة التحويل.
+export const NEW_TEMPLATES = ["naqa", "makhmal", "nabd", "souq", "hikaya", "lamsa"] as const;
+export const STORE_TEMPLATES = ["simple", "elegant", "bold", "warm", "editorial", "noir", "pop", "gallery", ...NEW_TEMPLATES] as const;
 export type StoreTemplate = (typeof STORE_TEMPLATES)[number];
 export const STORE_TEMPLATE_LABELS: Record<StoreTemplate, string> = {
   elegant: "أنيق",
@@ -40,6 +42,12 @@ export const STORE_TEMPLATE_LABELS: Record<StoreTemplate, string> = {
   noir: "فخم",
   pop: "مرح",
   gallery: "معرض",
+  naqa: "نقاء",
+  makhmal: "مخمل",
+  nabd: "نبض",
+  souq: "سوق",
+  hikaya: "حكاية",
+  lamsa: "لمسة",
 };
 
 export const BUSINESS_TYPES = ["clothing", "perfume", "beauty", "accessories", "food", "other"] as const;

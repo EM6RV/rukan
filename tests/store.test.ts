@@ -102,7 +102,7 @@ describe("خطوات المعالج", () => {
     expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ name: "اسم جديد", slug: "flow-renamed" });
 
     const type = await saveBusinessType(db, id, "perfume", ALL);
-    expect(type).toMatchObject({ ok: true, data: { template: "noir" } });
+    expect(type).toMatchObject({ ok: true, data: { template: "makhmal" } });
     expect((await forStore(db, id).from(t.storeSettings))[0]).toMatchObject({ primaryColor: "#2B1B3D", accentColor: "#C19E58" });
 
     const [logo] = await db.insert(media).values({ storeId: id, mime: "image/webp", size: 1, driver: "turso" }).returning();
@@ -143,15 +143,15 @@ describe("خطوات المعالج", () => {
 
   it("باقة بدون كل القوالب: قالب «جريء» ممنوع، والاقتراح يرجع للبسيط", async () => {
     const id = await fresh("starter-store");
-    expect(await saveBusinessType(db, id, "clothing", STARTER)).toMatchObject({ ok: true, data: { template: "simple" } });
+    expect(await saveBusinessType(db, id, "clothing", STARTER)).toMatchObject({ ok: true, data: { template: "naqa" } });
     expect(await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
-    expect((await saveIdentity(db, id, { template: "simple", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).ok).toBe(true);
+    expect((await saveIdentity(db, id, { template: "naqa", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).ok).toBe(true);
   });
 
   it("لوجو من متجر ثاني يترفض، ومدينة غلط تترفض", async () => {
     const [a, b] = [await fresh("owner-a-1"), await fresh("owner-b-1")];
     const [foreign] = await db.insert(media).values({ storeId: b, mime: "image/webp", size: 1, driver: "turso" }).returning();
-    expect(await saveIdentity(db, a, { template: "simple", primaryColor: "#111111", accentColor: "#222222", logoMediaId: foreign!.id }, ALL)).toEqual({ ok: false, error: expect.stringContaining("اللوجو") });
+    expect(await saveIdentity(db, a, { template: "naqa", primaryColor: "#111111", accentColor: "#222222", logoMediaId: foreign!.id }, ALL)).toEqual({ ok: false, error: expect.stringContaining("اللوجو") });
     expect((await saveDelivery(db, a, { cityId: "nope", feeInCity: 1, feeOther: 1, freeDeliveryOver: null, bankTransfer: false })).ok).toBe(false);
   });
 

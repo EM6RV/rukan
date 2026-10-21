@@ -5,4 +5,4 @@ import { STARTER_LIMITS } from "./plan-catalog";
 export const FALLBACK_LIMITS: PlanLimits = STARTER_LIMITS;
 
 /** القالب المتاح في كل الباقات */
-export const BASE_TEMPLATE = "simple";
+export const BASE_TEMPLATE = "naqa"; // القالب المتاح في كل الباقات (حتى المجانية)

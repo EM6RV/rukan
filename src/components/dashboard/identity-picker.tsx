@@ -1,5 +1,6 @@
 "use client";
 
+import { BASE_TEMPLATE } from "@/lib/plan-limits";
 import { Lock } from "lucide-react";
 import { ImageUploader } from "@/components/dashboard/image-uploader";
 import { MockStore } from "@/components/marketing/mock-store";
@@ -16,6 +17,12 @@ const TEMPLATE_BLURB: Record<StoreTemplate, string> = {
   noir: "عطور وذهب: داكن وفخم بخطوط ذهبية",
   pop: "هدايا وأطفال: ملون ومرح",
   gallery: "الصور أولاً: معرض بدون إطارات",
+  naqa: "أي نشاط: بساطة كاملة ومساحات فاضية",
+  makhmal: "عطور وعناية ومجوهرات: فخامة تحريرية",
+  nabd: "ملابس وشباب وعروض: خط عريض وشارات قوية",
+  souq: "كتالوج كبير وإلكترونيات: بحث وأقسام وكروت كثيفة",
+  hikaya: "أكل بيتي وصناعة يدوية: القصة أولاً بصور كبيرة",
+  lamsa: "هدايا وإكسسوارات وأطفال: ناعم ومرح بباستيل",
 };
 
 type Props = {
@@ -39,7 +46,7 @@ export function IdentityPicker({ logo, onLogo, template, onTemplate, primary, ac
         <span className="block text-sm font-medium">القالب</span>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {STORE_TEMPLATES.map((tpl) => {
-            const locked = !allTemplates && tpl !== "simple";
+            const locked = !allTemplates && tpl !== BASE_TEMPLATE;
             const on = template === tpl;
             return (
               <button

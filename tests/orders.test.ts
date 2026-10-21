@@ -334,7 +334,7 @@ describe("استعلامات الواجهة", () => {
   it("المتجر: slug ودومين خاص متحقق وغير مكتمل الإعداد", async () => {
     const s = await makeShop("shop-sf", { planLimits: { ...GROWTH, customDomain: true } });
     const sf = (await loadStorefront(db, "SHOP-SF"))!;
-    expect(sf).toMatchObject({ id: s.id, name: "shop-sf", status: "trial", template: "simple" });
+    expect(sf).toMatchObject({ id: s.id, name: "shop-sf", status: "trial", template: "naqa" });
     expect(sf.pages.map((p) => p.slug)).toContain("about");
     expect(sf.payments.map((p) => p.method)).toEqual(["cod"]);
     expect(sf.limits.coupons).toBe(true);

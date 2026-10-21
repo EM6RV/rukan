@@ -39,7 +39,7 @@ export default async function OnboardingPage() {
           name={ctx?.store.name ?? ""}
           slug={ctx?.store.slug ?? ""}
           businessType={ctx && ctx.store.onboardingStep >= 3 ? ctx.store.businessType : null}
-          template={ctx?.store.template ?? "simple"}
+          template={ctx?.store.template ?? "naqa"}
           primary={settings?.primaryColor ?? "#0D263E"}
           accent={settings?.accentColor ?? "#C19E58"}
           logo={logoId ? { id: logoId, url: `/api/media/${logoId}` } : null}

@@ -12,6 +12,12 @@ const ICONS: Record<StoreTemplate, LucideIcon[]> = {
   noir: [FlaskConical, Gem, Droplets],
   pop: [Gift, Sparkles, Cake],
   gallery: [Watch, Backpack, Shirt],
+  naqa: [Gem, Watch, Sparkles],
+  makhmal: [FlaskConical, Gem, Droplets],
+  nabd: [Shirt, Footprints, Backpack],
+  souq: [Watch, Backpack, Gem],
+  hikaya: [Cake, Gift, Sparkles],
+  lamsa: [Gift, Sparkles, Gem],
 };
 
 type Props = { name: string; category?: string; primary: string; accent: string; template: StoreTemplate; className?: string };
@@ -21,13 +27,13 @@ export function MockStore({ name, category, primary, accent, template: t, classN
   const fg = readableOn(primary);
   const accentFg = readableOn(accent);
   const mix = (c: string, pct: number) => `color-mix(in srgb, ${c} ${pct}%, white)`;
-  const bg = t === "elegant" ? "#FBF8F3" : t === "warm" ? "#FFF9F1" : t === "noir" ? "#FAF8F5" : "#FFFFFF";
-  const darkHead = t === "bold" || t === "noir";
-  const round = { simple: "rounded-2xl", elegant: "rounded-sm", bold: "rounded-md", warm: "rounded-3xl", editorial: "rounded-none", noir: "rounded-sm", pop: "rounded-3xl", gallery: "rounded-2xl" }[t];
-  const brandCls = { simple: "font-bold", elegant: "font-light tracking-widest", bold: "font-black", warm: "font-extrabold", editorial: "font-black tracking-tight", noir: "font-light tracking-[0.3em]", pop: "font-black", gallery: "font-bold tracking-tight" }[t];
-  const cardRound = { simple: "rounded-lg", elegant: "", bold: "border-2 shadow-[3px_3px_0_var(--m-p)]", warm: "rounded-2xl", editorial: "", noir: "rounded-t-full", pop: "rounded-2xl", gallery: "rounded-xl" }[t];
-  const heroShape = { simple: "rounded-xl", elegant: "", bold: "border-2", warm: "rounded-2xl", editorial: "border", noir: "", pop: "rounded-2xl", gallery: "rounded-xl" }[t];
-  const btnShape = { simple: "rounded-full", elegant: "", bold: "border-2", warm: "rounded-full", editorial: "", noir: "border", pop: "rounded-full -rotate-2", gallery: "rounded-full" }[t];
+  const bg = t === "elegant" || t === "makhmal" ? "#FBF8F3" : t === "warm" ? "#FFF9F1" : t === "hikaya" ? "#FCF7EF" : t === "noir" ? "#FAF8F5" : "#FFFFFF";
+  const darkHead = t === "bold" || t === "noir" || t === "nabd";
+  const round = { simple: "rounded-2xl", elegant: "rounded-sm", bold: "rounded-md", warm: "rounded-3xl", editorial: "rounded-none", noir: "rounded-sm", pop: "rounded-3xl", gallery: "rounded-2xl" , naqa: "rounded-lg", makhmal: "rounded-none", nabd: "rounded-none", souq: "rounded-lg", hikaya: "rounded-3xl", lamsa: "rounded-[2rem]" }[t];
+  const brandCls = { simple: "font-bold", elegant: "font-light tracking-widest", bold: "font-black", warm: "font-extrabold", editorial: "font-black tracking-tight", noir: "font-light tracking-[0.3em]", pop: "font-black", gallery: "font-bold tracking-tight" , naqa: "font-semibold", makhmal: "font-extralight tracking-[0.25em]", nabd: "font-black", souq: "font-extrabold", hikaya: "font-bold", lamsa: "font-extrabold" }[t];
+  const cardRound = { simple: "rounded-lg", elegant: "", bold: "border-2 shadow-[3px_3px_0_var(--m-p)]", warm: "rounded-2xl", editorial: "", noir: "rounded-t-full", pop: "rounded-2xl", gallery: "rounded-xl" , naqa: "rounded-md", makhmal: "", nabd: "border-2", souq: "rounded-md border", hikaya: "rounded-2xl", lamsa: "rounded-3xl" }[t];
+  const heroShape = { simple: "rounded-xl", elegant: "", bold: "border-2", warm: "rounded-2xl", editorial: "border", noir: "", pop: "rounded-2xl", gallery: "rounded-xl" , naqa: "rounded-lg", makhmal: "", nabd: "border-2", souq: "rounded-lg", hikaya: "rounded-3xl", lamsa: "rounded-[2rem]" }[t];
+  const btnShape = { simple: "rounded-full", elegant: "", bold: "border-2", warm: "rounded-full", editorial: "", noir: "border", pop: "rounded-full -rotate-2", gallery: "rounded-full" , naqa: "rounded-md", makhmal: "border", nabd: "", souq: "rounded-lg", hikaya: "rounded-full", lamsa: "rounded-full" }[t];
 
   const card = (i: number) => {
     const Icon = ICONS[t][i]!;

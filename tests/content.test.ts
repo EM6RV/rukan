@@ -137,7 +137,7 @@ describe("التصميم", () => {
     expect((await db.select().from(stores).where(eq(stores.id, s.id)))[0]).toMatchObject({ template: "bold", logoMediaId: logo });
 
     expect(await saveDesignSettings(db, s.id, { ...good, template: "elegant" }, { ...ALL, allTemplates: false })).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
-    expect((await saveDesignSettings(db, s.id, { ...good, template: "simple" }, { ...ALL, allTemplates: false })).ok).toBe(true);
+    expect((await saveDesignSettings(db, s.id, { ...good, template: "naqa" }, { ...ALL, allTemplates: false })).ok).toBe(true);
     expect((await saveDesignSettings(db, s.id, { ...good, fontKey: "comic-sans" }, ALL)).ok).toBe(false);
     expect((await saveDesignSettings(db, s.id, { ...good, primaryColor: "red" }, ALL)).ok).toBe(false);
     const other = await shop("ds-2");

@@ -1,3 +1,4 @@
+import { BASE_TEMPLATE } from "@/lib/plan-limits";
 import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -23,7 +24,7 @@ export default async function ContentPage({ params }: Props) {
   if (!sf) notFound();
   const page = await getPage(sf.id, decodeKey(slug));
   if (!page) notFound();
-  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : "simple");
+  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : BASE_TEMPLATE);
   const wa = sf.settings.whatsapp ? toWhatsappNumber(sf.settings.whatsapp) : null;
 
   return (

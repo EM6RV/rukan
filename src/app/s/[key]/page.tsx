@@ -1,3 +1,4 @@
+import { BASE_TEMPLATE } from "@/lib/plan-limits";
 import { canUse } from "@/lib/entitlements";
 import Link from "next/link";
 import { TrustStrip } from "@/components/store/trust-strip";
@@ -15,7 +16,7 @@ export default async function StoreHome({ params }: Props) {
   const sf = await loadStore(key);
   if (!sf) notFound();
   const { base, origin } = await getRequestContext(key);
-  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : "simple");
+  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : BASE_TEMPLATE);
   const href = (p: string) => `${base}${p}`;
 
   const [featured, newest] = await Promise.all([

@@ -54,6 +54,7 @@ export async function createStoreForUser(db: Db, input: { userId: string; name: 
           slug: slug.data,
           name: name.data,
           ownerUserId: input.userId,
+          template: BASE_TEMPLATE, // القالب الافتراضي للمتجر الجديد (المعالج يقترح غيره حسب النشاط)
           planId: plan?.id ?? null,
           ...(freePlan ? { status: "active" as const, trialEndsAt: null } : { trialEndsAt: new Date(Date.now() + trialDays * DAY) }),
           onboardingStep: 2,

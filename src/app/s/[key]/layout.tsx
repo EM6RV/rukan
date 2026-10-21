@@ -1,3 +1,4 @@
+import { BASE_TEMPLATE } from "@/lib/plan-limits";
 import { canUse } from "@/lib/entitlements";
 import { SkipLink } from "@/components/ui/skip-link";
 import type { Metadata } from "next";
@@ -58,7 +59,7 @@ export default async function StoreLayout({ children, params }: Props) {
   }
 
   const { base } = await getRequestContext(key);
-  const template = canUse(sf.limits, "allTemplates") ? sf.template : "simple"; // لو نزلت الباقة، القوالب الإضافية ترجع للبسيط
+  const template = canUse(sf.limits, "allTemplates") ? sf.template : BASE_TEMPLATE; // لو نزلت الباقة، القوالب الإضافية ترجع للبسيط
   const kit = getKit(template);
   const s = sf.settings;
   const info: StoreInfo = {

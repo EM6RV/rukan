@@ -1,3 +1,4 @@
+import { BASE_TEMPLATE } from "@/lib/plan-limits";
 import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -17,7 +18,7 @@ export default async function SearchPage({ params, searchParams }: Props) {
   const sf = await loadStore(key);
   if (!sf) notFound();
   const { base } = await getRequestContext(key);
-  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : "simple");
+  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : BASE_TEMPLATE);
   const q = (sp.q ?? "").trim().slice(0, 80);
   const page = Math.max(1, Number(sp.page) || 1);
   const result = await getCatalog(sf.id, { q, page, sort: "newest" });
