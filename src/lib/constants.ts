@@ -29,19 +29,10 @@ export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   courier: "مندوب",
 };
 
-// القوالب الجديدة (المرحلة 2): نقاء، مخمل، نبض، سوق، حكاية، لمسة. القديمة (الثمانية) تتشال بعد موافقة الأدمن على خريطة التحويل.
-export const NEW_TEMPLATES = ["naqa", "makhmal", "nabd", "souq", "hikaya", "lamsa"] as const;
-export const STORE_TEMPLATES = ["simple", "elegant", "bold", "warm", "editorial", "noir", "pop", "gallery", ...NEW_TEMPLATES] as const;
+// القوالب الستة: نقاء، مخمل، نبض، سوق، حكاية، لمسة.
+export const STORE_TEMPLATES = ["naqa", "makhmal", "nabd", "souq", "hikaya", "lamsa"] as const;
 export type StoreTemplate = (typeof STORE_TEMPLATES)[number];
 export const STORE_TEMPLATE_LABELS: Record<StoreTemplate, string> = {
-  elegant: "أنيق",
-  bold: "جريء",
-  simple: "بسيط",
-  warm: "دافئ",
-  editorial: "مجلة",
-  noir: "فخم",
-  pop: "مرح",
-  gallery: "معرض",
   naqa: "نقاء",
   makhmal: "مخمل",
   nabd: "نبض",

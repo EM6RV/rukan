@@ -78,6 +78,13 @@
       "when": 1792539746594,
       "tag": "0010_plans_durations",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1793017804574,
+      "tag": "0011_templates_v2",
+      "breakpoints": true
     }
   ]
 }

@@ -137,7 +137,7 @@ export const stores = sqliteTable(
     name: text("name").notNull(),
     ownerUserId: text("owner_user_id").notNull().references(() => users.id),
     businessType: text("business_type").$type<BusinessType>().notNull().default("other"),
-    template: text("template").$type<StoreTemplate>().notNull().default("simple"),
+    template: text("template").$type<StoreTemplate>().notNull().default("naqa"),
     status: text("status").$type<StoreStatus>().notNull().default("trial"),
     planId: text("plan_id").references(() => plans.id),
     billingCycle: text("billing_cycle").$type<BillingCycle>().notNull().default("monthly"),

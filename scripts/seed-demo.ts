@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { plans, stores, users } from "../src/db/schema/platform";
 import { getEnv } from "../src/lib/env";
+import type { StoreTemplate } from "../src/lib/constants";
 import { hashPassword } from "../src/server/auth/password";
 import { saveCategory } from "../src/server/catalog/categories";
 import { saveProduct } from "../src/server/catalog/products";
@@ -56,7 +57,7 @@ type ProductSpec = {
 };
 
 async function buildStore(spec: {
-  phone: string; owner: string; slug: string; name: string; type: Parameters<typeof saveBusinessType>[2]; template: "elegant" | "bold" | "simple" | "warm" | "editorial" | "noir" | "pop" | "gallery";
+  phone: string; owner: string; slug: string; name: string; type: Parameters<typeof saveBusinessType>[2]; template: StoreTemplate;
   primary: string; accent: string; whatsapp: string; announcement: string; city: string; freeOver: number | null; bank?: boolean;
   categories: string[]; products: ProductSpec[]; coupon: { code: string; value: number };
 }) {
@@ -155,7 +156,7 @@ async function buildStore(spec: {
 const L = (n: string, c?: string) => ({ v: n, color: c });
 
 await buildStore({
-  phone: "0910000011", owner: "نورة الفيتوري", slug: "nada-perfume", name: "عطور الندى", type: "perfume", template: "elegant",
+  phone: "0910000011", owner: "نورة الفيتوري", slug: "nada-perfume", name: "عطور الندى", type: "perfume", template: "makhmal",
   primary: "#2B1B3D", accent: "#C19E58", whatsapp: "0910000011", announcement: "توصيل مجاني للطلبيات فوق 150 د.ل ✨", city: "طرابلس", freeOver: 150_000, bank: true,
   categories: ["عود وبخور", "عطور رجالية", "عطور نسائية"], coupon: { code: "NADA10", value: 10 },
   products: [
@@ -171,7 +172,7 @@ await buildStore({
 });
 
 await buildStore({
-  phone: "0910000012", owner: "محمد الشريف", slug: "street-218", name: "شارع 218", type: "clothing", template: "bold",
+  phone: "0910000012", owner: "محمد الشريف", slug: "street-218", name: "شارع 218", type: "clothing", template: "nabd",
   primary: "#111111", accent: "#E4572E", whatsapp: "0910000012", announcement: "تشكيلة الصيف وصلت — خصم 20% بكود STREET20", city: "بنغازي", freeOver: 120_000, bank: false,
   categories: ["تيشرتات", "هوديز", "بناطيل"], coupon: { code: "STREET20", value: 20 },
   products: [
@@ -185,7 +186,7 @@ await buildStore({
 });
 
 await buildStore({
-  phone: "0910000013", owner: "ليلى القذافي", slug: "lamsa", name: "لمسة", type: "accessories", template: "simple",
+  phone: "0910000013", owner: "ليلى القذافي", slug: "lamsa", name: "لمسة", type: "accessories", template: "naqa",
   primary: "#0D263E", accent: "#C19E58", whatsapp: "0910000013", announcement: "هدية مجانية مع كل طلبية فوق 80 د.ل 🎁", city: "مصراتة", freeOver: null, bank: true,
   categories: ["ساعات", "شنط", "خواتم وإكسسوارات"], coupon: { code: "LAMSA15", value: 15 },
   products: [

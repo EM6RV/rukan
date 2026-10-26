@@ -106,8 +106,8 @@ describe("خطوات المعالج", () => {
     expect((await forStore(db, id).from(t.storeSettings))[0]).toMatchObject({ primaryColor: "#2B1B3D", accentColor: "#C19E58" });
 
     const [logo] = await db.insert(media).values({ storeId: id, mime: "image/webp", size: 1, driver: "turso" }).returning();
-    expect((await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: logo!.id }, ALL)).ok).toBe(true);
-    expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ template: "bold", logoMediaId: logo!.id });
+    expect((await saveIdentity(db, id, { template: "nabd", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: logo!.id }, ALL)).ok).toBe(true);
+    expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ template: "nabd", logoMediaId: logo!.id });
 
     const tripoli = await cityId("طرابلس");
     expect((await saveDelivery(db, id, { cityId: tripoli, feeInCity: 10_000, feeOther: 25_000, freeDeliveryOver: 300_000, bankTransfer: true, bankName: "الجمهورية", accountNumber: "123" })).ok).toBe(true);
@@ -144,7 +144,7 @@ describe("خطوات المعالج", () => {
   it("باقة بدون كل القوالب: قالب «جريء» ممنوع، والاقتراح يرجع للبسيط", async () => {
     const id = await fresh("starter-store");
     expect(await saveBusinessType(db, id, "clothing", STARTER)).toMatchObject({ ok: true, data: { template: "naqa" } });
-    expect(await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
+    expect(await saveIdentity(db, id, { template: "nabd", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
     expect((await saveIdentity(db, id, { template: "naqa", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).ok).toBe(true);
   });
 
@@ -196,9 +196,9 @@ describe("إعدادات المتجر", () => {
   });
 
   it("عام: اسم ونشاط وقالب وألوان مع حد الباقة", async () => {
-    const base = { name: "اسم محدث", businessType: "beauty", template: "elegant", primaryColor: "#7A2E4A", accentColor: "#E3B7A0", logoMediaId: null };
+    const base = { name: "اسم محدث", businessType: "beauty", template: "makhmal", primaryColor: "#7A2E4A", accentColor: "#E3B7A0", logoMediaId: null };
     expect((await saveGeneralSettings(db, id, base, ALL)).ok).toBe(true);
-    expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ name: "اسم محدث", businessType: "beauty", template: "elegant" });
+    expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ name: "اسم محدث", businessType: "beauty", template: "makhmal" });
     expect((await saveGeneralSettings(db, id, base, STARTER)).ok).toBe(false);
     expect((await saveGeneralSettings(db, id, { ...base, primaryColor: "red" }, ALL)).ok).toBe(false);
     expect((await saveGeneralSettings(db, id, { ...base, businessType: "x" }, ALL)).ok).toBe(false);

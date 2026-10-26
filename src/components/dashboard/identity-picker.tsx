@@ -9,14 +9,6 @@ import { cn } from "@/lib/cn";
 import { STORE_TEMPLATES, STORE_TEMPLATE_LABELS, type StoreTemplate } from "@/lib/constants";
 
 const TEMPLATE_BLURB: Record<StoreTemplate, string> = {
-  elegant: "للعطور والعناية: هادي وراقي",
-  bold: "للملابس والشباب: قوي وجريء",
-  simple: "لأي نشاط: بسيط ونظيف",
-  warm: "أكل وحلويات وهدايا: دافي وكبسولات",
-  editorial: "أزياء وإكسسوارات: مجلة بخطوط ضخمة",
-  noir: "عطور وذهب: داكن وفخم بخطوط ذهبية",
-  pop: "هدايا وأطفال: ملون ومرح",
-  gallery: "الصور أولاً: معرض بدون إطارات",
   naqa: "أي نشاط: بساطة كاملة ومساحات فاضية",
   makhmal: "عطور وعناية ومجوهرات: فخامة تحريرية",
   nabd: "ملابس وشباب وعروض: خط عريض وشارات قوية",

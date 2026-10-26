@@ -55,7 +55,7 @@ if (process.env.SEED_DEMO === "1") {
   if (!(await db.select({ id: stores.id }).from(stores).where(eq(stores.slug, "demo")).get())) {
     const growth = await db.select().from(plans).where(eq(plans.slug, DEFAULT_TRIAL_PLAN_SLUG)).get();
     const [store] = await db.insert(stores).values({
-      slug: "demo", name: "متجر تجريبي", ownerUserId: demoUser!.id, planId: growth?.id, template: "elegant",
+      slug: "demo", name: "متجر تجريبي", ownerUserId: demoUser!.id, planId: growth?.id, template: "makhmal",
       trialEndsAt: new Date(Date.now() + DEFAULT_TRIAL_DAYS * 86_400_000),
       onboardedAt: new Date(), onboardingStep: 6,
     }).returning();

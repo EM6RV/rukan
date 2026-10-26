@@ -77,7 +77,7 @@ export function SiteEditor({ initial, heroImage }: { initial: SiteContent; heroI
             <Input label="رابط (اختياري)" dir="ltr" className="text-right" value={it.href} maxLength={300} onChange={(e) => setItem("showcase", i, { href: e.target.value })} hint="https://… أو /s/اسم-المتجر" />
           </div>
         ))}
-        {c.showcase.items.length < 6 && <Button variant="outline" size="sm" onClick={() => add("showcase", { name: "متجر جديد", category: "نشاط", primary: "#0D263E", accent: "#C19E58", template: "simple", href: "" })}><Plus className="size-4" aria-hidden /> مثال</Button>}
+        {c.showcase.items.length < 6 && <Button variant="outline" size="sm" onClick={() => add("showcase", { name: "متجر جديد", category: "نشاط", primary: "#0D263E", accent: "#C19E58", template: "naqa", href: "" })}><Plus className="size-4" aria-hidden /> مثال</Button>}
       </CardBody></Card>
 
       <Card><CardHeader title="خدمات التصميم" description="قسم في الصفحة الرئيسية يعلن عن الريلز واللوجو والهوية. الطلب نفسه يجي من لوحة البياع." /><CardBody className="space-y-4">

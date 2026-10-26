@@ -43,12 +43,12 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     title: "متاجر بتصاميم مختلفة",
     subtitle: "8 قوالب مختلفة في الشكل، اختار اللي يناسب نشاطك، ولونه بألوان علامتك.",
     items: [
-      { name: "عطور الندى", category: "عطور وعناية", primary: "#2B1B3D", accent: "#C19E58", template: "elegant", href: "" },
-      { name: "شارع 218", category: "ملابس وشباب", primary: "#111111", accent: "#FF5A1F", template: "bold", href: "" },
-      { name: "لمسة", category: "إكسسوارات وهدايا", primary: "#0D263E", accent: "#087C86", template: "simple", href: "" },
-      { name: "بيت الحلا", category: "حلويات وأكل بيتي", primary: "#7A3E12", accent: "#E0A030", template: "warm", href: "" },
-      { name: "خيط", category: "أزياء وإكسسوارات", primary: "#111111", accent: "#C19E58", template: "editorial", href: "" },
-      { name: "ذهب ليبيا", category: "عطور وذهب", primary: "#12372A", accent: "#D9B65C", template: "noir", href: "" },
+      { name: "عطور الندى", category: "عطور وعناية", primary: "#2B1B3D", accent: "#C19E58", template: "makhmal", href: "" },
+      { name: "شارع 218", category: "ملابس وشباب", primary: "#111111", accent: "#FF5A1F", template: "nabd", href: "" },
+      { name: "لمسة", category: "إكسسوارات وهدايا", primary: "#0D263E", accent: "#087C86", template: "naqa", href: "" },
+      { name: "بيت الحلا", category: "حلويات وأكل بيتي", primary: "#7A3E12", accent: "#E0A030", template: "hikaya", href: "" },
+      { name: "خيط", category: "أزياء وإكسسوارات", primary: "#111111", accent: "#C19E58", template: "lamsa", href: "" },
+      { name: "ذهب ليبيا", category: "عطور وذهب", primary: "#12372A", accent: "#D9B65C", template: "makhmal", href: "" },
     ],
   },
   design: {
