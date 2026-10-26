@@ -18,6 +18,13 @@ import { adapters } from "../src/server/storage";
 import { completeOnboarding, createStoreForUser, saveBusinessType, saveDelivery, saveIdentity } from "../src/server/store-service";
 import { saveContactSettings, savePaymentSettings } from "../src/server/settings-service";
 import { forStore, t } from "../src/server/tenant";
+import { PRO_LIMITS } from "../src/lib/plan-catalog";
+import { saveBrand } from "../src/server/catalog/library";
+import { saveWarehouse } from "../src/server/inventory/warehouses";
+import { receiveInvoice, saveInvoice, saveSupplier } from "../src/server/inventory/purchasing";
+import { addExpense, deposit, ensureDefaultAccounts, listAccounts } from "../src/server/accounting/ledger";
+import { saveRole } from "../src/server/roles";
+import { submitReview } from "../src/server/reviews";
 import { cities } from "../src/db/schema/platform";
 
 const env = getEnv();
@@ -198,6 +205,57 @@ await buildStore({
     { name: "سلسلة وقلادة", price: 64_000, cost: 30_000, cat: 2, kind: "ring", hue: ["#f2e6c8", "#c19e58"], featured: true, description: "سلسلة مطلية ذهب مع قلادة صغيرة.", stock: 20 },
   ],
 });
+
+// ===== عرض المميزات الجديدة على «عطور الندى»: باقة احترافية + وحدات + بيانات تجريبية =====
+async function showcase(slug: string) {
+  const store = await db.select().from(stores).where(eq(stores.slug, slug)).get();
+  const pro = await db.select().from(plans).where(eq(plans.slug, "pro")).get();
+  if (!store || !pro) return;
+  const scope = forStore(db, store.id);
+  if ((await scope.from(t.brands)).length) { console.log(`- ${slug}: المميزات الجديدة موجودة، تخطينا`); return; }
+  const limits = PRO_LIMITS;
+  await db.update(stores).set({ planId: pro.id, enabledModules: ["warehouses", "purchasing", "accounting"] }).where(eq(stores.id, store.id));
+  const must = <T extends { ok: boolean; error?: string }>(r: T, what: string) => { if (!r.ok) throw new Error(`${what}: ${(r as { error?: string }).error}`); return r; };
+
+  // براند ووسوم وتخصيص وصلاحية على منتجات موجودة
+  const brand = must(await saveBrand(scope, { name: "الندى" }), "brand") as { ok: true; data: { id: string } };
+  const prods = await scope.from(t.products);
+  const byName = (n: string) => prods.find((p) => p.name === n)!;
+  await scope.update(t.products, { brandId: brand.data.id }, eq(t.products.id, byName("عود ملكي فاخر").id));
+  await scope.insert(t.productTags, ["جديد", "هدية", "الأكثر مبيعاً"].map((tag) => ({ productId: byName("عود ملكي فاخر").id, tag })));
+  await scope.update(t.products, { personalizationLabel: "الاسم على العلبة", personalizationMaxChars: 20, personalizationPrice: 5_000 }, eq(t.products.id, byName("طقم هدايا الندى").id));
+  const perishable = (await scope.from(t.productVariants)).find((v) => v.productId === byName("بخور المساء").id);
+  if (perishable) await scope.update(t.productVariants, { expiresAt: new Date(Date.now() + 20 * 86_400_000) }, eq(t.productVariants.id, perishable.id));
+
+  // باقة منتجات من مكونين
+  const bv = async (n: string) => (await scope.from(t.productVariants)).find((v) => v.productId === byName(n).id)!.id;
+  const bundle = await saveProduct(scope, {
+    name: "باقة العود والمسك", description: "عود ملكي + مسك الرجال بسعر خاص.", price: 250_000, compareAtPrice: 280_000, kind: "bundle",
+    bundleItems: [{ variantId: await bv("عود ملكي فاخر"), quantity: 1 }, { variantId: await bv("مسك الرجال"), quantity: 1 }],
+    isFeatured: true, categoryIds: [], imageMediaIds: [], options: [], variants: [{ valueIds: [], stock: 0 }],
+  }, { limits });
+  if (!bundle.ok) throw new Error(`bundle: ${bundle.error}`);
+
+  // مخزن ثاني ومورد وفاتورة مستلمة
+  must(await saveWarehouse(scope, limits, { name: "مخزن بنغازي", address: "بنغازي، الصابري" }), "warehouse");
+  const sup = must(await saveSupplier(scope, { name: "مورد العود الكمبودي", phone: "0914445555", city: "طرابلس" }), "supplier") as { ok: true; data: { id: string } };
+  const inv = must(await saveInvoice(scope, { supplierId: sup.data.id, items: [{ variantId: await bv("ياسمين الليل"), quantity: 10, unitCost: 38_000 }] }), "invoice") as { ok: true; data: { id: string } };
+  must(await receiveInvoice(scope, inv.data.id, null, null), "receive");
+
+  // حسابات: إيداع افتتاحي ومصروف
+  await ensureDefaultAccounts(scope);
+  const acc = (await listAccounts(scope))[0]!;
+  must(await deposit(scope, { accountId: acc.id, amount: 500_000, memo: "رصيد افتتاحي" }), "deposit");
+  must(await addExpense(scope, { amount: 35_000, accountId: acc.id, categoryName: "إعلانات", note: "حملة إنستغرام" }), "expense");
+
+  // دور مخصص وتقييم من مشترٍ موثّق (طلبية مسلّمة)
+  must(await saveRole(scope, limits, { name: "مسؤول مخزون", permissions: ["dashboard", "products", "categories"] }), "role");
+  const delivered = (await scope.from(t.orders)).find((o) => o.status === "delivered");
+  const item = delivered && (await scope.from(t.orderItems)).find((i) => i.orderId === delivered.id);
+  if (delivered && item) await submitReview(scope, { productId: item.productId, orderNumber: delivered.number, phone: delivered.customerPhone, rating: 5, body: "ريحة تجنن وثبات ممتاز، وصلتني بسرعة." });
+  console.log(`✓ ${slug}: باقة احترافية + باقة منتجات + مخزنين + مورد وفاتورة + حسابات + دور مخصص + تقييم`);
+}
+await showcase("nada-perfume");
 
 console.log("\nتم. افتح /s/nada-perfume و /s/street-218 و /s/lamsa");
 client.close();
