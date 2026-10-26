@@ -32,6 +32,9 @@ export const storeSettings = sqliteTable("store_settings", {
   accentColor: text("accent_color").notNull().default("#C19E58"),
   fontKey: text("font_key").notNull().default("ibm-plex"),
   freeDeliveryOver: integer("free_delivery_over"), // بالدرهم، null = بدون
+  abandonedRetentionDays: integer("abandoned_retention_days").notNull().default(30), // مدة الاحتفاظ بالسلات المتروكة
+  /** قوالب روابط تتبع الشحنة لكل شركة: {vanex: "https://…/{n}"} — {n} = رقم الشحنة. يحددها البياع (ما نخترعش روابط). */
+  shippingTrackingUrls: text("shipping_tracking_urls", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
   updatedAt: updatedAt(),
 });
 
@@ -87,7 +90,7 @@ export const abandonedCarts = sqliteTable(
     storeId: storeIdCol(),
     phone: text("phone").notNull(),
     name: text("name"),
-    items: text("items", { mode: "json" }).$type<{ name: string; variantLabel: string | null; quantity: number; price: number }[]>().notNull(),
+    items: text("items", { mode: "json" }).$type<{ name: string; variantLabel: string | null; quantity: number; price: number; variantId?: string; note?: string | null }[]>().notNull(),
     itemCount: integer("item_count").notNull(),
     total: integer("total").notNull(), // بالدرهم (1 د.ل = 1000)
     remindedAt: integer("reminded_at", { mode: "timestamp_ms" }),
@@ -259,6 +262,7 @@ export const productVariants = sqliteTable(
     imageMediaId: text("image_media_id"),
     position: integer("position").notNull().default(0),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }), // تاريخ انتهاء اختياري
+    minStock: integer("min_stock"), // حد التنبيه «قرب يخلص» (null = الافتراضي)
   },
   (t) => [
     uniqueIndex("product_variants_store_id_uq").on(t.storeId, t.id),
@@ -421,6 +425,38 @@ export const bundleItems = sqliteTable(
   ],
 );
 
+// ===== أدوار مخصصة وتحليلات =====
+
+export const storeRoles = sqliteTable(
+  "store_roles",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    permissions: text("permissions", { mode: "json" }).$type<string[]>().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("store_roles_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("store_roles_name_uq").on(t.storeId, t.name),
+  ],
+);
+
+/** زيارات المتجر مجمّعة باليوم (بدون كوكيز ولا بيانات شخصية): يوم × نوع الصفحة × المصدر */
+export const storeVisits = sqliteTable(
+  "store_visits",
+  {
+    storeId: storeIdCol(),
+    day: text("day").notNull(), // yyyy-mm-dd بتوقيت ليبيا
+    kind: text("kind", { enum: ["home", "category", "product", "cart", "checkout", "other"] }).notNull(),
+    source: text("source").notNull(), // instagram | tiktok | whatsapp | facebook | google | direct | other
+    productId: text("product_id").notNull().default(""),
+    views: integer("views").notNull().default(0),
+    sessions: integer("sessions").notNull().default(0), // عدد الزيارات (أول صفحة في الجلسة)
+  },
+  (t) => [primaryKey({ columns: [t.storeId, t.day, t.kind, t.source, t.productId] })],
+);
+
 // ===== تقييمات المنتجات =====
 
 export const productReviews = sqliteTable(
@@ -473,6 +509,7 @@ export const orders = sqliteTable(
     couponCode: text("coupon_code"),
     courierId: text("courier_id"),
     shipmentNumber: text("shipment_number"),
+    shippingCompany: text("shipping_company"), // vanex | darb | nawras | other
     internalNotes: text("internal_notes"),
     source: text("source"), // instagram, tiktok, direct…
     /** ترتيب الطلبية في شهرها (بتوقيت ليبيا) وقت إنشائها: لحد «طلبيات في الشهر». null = قديمة (ظاهرة دايماً) */

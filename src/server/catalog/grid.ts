@@ -9,7 +9,7 @@ import { fail, ok, type Result } from "./result";
 
 export type GridRow = {
   variantId: string; productId: string; name: string; label: string | null; sku: string | null;
-  price: number; cost: number | null; stock: number; expiresAt: number | null; isBundle: boolean; singleVariant: boolean;
+  price: number; cost: number | null; stock: number; minStock: number | null; expiresAt: number | null; isBundle: boolean; singleVariant: boolean;
 };
 
 export async function listGridRows(scope: StoreScope, opts: { q?: string; limit?: number } = {}): Promise<GridRow[]> {
@@ -23,7 +23,7 @@ export async function listGridRows(scope: StoreScope, opts: { q?: string; limit?
   for (const v of variants) count.set(v.productId, (count.get(v.productId) ?? 0) + 1);
   return shown.flatMap((p) => variants.filter((v) => v.productId === p.id).map((v) => ({
     variantId: v.id, productId: p.id, name: p.name, label: labels.get(v.id) ?? null, sku: v.sku, price: variantPrice(p, v),
-    cost: v.costPrice ?? p.costPrice, stock: v.stock, expiresAt: v.expiresAt?.getTime() ?? null, isBundle: p.kind === "bundle", singleVariant: count.get(p.id) === 1,
+    cost: v.costPrice ?? p.costPrice, stock: v.stock, minStock: v.minStock, expiresAt: v.expiresAt?.getTime() ?? null, isBundle: p.kind === "bundle", singleVariant: count.get(p.id) === 1,
   })));
 }
 
@@ -32,6 +32,7 @@ const rowSchema = z.object({
   price: z.number().int().min(0, "السعر 0 أو أكثر").max(1_000_000_000),
   stock: z.number().int("المخزون رقم صحيح").min(0, "المخزون ما يكونش بالسالب").max(1_000_000),
   cost: z.number().int().min(0).max(1_000_000_000).nullable(),
+  minStock: z.number().int().min(0).max(1_000_000).nullable().default(null),
   expiresAt: z.number().int().positive().nullable(),
 });
 const MAX_ROWS = 300;
@@ -59,7 +60,7 @@ export async function saveGridRows(scope: StoreScope, input: unknown, actorUserI
         const eff = variantPrice(prod, v);
         if (r.price !== eff) await tx.update(t.productVariants, { price: r.price === prod.price ? null : r.price }, eq(t.productVariants.id, v.id));
       }
-      await tx.update(t.productVariants, { costPrice: r.cost, expiresAt: r.expiresAt ? new Date(r.expiresAt) : null, stock }, eq(t.productVariants.id, v.id));
+      await tx.update(t.productVariants, { costPrice: r.cost, minStock: r.minStock, expiresAt: r.expiresAt ? new Date(r.expiresAt) : null, stock }, eq(t.productVariants.id, v.id));
       if (stock !== v.stock) await tx.insert(t.stockMovements, { variantId: v.id, delta: stock - v.stock, reason: "manual", note: "جدول التعديل السريع", actorUserId: actorUserId ?? null });
       updated++;
     }

@@ -5,7 +5,7 @@ import type { StoreModule } from "./constants";
 
 export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
-  | "reports" | "reviews" | "brands" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
+  | "reports" | "reviews" | "brands" | "lowstock" | "stock" | "audit" | "analytics" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
 export type NavGroupKey = "sales" | "catalog" | "marketing" | "store" | "team" | "settings";
 export const NAV_GROUPS: { key: NavGroupKey; title: string }[] = [
@@ -35,14 +35,18 @@ export const NAV: NavDef[] = [
   { href: "/dashboard/couriers", label: "المندوبون والكاش", icon: "couriers", group: "sales", permission: "couriers", keywords: "مندوب توصيل فلوس كاش تسوية", needsCouriers: true },
   { href: "/dashboard/returns", label: "المرتجعات", icon: "returns", group: "sales", permission: "returns", keywords: "مرتجع ارجاع" },
   { href: "/dashboard/reports", label: "التقارير", icon: "reports", group: "sales", permission: "reports", keywords: "تقرير ارباح اكسل" },
+  { href: "/dashboard/analytics", label: "تحليلات المتجر", icon: "analytics", group: "sales", permission: "reports", keywords: "زيارات مصادر انستغرام تيك توك تحويل مشاهدات" },
   { href: "/dashboard/products", label: "المنتجات", icon: "products", group: "catalog", permission: "products", keywords: "منتج مخزون اسعار" },
   { href: "/dashboard/catalog", label: "البراندات والخيارات", icon: "brands", group: "catalog", permission: "products", keywords: "براند ماركة وسوم تاج خيارات مقاسات الوان مكتبة انتهاء صلاحية" },
+  { href: "/dashboard/low-stock", label: "قرب يخلص", icon: "lowstock", group: "catalog", permission: "products", keywords: "مخزون قليل ينفد تنبيه" },
+  { href: "/dashboard/stock-movements", label: "حركة المخزون", icon: "stock", group: "catalog", permission: "products", keywords: "سجل مخزون حركات جرد" },
   { href: "/dashboard/categories", label: "الأقسام", icon: "categories", group: "catalog", permission: "categories", keywords: "قسم تصنيف" },
   { href: "/dashboard/coupons", label: "الكوبونات", icon: "coupons", group: "marketing", permission: "marketing", keywords: "كوبون خصم كود" },
   { href: "/dashboard/reviews", label: "التقييمات", icon: "reviews", group: "marketing", permission: "marketing", keywords: "تقييم نجوم رأي مراجعة" },
   { href: "/dashboard/content", label: "محتوى المتجر", icon: "content", group: "store", permission: "settings", keywords: "نصوص بانر من نحن سياسات" },
   { href: "/dashboard/design", label: "التصميم", icon: "design", group: "store", permission: "settings", keywords: "قالب الوان خط" },
   { href: "/dashboard/design-services", label: "خدمات التصميم", icon: "services", group: "store", permission: "settings", keywords: "ريلز لوجو هوية" },
+  { href: "/dashboard/activity", label: "سجل النشاط", icon: "audit", group: "team", permission: "settings", keywords: "سجل نشاط مين عمل تدقيق" },
   { href: "/dashboard/staff", label: "الموظفين", icon: "staff", group: "team", permission: "staff", keywords: "موظف صلاحيات" },
   { href: "/dashboard/settings", label: "الإعدادات", icon: "settings", group: "settings", permission: "settings", keywords: "دفع توصيل واتساب دومين" },
   { href: "/dashboard/settings/modules", label: "الوحدات", icon: "modules", group: "settings", permission: "settings", keywords: "مخازن مشتريات حسابات" },

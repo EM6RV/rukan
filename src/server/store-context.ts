@@ -7,9 +7,9 @@ import { plans, storeMembers, stores, type PlanLimits } from "@/db/schema/platfo
 import { loadStoreLimits } from "./entitlements";
 import type { MemberRole } from "@/lib/constants";
 import { getCurrentUser } from "./auth/current";
-import { can, homeFor, type Permission } from "./permissions";
+import { hasPermission, homeForCtx, isAssignable, type Permission } from "./permissions";
 import { computeStoreAccess } from "./store-access";
-import { forStore, type StoreScope } from "./tenant";
+import { forStore, t, type StoreScope } from "./tenant";
 import type { Store } from "./types";
 import type { SessionUser } from "./auth/session";
 
@@ -17,6 +17,8 @@ export type StoreContext = {
   user: SessionUser;
   store: Store;
   role: MemberRole;
+  /** صلاحيات الدور المخصص (null = حسب role) */
+  customPermissions: Permission[] | null;
   scope: StoreScope;
   limits: PlanLimits;
   planName: string | null;
@@ -29,7 +31,7 @@ export const loadStoreContext = cache(async (): Promise<StoreContext | null> => 
   if (!user) return null;
   const db = getDb();
   const rows = await db
-    .select({ store: stores, role: storeMembers.role, plan: plans })
+    .select({ store: stores, role: storeMembers.role, customRoleId: storeMembers.customRoleId, plan: plans })
     .from(storeMembers)
     .innerJoin(stores, eq(stores.id, storeMembers.storeId))
     .leftJoin(plans, eq(plans.id, stores.planId))
@@ -38,11 +40,14 @@ export const loadStoreContext = cache(async (): Promise<StoreContext | null> => 
     .limit(5);
   const row = rows.find((r) => r.role === "owner") ?? rows[0];
   if (!row) return null;
+  const scope = forStore(db, row.store.id);
+  const customRole = row.customRoleId ? (await scope.from(t.storeRoles, eq(t.storeRoles.id, row.customRoleId)).limit(1))[0] : undefined;
   return {
     user,
     store: row.store,
     role: row.role,
-    scope: forStore(db, row.store.id),
+    customPermissions: customRole ? customRole.permissions.filter(isAssignable) : null,
+    scope,
     limits: await loadStoreLimits(db, row.store, row.plan),
     planName: row.plan?.nameAr ?? null,
     access: computeStoreAccess(row.store),
@@ -55,7 +60,7 @@ export async function requireStoreContext(permission: Permission | null, opts: {
   if (!user) redirect("/login");
   const ctx = await loadStoreContext();
   if (!ctx || (!opts.allowUnfinishedOnboarding && !ctx.store.onboardedAt)) redirect("/onboarding");
-  if (permission && !can(ctx.role, permission)) redirect(homeFor(ctx.role));
+  if (permission && !hasPermission(ctx, permission)) redirect(homeForCtx(ctx));
   return ctx;
 }
 
@@ -69,7 +74,7 @@ export async function actionContext(
   const ctx = await loadStoreContext();
   if (!ctx) return { ok: false, error: "انتهت الجلسة. سجّل دخولك من جديد." };
   if (!opts.allowUnfinishedOnboarding && !ctx.store.onboardedAt) return { ok: false, error: "كمّل إعداد متجرك أول." };
-  if (!can(ctx.role, permission)) return { ok: false, error: "ما عندكش صلاحية للإجراء هذا. كلّم مدير المتجر." };
+  if (!hasPermission(ctx, permission)) return { ok: false, error: "ما عندكش صلاحية للإجراء هذا. كلّم مدير المتجر." };
   if (opts.write && !ctx.access.writable) {
     return {
       ok: false,

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { isNull } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
+import { listExpiring } from "@/server/catalog/expiry";
 import { ordersThisMonth } from "@/server/entitlements";
-import { Banknote, ShoppingBag, CheckCircle2, Clapperboard, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
+import { Banknote, BarChart3, Plus, ShoppingBag, CheckCircle2, Clapperboard, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
 import { getDb } from "@/db";
 import { StoreLinkCard } from "@/components/dashboard/copy-link";
 import { PushToggle } from "@/components/dashboard/push-toggle";
@@ -14,7 +15,7 @@ import { getEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
 import { getDashboardStats } from "@/server/orders/stats";
 import { pushConfig } from "@/server/push";
-import { can } from "@/server/permissions";
+import { hasPermission } from "@/server/permissions";
 import { storeUrl } from "@/lib/store-url";
 import { currentRequest } from "@/server/request-origin";
 import { requireStoreContext } from "@/server/store-context";
@@ -27,21 +28,28 @@ export default async function DashboardHome() {
   const { scope, store, limits } = ctx;
 
   const ordersMonth = limits.maxOrdersPerMonth != null ? await ordersThisMonth(getDb(), store.id) : 0;
-  const [stats, productCount, categoryCount, [settings]] = await Promise.all([
+  const [stats, productCount, categoryCount, , activeRates, enabledPayments, visitRows, orderCount, expiring] = await Promise.all([
     getDashboardStats(scope),
     scope.count(t.products, isNull(t.products.deletedAt)),
     scope.count(t.categories),
-    scope.from(t.storeSettings).limit(1),
+    Promise.resolve(null),
+    scope.count(t.deliveryRates, eq(t.deliveryRates.isActive, true)),
+    scope.count(t.storePaymentMethods, eq(t.storePaymentMethods.isEnabled, true)),
+    scope.count(t.storeVisits),
+    scope.count(t.orders),
+    listExpiring(scope),
   ]);
 
+  // «5 خطوات وتبدا تبيع»
   const checklist = [
     { done: !!store.logoMediaId, label: "ارفع لوجو متجرك", href: "/dashboard/settings" },
-    { done: categoryCount > 0, label: "أضف أول قسم", href: "/dashboard/categories" },
     { done: productCount > 0, label: "أضف أول منتج", href: "/dashboard/products/new" },
-    { done: !!settings?.whatsapp, label: "حط رقم واتساب للتواصل", href: "/dashboard/settings?tab=contact" },
+    { done: activeRates > 0, label: "حدد أسعار التوصيل لمدنك", href: "/dashboard/settings?tab=delivery" },
+    { done: enabledPayments > 0, label: "فعّل طريقة دفع (عند الاستلام أو تحويل)", href: "/dashboard/settings?tab=payment" },
+    { done: visitRows > 0 || orderCount > 0, label: "شارك رابط متجرك مع زباينك", href: "#store-link" },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
-  const push = can(ctx.role, "orders") ? pushConfig() : null;
+  const push = hasPermission(ctx, "orders") ? pushConfig() : null;
   const req = await currentRequest();
 
   return (
@@ -52,6 +60,19 @@ export default async function DashboardHome() {
       </div>
 
       {push && <PushToggle publicKey={push.publicKey} />}
+
+      <nav aria-label="وصول سريع" className="flex flex-wrap gap-2">
+        {([
+          ["orders", "/dashboard/orders/new", "طلبية يدوية", Plus], ["products", "/dashboard/products/new", "منتج جديد", Package],
+          ["orders", "/dashboard/orders?status=new", "الطلبيات الجديدة", ShoppingBag], ["reports", "/dashboard/reports", "التقارير", BarChart3],
+        ] as const).filter(([perm]) => hasPermission(ctx, perm)).map(([, href, label, Icon]) => (
+          <Link key={href} href={href} className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium transition-colors hover:bg-surface-2"><Icon className="size-4" aria-hidden /> {label}</Link>
+        ))}
+      </nav>
+
+      {expiring.length > 0 && hasPermission(ctx, "products") && (
+        <Link href="/dashboard/catalog" className="flex items-center gap-3 rounded-xl border border-gold/50 bg-gold/10 px-4 py-3 text-sm font-medium"><TriangleAlert className="size-5" aria-hidden /> {expiring.length} منتج قرب تنتهي صلاحيته</Link>
+      )}
 
       <section aria-label="المبيعات" className="space-y-4">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -67,14 +88,14 @@ export default async function DashboardHome() {
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard href="/dashboard/orders?status=new" icon={<Inbox />} label="طلبيات جديدة" value={stats.newOrders} className={stats.newOrders > 0 ? "border-fg/30" : undefined} />
-          {can(ctx.role, "couriers") && store.useCouriers && <StatCard tone="teal" href="/dashboard/couriers" icon={<Banknote />} label="فلوسك عند المندوبين" value={formatMoney(stats.cashWithCouriers)} hint={stats.pendingCash > 0 ? `+ ${formatMoney(stats.pendingCash)} في الطريق` : undefined} />}
-          {can(ctx.role, "returns") && <StatCard tone="danger" href="/dashboard/returns" icon={<RotateCcw />} label="نسبة المرتجعات (30 يوم)" value={stats.returnRate === null ? "—" : `${Math.round(stats.returnRate * 100)}%`} />}
+          {hasPermission(ctx, "couriers") && store.useCouriers && <StatCard tone="teal" href="/dashboard/couriers" icon={<Banknote />} label="فلوسك عند المندوبين" value={formatMoney(stats.cashWithCouriers)} hint={stats.pendingCash > 0 ? `+ ${formatMoney(stats.pendingCash)} في الطريق` : undefined} />}
+          {hasPermission(ctx, "returns") && <StatCard tone="danger" href="/dashboard/returns" icon={<RotateCcw />} label="نسبة المرتجعات (30 يوم)" value={stats.returnRate === null ? "—" : `${Math.round(stats.returnRate * 100)}%`} />}
           {stats.pendingReceipts > 0 && <StatCard href="/dashboard/orders?pay=bank_transfer" icon={<ReceiptText />} label="إيصالات بانتظار المراجعة" value={stats.pendingReceipts} className="border-fg/30" />}
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <Card><CardHeader title="المبيعات اليومية" description="آخر 7 أيام" /><CardBody><SalesChart data={stats.chart} /></CardBody></Card>
           <Card>
-            <CardHeader title="منتجات قربت تخلص" description={stats.lowStockCount ? `${stats.lowStockCount} منتج مخزونه 5 أو أقل` : undefined} />
+            <CardHeader title="منتجات قربت تخلص" description={stats.lowStockCount ? `${stats.lowStockCount} منتج وصل لحد التنبيه` : undefined} />
             {stats.lowStock.length === 0 ? <CardBody className="text-center text-sm text-muted">كل المنتجات مخزونها تمام.</CardBody> : (
               <ul className="divide-y divide-line">
                 {stats.lowStock.map((p) => (
@@ -86,7 +107,7 @@ export default async function DashboardHome() {
         </div>
       </section>
 
-      {can(ctx.role, "settings") && (
+      {hasPermission(ctx, "settings") && (
         <Card>
           <CardBody className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex min-w-0 items-start gap-3">

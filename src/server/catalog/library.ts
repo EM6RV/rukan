@@ -6,6 +6,7 @@ import { firstError } from "@/lib/validation";
 import { isUniqueViolation } from "../db-errors";
 import { t, type StoreScope } from "../tenant";
 import { fail, ok, type Result } from "./result";
+export { tagsSchema } from "./product-schema";
 
 const nameField = (what: string) => z.string({ error: `اكتب اسم ${what}` }).trim().min(1, `اكتب اسم ${what}`).max(60, `اسم ${what} طويل بزيادة`);
 
@@ -86,9 +87,6 @@ export async function deleteOptionPreset(scope: StoreScope, id: string): Promise
 }
 
 // ===== الوسوم =====
-
-export const tagsSchema = z.array(z.string().trim().min(1).max(30, "الوسم طويل (30 حرف)")).max(10, "الحد الأقصى 10 وسوم").default([])
-  .transform((tags) => [...new Set(tags.map((x) => x.replace(/^#/, "").trim()).filter(Boolean))]);
 
 export async function listTags(scope: StoreScope): Promise<{ tag: string; count: number }[]> {
   const rows = await scope.from(t.productTags);

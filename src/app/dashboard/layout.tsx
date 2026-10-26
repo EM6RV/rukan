@@ -8,7 +8,7 @@ import { CommandPalette } from "@/components/dashboard/command-palette";
 import { dashboardNav } from "@/server/dashboard-nav";
 import { SkipLink } from "@/components/ui/skip-link";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { can } from "@/server/permissions";
+import { hasPermission } from "@/server/permissions";
 import { Announcements } from "@/components/dashboard/announcements";
 import { PlanNotice } from "@/components/dashboard/plan-notice";
 import { OfflineBanner } from "@/components/dashboard/offline-banner";
@@ -25,7 +25,7 @@ export const metadata: Metadata = { title: { template: "%s | رُكن", default:
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireStoreContext(null);
   // المندوب ما يشوف تنبيهات الطلبيات الجديدة (يشوف طلبياته بس)
-  const pulse = can(ctx.role, "orders") && ctx.role !== "courier" ? await getOrdersPulse(ctx.scope) : null;
+  const pulse = hasPermission(ctx, "orders") && ctx.role !== "courier" ? await getOrdersPulse(ctx.scope) : null;
   const items = dashboardNav(ctx).map((i) => (i.icon === "orders" ? { ...i, badge: pulse?.newCount } : i));
   const collapsed = (await cookies()).get("rukn-sidebar")?.value === "collapsed";
   const { access } = ctx;
@@ -72,10 +72,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {banner && (
           <div role="status" className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium ${banner.tone === "danger" ? "bg-danger/15 text-danger-fg" : "bg-gold/20"}`}>
             <TriangleAlert className="size-4 shrink-0" aria-hidden /> <span className="min-w-0 flex-1">{banner.text}</span>
-            {can(ctx.role, "billing") && access.state !== "suspended" && <Link href="/dashboard/billing" className="shrink-0 rounded-md bg-fg px-3 py-1 text-xs font-semibold text-bg hover:opacity-90">جدّد الاشتراك</Link>}
+            {hasPermission(ctx, "billing") && access.state !== "suspended" && <Link href="/dashboard/billing" className="shrink-0 rounded-md bg-fg px-3 py-1 text-xs font-semibold text-bg hover:opacity-90">جدّد الاشتراك</Link>}
           </div>
         )}
-        {ctx.store.planNotice && can(ctx.role, "billing") && <PlanNotice notice={ctx.store.planNotice} cycle={ctx.store.billingCycle} planName={ctx.planName} />}
+        {ctx.store.planNotice && hasPermission(ctx, "billing") && <PlanNotice notice={ctx.store.planNotice} cycle={ctx.store.billingCycle} planName={ctx.planName} />}
         <OfflineBanner />
         <PwaSetup />
         <Announcements items={announcements} />

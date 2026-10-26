@@ -8,6 +8,8 @@ import { cities, media, plans, stores } from "@/db/schema/platform";
 import { canUse } from "@/lib/entitlements";
 import { loadStoreLimits, ordersThisMonth } from "../entitlements";
 import { withBundleStock, expandStockLines } from "../catalog/bundles";
+import { shippingCompanyName, trackingUrl } from "@/lib/shipping-companies";
+import { MANUAL_SOURCES, MANUAL_SOURCE_LABELS } from "@/lib/manual-sources";
 import { variantPrice } from "@/lib/pricing";
 import { firstError, nameSchema, phoneSchema } from "@/lib/validation";
 import { isUniqueViolation } from "../db-errors";
@@ -59,6 +61,31 @@ export async function checkCoupon(scope: StoreScope, rawCode: string, subtotal: 
 
 export type CreatedOrder = { orderId: string; number: number; trackingToken: string; total: number; paymentMethod: "cod" | "bank_transfer" };
 
+
+/** طلبية يسجلها البياع بيده (جات من واتساب/إنستا…): نفس قواعد المخزون والترقيم، مع سعر توصيل وخصم يدويين */
+export const manualOrderSchema = orderInputSchema.omit({ couponCode: true, receiptMediaId: true, source: true }).extend({
+  paymentMethod: z.enum(["cod", "bank_transfer"], { error: "اختار طريقة الدفع" }).default("cod"),
+  manualSource: z.enum(MANUAL_SOURCES, { error: "اختار مصدر الطلبية" }),
+  deliveryFee: z.number().int().min(0, "سعر التوصيل 0 أو أكثر").max(100_000_000).nullish().transform((v) => v ?? null),
+  discount: z.number().int().min(0, "الخصم 0 أو أكثر").max(1_000_000_000).default(0),
+});
+type ManualOpts = { source: string; deliveryFee: number | null; discount: number };
+
+export async function createManualOrder(db: Db, storeId: string, rawInput: unknown): Promise<{ ok: true; data: CreatedOrder } | { ok: false; error: string }> {
+  const parsed = manualOrderSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+  const { manualSource, deliveryFee, discount, ...rest } = parsed.data;
+  const input = { ...rest, couponCode: null, receiptMediaId: null, source: `manual:${manualSource}` };
+  try {
+    const data = await writeTransaction(db, async (tx) => place(tx as unknown as Db, storeId, input, { source: manualSource, deliveryFee, discount }));
+    return { ok: true, data };
+  } catch (e) {
+    if (e instanceof OrderError) return { ok: false, error: e.message };
+    if (isUniqueViolation(e)) return { ok: false, error: "ما قدرنا ننشئ الطلب. جرّب مرة ثانية." };
+    throw e;
+  }
+}
+
 export async function createOrder(db: Db, storeId: string, rawInput: unknown): Promise<{ ok: true; data: CreatedOrder } | { ok: false; error: string }> {
   const parsed = orderInputSchema.safeParse(rawInput);
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
@@ -76,12 +103,12 @@ export async function createOrder(db: Db, storeId: string, rawInput: unknown): P
   }
 }
 
-async function place(db: Db, storeId: string, input: z.output<typeof orderInputSchema>): Promise<CreatedOrder> {
+async function place(db: Db, storeId: string, input: z.output<typeof orderInputSchema>, manual?: ManualOpts): Promise<CreatedOrder> {
   const scope = forStore(db, storeId);
 
   const row = await db.select({ store: stores, plan: plans }).from(stores).leftJoin(plans, eq(plans.id, stores.planId)).where(eq(stores.id, storeId)).get();
   if (!row) throw new OrderError("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
-  if (!isStoreOpenToCustomers(computeStoreAccess(row.store))) throw new OrderError("المتجر مغلق حالياً ولا يستقبل طلبيات.");
+  if (!manual && !isStoreOpenToCustomers(computeStoreAccess(row.store))) throw new OrderError("المتجر مغلق حالياً ولا يستقبل طلبيات.");
   const limits = await loadStoreLimits(db, row.store, row.plan);
 
   // --- الأصناف: الأسعار والمخزون من القاعدة، ما نثقش في العميل ---
@@ -119,7 +146,9 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
   // --- الكوبون ---
   let discount = 0;
   let coupon: { id: string; code: string } | null = null;
-  if (input.couponCode) {
+  if (manual) {
+    discount = Math.min(manual.discount, subtotal);
+  } else if (input.couponCode) {
     if (!canUse(limits, "coupons")) throw new OrderError("كود الخصم غير متاح في هذا المتجر.");
     const c = await checkCoupon(scope, input.couponCode, subtotal);
     if (!c.ok) throw new OrderError(c.error);
@@ -129,10 +158,10 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
 
   // --- التوصيل ---
   const [rate] = await scope.from(t.deliveryRates, and(eq(t.deliveryRates.cityId, input.cityId), eq(t.deliveryRates.isActive, true))!).limit(1);
-  if (!rate) throw new OrderError("للأسف ما نوصلوش لهذه المدينة حالياً.");
+  if (!rate && manual?.deliveryFee == null) throw new OrderError(manual ? "ما فيه سعر توصيل للمدينة هذي. اكتب سعر التوصيل بيدك." : "للأسف ما نوصلوش لهذه المدينة حالياً.");
   const [settings] = await scope.from(t.storeSettings).limit(1);
   const afterDiscount = subtotal - discount;
-  const deliveryFee = settings?.freeDeliveryOver != null && afterDiscount >= settings.freeDeliveryOver ? 0 : rate.fee;
+  const deliveryFee = manual?.deliveryFee != null ? manual.deliveryFee : settings?.freeDeliveryOver != null && afterDiscount >= settings.freeDeliveryOver ? 0 : rate!.fee;
   const total = afterDiscount + deliveryFee;
 
   const city = await db.select().from(cities).where(eq(cities.id, input.cityId)).get();
@@ -140,8 +169,8 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
 
   // --- الدفع ---
   const [pm] = await scope.from(t.storePaymentMethods, and(eq(t.storePaymentMethods.method, input.paymentMethod), eq(t.storePaymentMethods.isEnabled, true))!).limit(1);
-  if (!pm) throw new OrderError("طريقة الدفع هذي غير متاحة.");
-  if (input.paymentMethod === "bank_transfer") {
+  if (!pm && !manual) throw new OrderError("طريقة الدفع هذي غير متاحة.");
+  if (input.paymentMethod === "bank_transfer" && !manual) {
     if (!input.receiptMediaId) throw new OrderError("ارفع صورة إيصال التحويل.");
     const m = await db.select({ id: media.id }).from(media).where(and(eq(media.id, input.receiptMediaId), eq(media.storeId, storeId), eq(media.isPrivate, true))).get();
     if (!m) throw new OrderError("إيصال التحويل غير صحيح، ارفعه من جديد.");
@@ -178,7 +207,7 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
     orderId, productId: l.p.id, variantId: l.v.id, name: l.p.name, variantLabel: l.label, unitPrice: l.price,
     unitCost: l.v.costPrice ?? l.p.costPrice, quantity: l.quantity, personalizationText: l.personalization, imageMediaId: images.find((i) => i.productId === l.p.id)?.mediaId ?? null,
   })));
-  await scope.insert(t.orderStatusHistory, { orderId, fromStatus: null, toStatus: "new", note: "طلبية جديدة من المتجر" });
+  await scope.insert(t.orderStatusHistory, { orderId, fromStatus: null, toStatus: "new", note: manual ? `طلبية يدوية (${MANUAL_SOURCE_LABELS[manual.source as (typeof MANUAL_SOURCES)[number]] ?? manual.source})` : "طلبية جديدة من المتجر" });
 
   // --- خصم المخزون ذرّياً: الشرط stock >= qty داخل نفس الـ UPDATE يمنع البيع الزايد ---
   for (const l of lines) {
@@ -194,7 +223,7 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
     if (!used.length) throw new OrderError("كود الخصم وصل لحد الاستخدام.");
     await scope.insert(t.couponRedemptions, { couponId: coupon.id, orderId, discount });
   }
-  if (input.paymentMethod === "bank_transfer") await scope.insert(t.paymentReceipts, { orderId, mediaId: input.receiptMediaId!, status: "pending" });
+  if (input.paymentMethod === "bank_transfer" && input.receiptMediaId) await scope.insert(t.paymentReceipts, { orderId, mediaId: input.receiptMediaId, status: "pending" });
 
   return { orderId, number, trackingToken, total, paymentMethod: input.paymentMethod };
 }
@@ -204,20 +233,21 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
 export type TrackedOrder = {
   number: number; status: string; paymentMethod: string; paymentStatus: string;
   subtotal: number; discount: number; deliveryFee: number; total: number;
-  cityName: string; address: string; customerName: string; shipmentNumber: string | null; createdAt: number; couponCode: string | null;
+  cityName: string; address: string; customerName: string; shipmentNumber: string | null; shippingCompany: string | null; trackingUrl: string | null; createdAt: number; couponCode: string | null;
   items: { name: string; variantLabel: string | null; unitPrice: number; quantity: number; imageMediaId: string | null; personalization: string | null }[];
   history: { status: string; at: number }[];
 };
 
 async function hydrateOrder(scope: StoreScope, o: typeof t.orders.$inferSelect): Promise<TrackedOrder> {
-  const [items, history] = await Promise.all([
+  const [[cfg], items, history] = await Promise.all([
+    scope.from(t.storeSettings).limit(1),
     scope.from(t.orderItems, eq(t.orderItems.orderId, o.id)),
     scope.from(t.orderStatusHistory, eq(t.orderStatusHistory.orderId, o.id)).orderBy(t.orderStatusHistory.createdAt),
   ]);
   return {
     number: o.number, status: o.status, paymentMethod: o.paymentMethod, paymentStatus: o.paymentStatus,
     subtotal: o.subtotal, discount: o.discount, deliveryFee: o.deliveryFee, total: o.total, couponCode: o.couponCode,
-    cityName: o.cityName, address: o.address, customerName: o.customerName, shipmentNumber: o.shipmentNumber, createdAt: o.createdAt.getTime(),
+    cityName: o.cityName, address: o.address, customerName: o.customerName, shipmentNumber: o.shipmentNumber, shippingCompany: shippingCompanyName(o.shippingCompany), trackingUrl: o.shippingCompany ? trackingUrl(cfg?.shippingTrackingUrls?.[o.shippingCompany], o.shipmentNumber) : null, createdAt: o.createdAt.getTime(),
     items: items.map((i) => ({ name: i.name, variantLabel: i.variantLabel, unitPrice: i.unitPrice, quantity: i.quantity, imageMediaId: i.imageMediaId, personalization: i.personalizationText })),
     history: history.map((h) => ({ status: h.toStatus, at: h.createdAt.getTime() })),
   };

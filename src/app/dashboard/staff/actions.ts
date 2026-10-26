@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db";
 import type { Result } from "@/server/catalog/result";
+import { deleteRole, saveRole } from "@/server/roles";
 import { addStaff, changeStaffRole, removeStaff, resetStaffPassword } from "@/server/staff-service";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
@@ -23,7 +24,7 @@ export async function addStaffAction(input: unknown) {
 export async function changeRoleAction(memberId: unknown, role: unknown) {
   const m = id.safeParse(memberId);
   if (!m.success) return bad();
-  return run((c) => changeStaffRole(getDb(), c.store.id, c.user.id, m.data, role));
+  return run((c) => changeStaffRole(getDb(), c.store.id, c.user.id, m.data, role, c.limits));
 }
 export async function resetPasswordAction(memberId: unknown, password: unknown) {
   const m = id.safeParse(memberId);
@@ -34,4 +35,13 @@ export async function removeStaffAction(memberId: unknown) {
   const m = id.safeParse(memberId);
   if (!m.success) return bad();
   return run((c) => removeStaff(getDb(), c.store.id, c.user.id, m.data));
+}
+
+export async function saveRoleAction(input: unknown) {
+  return run((c) => saveRole(c.scope, c.limits, input));
+}
+export async function deleteRoleAction(roleId: unknown) {
+  const m = id.safeParse(roleId);
+  if (!m.success) return bad();
+  return run((c) => deleteRole(getDb(), c.scope, m.data));
 }

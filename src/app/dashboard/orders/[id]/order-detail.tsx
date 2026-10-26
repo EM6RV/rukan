@@ -10,6 +10,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Input, Select, Textarea } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { SHIPPING_COMPANIES } from "@/lib/shipping-companies";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/constants";
 import { formatDateTimeYear } from "@/lib/datetime";
 import { dirhamToInput, formatMoney, inputToDirham } from "@/lib/money";
@@ -23,7 +24,7 @@ type Props = {
   order: {
     id: string; number: number; status: OrderStatus; createdAt: number; customerName: string; customerPhone: string; cityName: string; address: string; notes: string | null;
     paymentMethod: string; paymentStatus: string; subtotal: number; discount: number; deliveryFee: number; total: number; couponCode: string | null;
-    courierId: string | null; shipmentNumber: string | null; internalNotes: string | null; source: string | null;
+    courierId: string | null; shipmentNumber: string | null; shippingCompany: string | null; internalNotes: string | null; source: string | null;
   };
   items: { id: string; name: string; variantLabel: string | null; unitPrice: number; quantity: number; imageMediaId: string | null; personalization: string | null; remaining: number }[];
   history: { id: string; from: OrderStatus | null; to: OrderStatus; note: string | null; at: number; actor: string | null }[];
@@ -281,6 +282,7 @@ function InternalNotes({ orderId, value, disabled }: { orderId: string; value: s
 function StatusModal({ to, order, couriers, onClose, onQuick }: { to: OrderStatus; order: Props["order"]; couriers: Props["couriers"]; onClose: () => void; onQuick?: (note: string) => void }) {
   const [courierId, setCourierId] = useState(order.courierId ?? "");
   const [shipment, setShipment] = useState(order.shipmentNumber ?? "");
+  const [company, setCompany] = useState(order.shippingCompany ?? "");
   const [note, setNote] = useState("");
   const { act, pending, error } = useAct();
   const cash = order.paymentMethod === "cod" && order.paymentStatus !== "paid";
@@ -288,7 +290,7 @@ function StatusModal({ to, order, couriers, onClose, onQuick }: { to: OrderStatu
   return (
     <Modal
       open onClose={onClose} title={title}
-      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button variant={to === "cancelled" ? "danger" : "primary"} loading={pending} onClick={() => (onQuick ? onQuick(note) : act(() => changeStatusAction({ orderId: order.id, to, note, courierId: courierId || null, shipmentNumber: shipment }), `الطلبية صارت «${ORDER_STATUS_LABELS[to]}»`, onClose))}>{to === "cancelled" ? "إلغاء الطلبية" : "تأكيد"}</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button variant={to === "cancelled" ? "danger" : "primary"} loading={pending} onClick={() => (onQuick ? onQuick(note) : act(() => changeStatusAction({ orderId: order.id, to, note, courierId: courierId || null, shipmentNumber: shipment, shippingCompany: company || null }), `الطلبية صارت «${ORDER_STATUS_LABELS[to]}»`, onClose))}>{to === "cancelled" ? "إلغاء الطلبية" : "تأكيد"}</Button></>}
     >
       <div className="space-y-4">
         {to === "with_courier" && (
@@ -296,6 +298,7 @@ function StatusModal({ to, order, couriers, onClose, onQuick }: { to: OrderStatu
             {couriers.length === 0 ? <p className="rounded-md bg-gold/20 px-3 py-2 text-sm">ما عندكش مندوبين. ضيف مندوب من صفحة «المندوبين» أول.</p> : (
               <Select label="المندوب" value={courierId} onChange={(e) => setCourierId(e.target.value)}><option value="">اختار المندوب</option>{couriers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
             )}
+            <Select label="شركة الشحن (اختياري)" value={company} onChange={(e) => setCompany(e.target.value)}><option value="">بدون</option>{SHIPPING_COMPANIES.map((c) => <option key={c.id} value={c.id}>{c.nameAr}</option>)}</Select>
             <Input label="رقم الشحنة (اختياري)" dir="ltr" className="text-right" value={shipment} maxLength={60} onChange={(e) => setShipment(e.target.value)} />
           </>
         )}

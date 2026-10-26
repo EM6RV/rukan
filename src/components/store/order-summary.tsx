@@ -42,7 +42,9 @@ export function OrderSummary({ order, panelClass }: { order: TrackedOrder; panel
       <section className={cn(panelClass, "space-y-4")}>
         <h2 className="text-lg font-bold">حالة الطلبية</h2>
         <OrderTimeline status={order.status} history={order.history} />
-        {order.shipmentNumber && <p className="text-sm">رقم الشحنة: <b dir="ltr">{order.shipmentNumber}</b></p>}
+        {order.shipmentNumber && (
+          <p className="text-sm">{order.shippingCompany ? `شركة الشحن: ${order.shippingCompany} · ` : ""}رقم الشحنة: <b dir="ltr">{order.shipmentNumber}</b>{order.trackingUrl && <> · <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">تتبع الشحنة</a></>}</p>
+        )}
       </section>
 
       <section className={cn(panelClass, "space-y-4")}>

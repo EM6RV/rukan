@@ -7,12 +7,14 @@ import { formatMoney } from "@/lib/money";
 import { listCouriers } from "@/server/orders/couriers";
 import { requireStoreContext } from "@/server/store-context";
 import { CourierList } from "../courier-manager";
+import { TrackingUrls } from "../tracking-urls";
+import { t } from "@/server/tenant";
 
 export const metadata: Metadata = { title: "المندوبون والكاش" };
 
 export default async function CouriersPage() {
   const ctx = await requireStoreContext("couriers");
-  const couriers = await listCouriers(ctx.scope);
+  const [couriers, [settings]] = await Promise.all([listCouriers(ctx.scope), ctx.scope.from(t.storeSettings).limit(1)]);
   const totalCash = couriers.reduce((s, c) => s + c.balance, 0);
   const pendingCash = couriers.reduce((s, c) => s + c.pendingCash, 0);
 
@@ -34,6 +36,7 @@ export default async function CouriersPage() {
       ) : (
         <CourierList couriers={couriers} writable={ctx.access.writable} />
       )}
+      <TrackingUrls initial={settings?.shippingTrackingUrls ?? {}} writable={ctx.access.writable} />
     </div>
   );
 }

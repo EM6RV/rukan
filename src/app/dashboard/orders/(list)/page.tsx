@@ -55,7 +55,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-5">
-      <div><h1 className="text-2xl">الطلبيات</h1><p className="text-muted">{isCourier ? "الطلبيات المعيّنة لك." : "تابع طلبيات زباينك من أول ما توصل لين التوصيل."}</p></div>
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl">الطلبيات</h1><p className="text-muted">{isCourier ? "الطلبيات المعيّنة لك." : "تابع طلبيات زباينك من أول ما توصل لين التوصيل."}</p></div>{!isCourier && ctx.access.writable && <ButtonLink href="/dashboard/orders/new" size="sm">+ طلبية يدوية</ButtonLink>}</div>
 
       {push && <PushToggle publicKey={push.publicKey} courier />}
 

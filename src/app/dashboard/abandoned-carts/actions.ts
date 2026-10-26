@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { dismissCart, markReminded } from "@/server/marketing/abandoned-carts";
+import { dismissCart, markReminded, saveRetentionDays } from "@/server/marketing/abandoned-carts";
 import { canUse } from "@/lib/entitlements";
 import { actionContext } from "@/server/store-context";
 
@@ -28,6 +28,15 @@ export async function dismissCartAction(cartId: unknown) {
   if (!a.ok) return a;
   if (!canUse(a.ctx.limits, "abandonedCarts")) return LOCKED;
   const r = await dismissCart(a.ctx.scope, p.data);
+  if (r.ok) revalidatePath("/dashboard/abandoned-carts");
+  return r;
+}
+
+export async function saveRetentionAction(days: unknown) {
+  const a = await actionContext("customers", { write: true });
+  if (!a.ok) return a;
+  if (!canUse(a.ctx.limits, "abandonedCarts")) return LOCKED;
+  const r = await saveRetentionDays(a.ctx.scope, days);
   if (r.ok) revalidatePath("/dashboard/abandoned-carts");
   return r;
 }

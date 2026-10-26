@@ -167,6 +167,7 @@ export const storeMembers = sqliteTable(
     storeId: text("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["owner", "manager", "orders_staff", "courier"] }).notNull(),
+    customRoleId: text("custom_role_id"), // دور مخصص (store_roles): صلاحياته تغلب صلاحيات role
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("store_members_uq").on(t.storeId, t.userId), index("store_members_user_idx").on(t.userId)],

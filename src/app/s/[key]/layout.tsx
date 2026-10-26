@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Store } from "lucide-react";
 import { ALL_FONT_VARIABLES, storeFontStyle } from "@/components/store/fonts";
 import { Pixels } from "@/components/store/pixels";
+import { VisitBeacon } from "@/components/store/visit-beacon";
 import { CartProvider } from "@/components/store/cart-context";
 import { StoreProvider, type StoreInfo } from "@/components/store/store-context";
 import { getKit } from "@/components/store/templates";
@@ -79,6 +80,7 @@ export default async function StoreLayout({ children, params }: Props) {
     <div data-theme="light" style={{ ...vars, ...storeFontStyle(s.fontKey) }} className={`min-h-dvh ${ALL_FONT_VARIABLES} ${kit.cls.page}`}>
       <StoreProvider info={info}>
         <CartProvider storeId={sf.id}>
+          <VisitBeacon />
           <SkipLink />
           <kit.Header />
           <main id="main-content" tabIndex={-1} className="outline-none">{children}</main>

@@ -2,7 +2,7 @@ import { listProducts } from "./catalog/products";
 import { listCustomers } from "./orders/customers";
 import { listOrders } from "./orders/manage";
 import { courierRestriction } from "./orders/access";
-import { can } from "./permissions";
+import { hasPermission } from "./permissions";
 import type { StoreContext } from "./store-context";
 
 export type SearchHit = { kind: "product" | "order" | "customer"; id: string; title: string; subtitle: string; href: string };
@@ -13,9 +13,9 @@ export async function searchDashboard(ctx: Pick<StoreContext, "role" | "scope" |
   if (q.length < 2) return [];
   const restrict = await courierRestriction(ctx);
   const [products, orders, customers] = await Promise.all([
-    can(ctx.role, "products") ? listProducts(ctx.scope, { q }) : null,
-    can(ctx.role, "orders") ? listOrders(ctx.scope, { q, pageSize: limit, restrictCourierId: restrict }) : null,
-    can(ctx.role, "customers") ? listCustomers(ctx.scope, { q, pageSize: limit }) : null,
+    hasPermission(ctx, "products") ? listProducts(ctx.scope, { q }) : null,
+    hasPermission(ctx, "orders") ? listOrders(ctx.scope, { q, pageSize: limit, restrictCourierId: restrict }) : null,
+    hasPermission(ctx, "customers") ? listCustomers(ctx.scope, { q, pageSize: limit }) : null,
   ]);
   return [
     ...(orders?.items ?? []).map((o): SearchHit => ({ kind: "order", id: o.id, title: `#${o.number} — ${o.customerName}`, subtitle: `${o.cityName} · ${o.customerPhone}`, href: `/dashboard/orders/${o.id}` })),

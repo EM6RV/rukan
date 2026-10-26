@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { deleteReview, moderateReview } from "@/server/reviews";
 import { invalidateStore } from "@/server/storefront/data";
+import { auditStore } from "@/server/store-audit";
 import { actionContext } from "@/server/store-context";
 
 const bad = { ok: false as const, error: "فيه خانة ناقصة أو غلط. راجع الخانات وجرّب." };
@@ -14,7 +15,7 @@ export async function moderateReviewAction(id: unknown, status: unknown) {
   const auth = await actionContext("marketing", { write: true });
   if (!auth.ok) return auth;
   const r = await moderateReview(auth.ctx.scope, p.data.id, p.data.status);
-  if (r.ok) { invalidateStore(auth.ctx.store); revalidatePath("/dashboard/reviews"); }
+  if (r.ok) { void auditStore(auth.ctx, "marketing.write"); invalidateStore(auth.ctx.store); revalidatePath("/dashboard/reviews"); }
   return r;
 }
 
@@ -23,6 +24,6 @@ export async function deleteReviewAction(id: unknown) {
   const auth = await actionContext("marketing", { write: true });
   if (!auth.ok) return auth;
   const r = await deleteReview(auth.ctx.scope, id);
-  if (r.ok) { invalidateStore(auth.ctx.store); revalidatePath("/dashboard/reviews"); }
+  if (r.ok) { void auditStore(auth.ctx, "marketing.write"); invalidateStore(auth.ctx.store); revalidatePath("/dashboard/reviews"); }
   return r;
 }

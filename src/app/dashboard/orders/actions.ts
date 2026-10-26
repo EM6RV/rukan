@@ -9,6 +9,8 @@ import { bulkAssignCourier, changeOrderStatus, registerReturn, reviewReceipt, se
 import { getDb } from "@/db";
 import { notifyCourierAssigned } from "@/server/push";
 import { invalidateStore } from "@/server/storefront/data";
+import { SHIPPING_COMPANY_IDS } from "@/lib/shipping-companies";
+import { auditStore } from "@/server/store-audit";
 import { actionContext, type StoreContext } from "@/server/store-context";
 import { lockedOrderIds, ORDER_LOCKED_ERROR } from "@/server/entitlements";
 import { t } from "@/server/tenant";
@@ -25,6 +27,7 @@ async function run<T>(permission: "orders" | "returns", opts: { staffOnly?: bool
   if (opts.orderIds && (await lockedOrderIds(auth.ctx.scope, auth.ctx.limits, opts.orderIds)).length) return { ok: false, error: ORDER_LOCKED_ERROR };
   const r = await fn(auth.ctx, await courierRestriction(auth.ctx));
   if (r.ok) {
+    void auditStore(auth.ctx, "orders.write");
     revalidatePath("/dashboard", "layout");
     invalidateStore(auth.ctx.store);
   }
@@ -37,6 +40,7 @@ const statusSchema = z.object({
   note: z.string().trim().max(300).nullish(),
   courierId: z.string().min(1).nullish(),
   shipmentNumber: z.string().trim().max(60).nullish(),
+  shippingCompany: z.enum(SHIPPING_COMPANY_IDS).nullish(),
 });
 
 export async function changeStatusAction(input: unknown): Promise<Result<{ status: OrderStatus }>> {
@@ -44,7 +48,7 @@ export async function changeStatusAction(input: unknown): Promise<Result<{ statu
   if (!p.success) return bad();
   return run("orders", { orderIds: [p.data.orderId] }, async (ctx, restrict) => {
     if (p.data.to === "with_courier" && !ctx.store.useCouriers) return { ok: false, error: "المندوبين مقفلين في متجرك. شغّلهم من الإعدادات ← التوصيل." };
-    const r = await changeOrderStatus(ctx.scope, { ...p.data, note: p.data.note ?? null, courierId: p.data.courierId ?? null, shipmentNumber: p.data.shipmentNumber ?? null, actorUserId: ctx.user.id, restrictCourierId: restrict });
+    const r = await changeOrderStatus(ctx.scope, { ...p.data, note: p.data.note ?? null, courierId: p.data.courierId ?? null, shipmentNumber: p.data.shipmentNumber ?? null, shippingCompany: p.data.shippingCompany ?? null, actorUserId: ctx.user.id, restrictCourierId: restrict });
     if (r.ok && p.data.to === "with_courier") void notifyCourierAssigned(getDb(), ctx.store.id, [p.data.orderId]); // إشعار للمندوب
     return r;
   });

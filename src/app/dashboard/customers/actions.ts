@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { setCustomerFlag } from "@/server/orders/customers";
+import { auditStore } from "@/server/store-audit";
 import { actionContext } from "@/server/store-context";
 
 export async function setCustomerFlagAction(id: string, flag: unknown, notes: unknown) {
@@ -11,6 +12,6 @@ export async function setCustomerFlagAction(id: string, flag: unknown, notes: un
   const auth = await actionContext("customers", { write: true });
   if (!auth.ok) return auth;
   const r = await setCustomerFlag(auth.ctx.scope, p.data.id, p.data.flag, p.data.notes ?? null);
-  if (r.ok) revalidatePath("/dashboard", "layout");
+  if (r.ok) { void auditStore(auth.ctx, "customers.write"); revalidatePath("/dashboard", "layout"); }
   return r;
 }

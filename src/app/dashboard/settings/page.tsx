@@ -8,7 +8,7 @@ import { currentRequest } from "@/server/request-origin";
 import { requireStoreContext } from "@/server/store-context";
 import { getDb } from "@/db";
 import { getStoreDomain } from "@/server/domains";
-import { can } from "@/server/permissions";
+import { hasPermission } from "@/server/permissions";
 import { getDeliveryConfig } from "@/server/delivery-service";
 import { getWhatsappTemplates } from "@/server/orders/whatsapp-templates";
 import { t } from "@/server/tenant";
@@ -41,7 +41,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         contact={{ contactPhone: s?.contactPhone ?? "", whatsapp: s?.whatsapp ?? "", email: s?.email ?? "", address: s?.address ?? "", instagram: s?.instagram ?? "", tiktok: s?.tiktok ?? "", facebook: s?.facebook ?? "", snapchat: s?.snapchat ?? "" }}
         payment={{ bankTransfer: bank?.isEnabled ?? false, bankName: cfg.bankName ?? "", accountHolder: cfg.accountHolder ?? "", accountNumber: cfg.accountNumber ?? "", note: cfg.note ?? "" }}
         delivery={{ ...delivery, useCouriers: store.useCouriers }}
-        domain={{ allowed: canUse(ctx.limits, "customDomain"), canManage: can(ctx.role, "billing"), target: (getEnv().CUSTOM_DOMAIN_TARGET || `cname.${getEnv().ROOT_DOMAIN}`).toLowerCase(), current: domain }}
+        domain={{ allowed: canUse(ctx.limits, "customDomain"), canManage: hasPermission(ctx, "billing"), target: (getEnv().CUSTOM_DOMAIN_TARGET || `cname.${getEnv().ROOT_DOMAIN}`).toLowerCase(), current: domain }}
         whatsapp={{ templates }}
         pixels={{ metaPixelId: s?.metaPixelId ?? "", tiktokPixelId: s?.tiktokPixelId ?? "", allowed: canUse(ctx.limits, "pixels") }}
         seo={{ seoTitle: s?.seoTitle ?? "", seoDescription: s?.seoDescription ?? "", og: media(s?.ogMediaId) }}

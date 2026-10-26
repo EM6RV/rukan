@@ -1,6 +1,7 @@
 import { and, count, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/constants";
+import { SHIPPING_COMPANY_IDS } from "@/lib/shipping-companies";
 import { LOCKED_STATUSES, RETURN_REASONS, TRANSITIONS, canTransition } from "@/lib/order-flow";
 import { normalizeLibyanPhone } from "@/lib/phone";
 import { expandStockLines } from "../catalog/bundles";
@@ -65,6 +66,7 @@ export type StatusInput = {
   note?: string | null;
   courierId?: string | null;
   shipmentNumber?: string | null;
+  shippingCompany?: string | null;
   /** لو المستخدم مندوب: يتعامل مع طلبياته بس */
   restrictCourierId?: string | null;
 };
@@ -91,6 +93,7 @@ export function changeOrderStatus(scope: StoreScope, input: StatusInput): Promis
         if (!courier || !courier.isActive) throw new OrderOpError("المندوب غير موجود أو موقوف.");
         set.courierId = courierId;
         if (input.shipmentNumber !== undefined) set.shipmentNumber = input.shipmentNumber?.trim() || null;
+        if (input.shippingCompany !== undefined) set.shippingCompany = SHIPPING_COMPANY_IDS.includes(input.shippingCompany as never) ? input.shippingCompany : null;
       }
 
       if (to === "delivered") {
@@ -129,6 +132,7 @@ const detailsSchema = z.object({
   notes: z.string().trim().max(300).nullish(),
   internalNotes: z.string().trim().max(1000, "الملاحظات الداخلية طويلة").nullish(),
   shipmentNumber: z.string().trim().max(60).nullish(),
+  shippingCompany: z.enum(SHIPPING_COMPANY_IDS).nullish(),
   courierId: z.string().min(1).nullish(),
   deliveryFee: z.number().int().min(0).max(1_000_000_000).optional(),
 });
@@ -155,6 +159,7 @@ export function updateOrderDetails(scope: StoreScope, orderId: string, patch: un
       if (p.notes !== undefined) set.notes = p.notes || null;
       if (p.internalNotes !== undefined) set.internalNotes = p.internalNotes || null;
       if (p.shipmentNumber !== undefined) set.shipmentNumber = p.shipmentNumber || null;
+      if (p.shippingCompany !== undefined) set.shippingCompany = p.shippingCompany ?? null;
       if (p.courierId !== undefined) {
         if (p.courierId) {
           const [c] = await tx.from(t.couriers, eq(t.couriers.id, p.courierId)).limit(1);

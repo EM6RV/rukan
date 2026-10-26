@@ -14,7 +14,7 @@ import { courierRestriction } from "@/server/orders/access";
 import { listCouriers } from "@/server/orders/couriers";
 import { getOrderDetail, nextStatuses } from "@/server/orders/manage";
 import { getWhatsappTemplates } from "@/server/orders/whatsapp-templates";
-import { can } from "@/server/permissions";
+import { hasPermission } from "@/server/permissions";
 import { requireStoreContext } from "@/server/store-context";
 import { OrderDetailView } from "./order-detail";
 
@@ -47,7 +47,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const messages = waNumber ? keys.map((k) => ({ key: k, label: WHATSAPP_KEY_LABELS[k] ?? k, href: waLink(waNumber, renderWhatsapp(templates[k]!.body, vars)) })) : [];
 
   const statuses = nextStatuses(order.status).filter((s) => (!isCourier || (s === "delivered" && order.status === "with_courier")) && (s !== "with_courier" || ctx.store.useCouriers));
-  const canReturn = !isCourier && can(ctx.role, "returns") && (RETURNABLE_STATUSES as readonly string[]).includes(order.status);
+  const canReturn = !isCourier && hasPermission(ctx, "returns") && (RETURNABLE_STATUSES as readonly string[]).includes(order.status);
   const remainingByItem = Object.fromEntries(d.items.map((i) => [i.id, i.quantity - (d.returnedQty[i.id] ?? 0)]));
 
   return (
@@ -65,7 +65,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           id: order.id, number: order.number, status: order.status, createdAt: order.createdAt.getTime(), customerName: order.customerName, customerPhone: order.customerPhone,
           cityName: order.cityName, address: order.address, notes: order.notes, paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus,
           subtotal: order.subtotal, discount: order.discount, deliveryFee: order.deliveryFee, total: order.total, couponCode: order.couponCode,
-          courierId: order.courierId, shipmentNumber: order.shipmentNumber, internalNotes: order.internalNotes, source: order.source,
+          courierId: order.courierId, shipmentNumber: order.shipmentNumber, shippingCompany: order.shippingCompany, internalNotes: order.internalNotes, source: order.source,
         }}
         items={d.items.map((i) => ({ id: i.id, name: i.name, variantLabel: i.variantLabel, unitPrice: i.unitPrice, quantity: i.quantity, imageMediaId: i.imageMediaId, personalization: i.personalizationText, remaining: remainingByItem[i.id]! }))}
         history={d.history.map((h) => ({ id: h.id, from: h.fromStatus, to: h.toStatus, note: h.note, at: h.createdAt.getTime(), actor: h.actorUserId ? (actorName.get(h.actorUserId) ?? "موظف") : null }))}

@@ -8,10 +8,12 @@ import { storeUrl } from "@/lib/store-url";
 import { currentRequest } from "@/server/request-origin";
 import { renderWhatsapp } from "@/lib/whatsapp-defaults";
 import { waLink } from "@/lib/whatsapp";
-import { listAbandonedCarts } from "@/server/marketing/abandoned-carts";
+import { listAbandonedCarts, recoveredSalesReport } from "@/server/marketing/abandoned-carts";
 import { getWhatsappTemplates } from "@/server/orders/whatsapp-templates";
 import { requireStoreContext } from "@/server/store-context";
 import { CartList } from "./cart-list";
+import { RecoveryPanel } from "./recovery-panel";
+import { t } from "@/server/tenant";
 import { LockedPage } from "@/components/dashboard/locked-page";
 import { canUse } from "@/lib/entitlements";
 
@@ -21,13 +23,13 @@ export const dynamic = "force-dynamic";
 export default async function AbandonedCartsPage() {
   const ctx = await requireStoreContext("customers");
   if (!canUse(ctx.limits, "abandonedCarts")) return <LockedPage feature="abandonedCarts" />;
-  const [carts, templates] = await Promise.all([listAbandonedCarts(ctx.scope), getWhatsappTemplates(ctx.scope)]);
+  const [carts, templates, recovered, settings] = await Promise.all([listAbandonedCarts(ctx.scope), getWhatsappTemplates(ctx.scope), recoveredSalesReport(ctx.scope), ctx.scope.from(t.storeSettings).limit(1)]);
   const req = await currentRequest();
-  const link = `${storeUrl(ctx.store.slug, getEnv(), req)}/cart`;
+  const base = storeUrl(ctx.store.slug, getEnv(), req);
   const body = templates.abandoned_cart!.body;
   const rows = carts.map((c) => {
     const wa = toWhatsappNumber(c.phone);
-    const text = renderWhatsapp(body, { name: c.name ?? "", total: formatMoney(c.total), store: ctx.store.name, link });
+    const text = renderWhatsapp(body, { name: c.name ?? "", total: formatMoney(c.total), store: ctx.store.name, link: `${base}/recover/${c.id}` });
     return { ...c, whatsappUrl: wa ? waLink(wa, text) : null };
   });
   const total = carts.reduce((s, c) => s + c.total, 0);
@@ -38,8 +40,9 @@ export default async function AbandonedCartsPage() {
         <h1 className="text-2xl">السلات المتروكة</h1>
         <p className="text-muted">زباين كتبوا رقمهم في صفحة الطلب وما كمّلوا. ذكّرهم على واتساب برسالة جاهزة (تقدر تعدّلها من الإعدادات، تبويب واتساب).</p>
       </div>
+      <RecoveryPanel recovered={recovered} retentionDays={settings[0]?.abandonedRetentionDays ?? 30} writable={ctx.access.writable} />
       {rows.length === 0 ? (
-        <EmptyState icon={<ShoppingCart className="size-6" />} title="ما فيش سلات متروكة" description="لما زبون يكتب رقمه ويسيب السلة 30 دقيقة، تظهر هنا. الأرقام تتمسح بعد 30 يوم." />
+        <EmptyState icon={<ShoppingCart className="size-6" />} title="ما فيش سلات متروكة" description="لما زبون يكتب رقمه ويسيب السلة 30 دقيقة، تظهر هنا. الأرقام تتمسح بعد المدة اللي تحددها." />
       ) : (
         <>
           <p className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm">
