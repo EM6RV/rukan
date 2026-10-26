@@ -29,6 +29,7 @@ const PUBLIC_ROUTES: Record<string, RegExp> = {
   "src/app/api/s/[key]/receipt/route.ts": /hitRateLimit/, // رفع إيصال من الزبون: rate limit + CSRF
   "src/app/s/[key]/robots.txt/route.ts": /./, "src/app/s/-/sitemap.xml/route.ts": /./, "src/app/s/[key]/sitemap.xml/route.ts": /./,
   "src/app/s/[key]/hit/route.ts": /hitRateLimit/, // عدّاد زيارات عام: rate limit، بدون بيانات شخصية
+  "src/app/s/[key]/quick/[slug]/route.ts": /isStoreOpen/, // عرض سريع: نفس بيانات صفحة المنتج العامة من كاش المتجر المفتوح
   "src/app/s/[key]/suggest/route.ts": /isStoreOpen/, // اقتراحات بحث عامة: منتجات ظاهرة فقط من كاش المتجر المفتوح
 };
 

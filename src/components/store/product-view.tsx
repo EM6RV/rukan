@@ -81,7 +81,7 @@ function Gallery({ images, name, frame }: { images: string[]; name: string; fram
   );
 }
 
-export function ProductView({ product }: { product: ProductDetail }) {
+export function ProductView({ product, quick = false }: { product: ProductDetail; quick?: boolean }) {
   const store = useStore();
   const kit = getKit(store.template);
   const cart = useCart();
@@ -155,7 +155,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
       <div className="space-y-6">
         <div className="space-y-3">
           {pct && <span className={cn("inline-block", kit.cls.badge)}>خصم {pct}%</span>}
-          <h1 className={cn(kit.cls.heading, "!text-2xl md:!text-4xl")}>{product.name}</h1>
+          {quick ? <h2 className={cn(kit.cls.heading, "!text-2xl")}>{product.name}</h2> : <h1 className={cn(kit.cls.heading, "!text-2xl md:!text-4xl")}>{product.name}</h1>}
           <Price price={price} compareAt={compareAt} size="lg" />
           {product.brand && <p className="text-sm text-(--sp-muted)">من <Link href={store.href(`/search?brand=${encodeURIComponent(product.brand.slug)}`)} className="font-semibold underline-offset-4 hover:underline">{product.brand.name}</Link></p>}
           {product.tags.length > 0 && <ul className="flex flex-wrap gap-2" aria-label="وسوم">{product.tags.map((tg) => <li key={tg}><Link href={store.href(`/search?tag=${encodeURIComponent(tg)}`)} className="rounded-full bg-(--sp-soft) px-3 py-1 text-xs">#{tg}</Link></li>)}</ul>}
@@ -190,8 +190,8 @@ export function ProductView({ product }: { product: ProductDetail }) {
 
         {pz && (
           <div className="space-y-2">
-            <label htmlFor="pz" className="text-sm font-semibold">{pz.label}{pz.price > 0 && <span className="font-normal text-(--sp-muted)"> (+ {formatMoney(pz.price)})</span>} <span className="font-normal text-(--sp-muted)">اختياري</span></label>
-            <input id="pz" value={note} maxLength={pz.maxChars} onChange={(e) => setNote(e.target.value)} className={kit.cls.input} placeholder={`حتى ${pz.maxChars} حرف`} />
+            <label htmlFor={quick ? "pz-q" : "pz"} className="text-sm font-semibold">{pz.label}{pz.price > 0 && <span className="font-normal text-(--sp-muted)"> (+ {formatMoney(pz.price)})</span>} <span className="font-normal text-(--sp-muted)">اختياري</span></label>
+            <input id={quick ? "pz-q" : "pz"} value={note} maxLength={pz.maxChars} onChange={(e) => setNote(e.target.value)} className={kit.cls.input} placeholder={`حتى ${pz.maxChars} حرف`} />
             <p className="text-xs text-(--sp-muted)">{note.length}/{pz.maxChars}</p>
           </div>
         )}
@@ -233,10 +233,10 @@ export function ProductView({ product }: { product: ProductDetail }) {
       </div>
 
       {/* شريط الشراء الثابت على الموبايل */}
-      <div className={cn("fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-(--sp-line) bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur transition-transform lg:hidden", ctaVisible && "pointer-events-none translate-y-full")} inert={ctaVisible}>
+      {!quick && <div className={cn("fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-(--sp-line) bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur transition-transform lg:hidden", ctaVisible && "pointer-events-none translate-y-full")} inert={ctaVisible}>
         <div className="min-w-0 flex-1"><Price price={price} compareAt={compareAt} size="md" /></div>
         <button type="button" onClick={() => addToCart(false)} disabled={!canBuy} className={cn(kit.cls.btn, "!h-11 shrink-0 !px-6")}>{canBuy ? "أضف للسلة" : "نفد"}</button>
-      </div>
+      </div>}
     </div>
   );
 }
