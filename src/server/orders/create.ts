@@ -7,6 +7,7 @@ import { writeTransaction, type Db } from "@/db";
 import { cities, media, plans, stores } from "@/db/schema/platform";
 import { canUse } from "@/lib/entitlements";
 import { loadStoreLimits, ordersThisMonth } from "../entitlements";
+import { withBundleStock, expandStockLines } from "../catalog/bundles";
 import { variantPrice } from "@/lib/pricing";
 import { firstError, nameSchema, phoneSchema } from "@/lib/validation";
 import { isUniqueViolation } from "../db-errors";
@@ -21,7 +22,7 @@ export const MAX_LINE_QTY = 20;
 
 export const orderInputSchema = z.object({
   items: z
-    .array(z.object({ variantId: z.string().min(1), quantity: z.number().int("الكمية غير صحيحة").min(1, "الكمية غير صحيحة").max(MAX_LINE_QTY, `الحد الأقصى ${MAX_LINE_QTY} قطعة من كل صنف`) }))
+    .array(z.object({ variantId: z.string().min(1), quantity: z.number().int("الكمية غير صحيحة").min(1, "الكمية غير صحيحة").max(MAX_LINE_QTY, `الحد الأقصى ${MAX_LINE_QTY} قطعة من كل صنف`), note: z.string().trim().max(200).nullish().transform((v) => v || null) }))
     .min(1, "السلة فاضية")
     .max(30, "أصناف كثيرة في السلة"),
   name: nameSchema,
@@ -85,12 +86,14 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
 
   // --- الأصناف: الأسعار والمخزون من القاعدة، ما نثقش في العميل ---
   const merged = new Map<string, number>();
-  for (const i of input.items) merged.set(i.variantId, (merged.get(i.variantId) ?? 0) + i.quantity);
+  const notes = new Map<string, string>(); // نقش/إهداء: سطر واحد لكل متغير
+  for (const i of input.items) { merged.set(i.variantId, (merged.get(i.variantId) ?? 0) + i.quantity); if (i.note) notes.set(i.variantId, i.note); }
   const variantIds = [...merged.keys()];
-  const variants = await scope.from(t.productVariants, and(inArray(t.productVariants.id, variantIds), eq(t.productVariants.isActive, true))!);
-  const products = variants.length
-    ? await scope.from(t.products, and(inArray(t.products.id, [...new Set(variants.map((v) => v.productId))]), eq(t.products.isVisible, true), isNull(t.products.deletedAt))!)
+  const rawVariants = await scope.from(t.productVariants, and(inArray(t.productVariants.id, variantIds), eq(t.productVariants.isActive, true))!);
+  const products = rawVariants.length
+    ? await scope.from(t.products, and(inArray(t.products.id, [...new Set(rawVariants.map((v) => v.productId))]), eq(t.products.isVisible, true), isNull(t.products.deletedAt))!)
     : [];
+  const variants = await withBundleStock(scope, products, rawVariants); // مخزون الباقات من مكوناتها
   const pById = new Map(products.map((p) => [p.id, p]));
   const labels = await variantLabels(scope, variantIds);
   const images = products.length ? await scope.from(t.productImages, inArray(t.productImages.productId, products.map((p) => p.id))).orderBy(t.productImages.position) : [];
@@ -101,7 +104,15 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
     if (!v || !p) throw new OrderError("أحد المنتجات في سلتك لم يعد متوفراً. حدّث السلة وجرّب.");
     const quantity = merged.get(id)!;
     if (v.stock < quantity) throw new OrderError(v.stock <= 0 ? `«${p.name}» نفد من المخزون.` : `«${p.name}» المتوفر منه ${v.stock} فقط.`);
-    return { v, p, quantity, price: variantPrice(p, v), label: labels.get(id) ?? null };
+    let price = variantPrice(p, v);
+    let personalization: string | null = null;
+    const note = notes.get(id);
+    if (note && p.personalizationLabel) {
+      if (note.length > (p.personalizationMaxChars ?? 40)) throw new OrderError(`«${p.personalizationLabel}» لا يزيد عن ${p.personalizationMaxChars ?? 40} حرف.`);
+      personalization = note;
+      price += p.personalizationPrice;
+    }
+    return { v, p, quantity, price, personalization, label: labels.get(id) ?? null };
   });
   const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
 
@@ -165,15 +176,17 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
 
   await scope.insert(t.orderItems, lines.map((l) => ({
     orderId, productId: l.p.id, variantId: l.v.id, name: l.p.name, variantLabel: l.label, unitPrice: l.price,
-    unitCost: l.v.costPrice ?? l.p.costPrice, quantity: l.quantity, imageMediaId: images.find((i) => i.productId === l.p.id)?.mediaId ?? null,
+    unitCost: l.v.costPrice ?? l.p.costPrice, quantity: l.quantity, personalizationText: l.personalization, imageMediaId: images.find((i) => i.productId === l.p.id)?.mediaId ?? null,
   })));
   await scope.insert(t.orderStatusHistory, { orderId, fromStatus: null, toStatus: "new", note: "طلبية جديدة من المتجر" });
 
   // --- خصم المخزون ذرّياً: الشرط stock >= qty داخل نفس الـ UPDATE يمنع البيع الزايد ---
   for (const l of lines) {
-    const updated = await scope.update(t.productVariants, { stock: sql`${t.productVariants.stock} - ${l.quantity}` as unknown as number }, and(eq(t.productVariants.id, l.v.id), gte(t.productVariants.stock, l.quantity)));
-    if (!updated.length) throw new OrderError(`«${l.p.name}» نفد من المخزون للتو. حدّث السلة وجرّب.`);
-    await scope.insert(t.stockMovements, { variantId: l.v.id, delta: -l.quantity, reason: "order", orderId, note: `طلبية #${number}` });
+    for (const c of await expandStockLines(scope, l.v.id, l.quantity)) {
+      const updated = await scope.update(t.productVariants, { stock: sql`${t.productVariants.stock} - ${c.quantity}` as unknown as number }, and(eq(t.productVariants.id, c.variantId), gte(t.productVariants.stock, c.quantity)));
+      if (!updated.length) throw new OrderError(`«${l.p.name}» نفد من المخزون للتو. حدّث السلة وجرّب.`);
+      await scope.insert(t.stockMovements, { variantId: c.variantId, delta: -c.quantity, reason: "order", orderId, note: c.viaBundle ? `طلبية #${number} (ضمن باقة ${l.p.name})` : `طلبية #${number}` });
+    }
   }
 
   if (coupon) {
@@ -192,7 +205,7 @@ export type TrackedOrder = {
   number: number; status: string; paymentMethod: string; paymentStatus: string;
   subtotal: number; discount: number; deliveryFee: number; total: number;
   cityName: string; address: string; customerName: string; shipmentNumber: string | null; createdAt: number; couponCode: string | null;
-  items: { name: string; variantLabel: string | null; unitPrice: number; quantity: number; imageMediaId: string | null }[];
+  items: { name: string; variantLabel: string | null; unitPrice: number; quantity: number; imageMediaId: string | null; personalization: string | null }[];
   history: { status: string; at: number }[];
 };
 
@@ -205,7 +218,7 @@ async function hydrateOrder(scope: StoreScope, o: typeof t.orders.$inferSelect):
     number: o.number, status: o.status, paymentMethod: o.paymentMethod, paymentStatus: o.paymentStatus,
     subtotal: o.subtotal, discount: o.discount, deliveryFee: o.deliveryFee, total: o.total, couponCode: o.couponCode,
     cityName: o.cityName, address: o.address, customerName: o.customerName, shipmentNumber: o.shipmentNumber, createdAt: o.createdAt.getTime(),
-    items: items.map((i) => ({ name: i.name, variantLabel: i.variantLabel, unitPrice: i.unitPrice, quantity: i.quantity, imageMediaId: i.imageMediaId })),
+    items: items.map((i) => ({ name: i.name, variantLabel: i.variantLabel, unitPrice: i.unitPrice, quantity: i.quantity, imageMediaId: i.imageMediaId, personalization: i.personalizationText })),
     history: history.map((h) => ({ status: h.toStatus, at: h.createdAt.getTime() })),
   };
 }

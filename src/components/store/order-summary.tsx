@@ -51,7 +51,7 @@ export function OrderSummary({ order, panelClass }: { order: TrackedOrder; panel
           {order.items.map((i, idx) => (
             <li key={idx} className="flex items-center gap-3 py-3 text-sm first:pt-0">
               <span className="size-14 shrink-0 overflow-hidden bg-(--sp-soft)">{i.imageMediaId && <MediaImage id={i.imageMediaId} alt="" sizes="56px" widths={[160]} />}</span>
-              <span className="min-w-0 flex-1"><span className="line-clamp-2 font-medium">{i.name}</span>{i.variantLabel && <span className="block text-xs text-(--sp-muted)">{i.variantLabel}</span>}<span className="text-xs text-(--sp-muted)">الكمية: {i.quantity}</span></span>
+              <span className="min-w-0 flex-1"><span className="line-clamp-2 font-medium">{i.name}</span>{i.variantLabel && <span className="block text-xs text-(--sp-muted)">{i.variantLabel}</span>}{i.personalization && <span className="block text-xs text-(--sp-muted)">✎ {i.personalization}</span>}<span className="text-xs text-(--sp-muted)">الكمية: {i.quantity}</span></span>
               <span className="font-semibold">{formatMoney(i.unitPrice * i.quantity)}</span>
             </li>
           ))}

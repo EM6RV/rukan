@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Minus, Plus, Share2, ShoppingBag } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { mediaUrl } from "@/lib/media-url";
+import { formatMoney } from "@/lib/money";
 import { discountPercent } from "@/lib/pricing";
 import { trackPixel } from "@/lib/pixels";
 import type { ProductDetail } from "@/server/storefront/types";
@@ -94,6 +96,8 @@ export function ProductView({ product }: { product: ProductDetail }) {
   const [selected, setSelected] = useState<Record<string, string>>(initial);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [note, setNote] = useState("");
+  const pz = product.personalization;
 
   const variant = useMemo(() => {
     const ids = Object.values(selected);
@@ -106,7 +110,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
 
   const stock = variant?.stock ?? 0;
   const maxQty = Math.max(1, Math.min(stock, 20));
-  const price = variant?.price ?? product.price;
+  const price = (variant?.price ?? product.price) + (pz && note.trim() ? pz.price : 0);
   const compareAt = variant ? variant.compareAt : product.compareAt;
   const canBuy = !!variant && stock > 0;
 
@@ -115,7 +119,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
   function addToCart(goCheckout: boolean) {
     if (!variant || stock <= 0) return;
     const q = Math.min(qty, maxQty);
-    cart.add(variant.id, q);
+    cart.add(variant.id, q, pz ? note : undefined);
     trackPixel({ name: "AddToCart", value: price * q, id: product.id, contentName: product.name, quantity: q });
     if (goCheckout) return router.push(store.href("/checkout"));
     setAdded(true);
@@ -153,6 +157,8 @@ export function ProductView({ product }: { product: ProductDetail }) {
           {pct && <span className={cn("inline-block", kit.cls.badge)}>خصم {pct}%</span>}
           <h1 className={cn(kit.cls.heading, "!text-2xl md:!text-4xl")}>{product.name}</h1>
           <Price price={price} compareAt={compareAt} size="lg" />
+          {product.brand && <p className="text-sm text-(--sp-muted)">من <Link href={store.href(`/search?brand=${encodeURIComponent(product.brand.slug)}`)} className="font-semibold underline-offset-4 hover:underline">{product.brand.name}</Link></p>}
+          {product.tags.length > 0 && <ul className="flex flex-wrap gap-2" aria-label="وسوم">{product.tags.map((tg) => <li key={tg}><Link href={store.href(`/search?tag=${encodeURIComponent(tg)}`)} className="rounded-full bg-(--sp-soft) px-3 py-1 text-xs">#{tg}</Link></li>)}</ul>}
         </div>
 
         {product.options.map((o) => {
@@ -182,6 +188,14 @@ export function ProductView({ product }: { product: ProductDetail }) {
           );
         })}
 
+        {pz && (
+          <div className="space-y-2">
+            <label htmlFor="pz" className="text-sm font-semibold">{pz.label}{pz.price > 0 && <span className="font-normal text-(--sp-muted)"> (+ {formatMoney(pz.price)})</span>} <span className="font-normal text-(--sp-muted)">اختياري</span></label>
+            <input id="pz" value={note} maxLength={pz.maxChars} onChange={(e) => setNote(e.target.value)} className={kit.cls.input} placeholder={`حتى ${pz.maxChars} حرف`} />
+            <p className="text-xs text-(--sp-muted)">{note.length}/{pz.maxChars}</p>
+          </div>
+        )}
+        {product.isBundle && <p className="text-sm font-semibold text-(--sa-text)">باقة مجمعة بسعر خاص</p>}
         {variant && stock > 0 && stock <= 5 && <p className="text-sm font-semibold text-(--sa-text)">باقي {stock} فقط!</p>}
         {(!variant || stock <= 0) && <p role="status" className="text-sm font-semibold text-red-700">{variant ? "نفد من المخزون" : "هذا الاختيار غير متوفر"}</p>}
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/constants";
 import { LOCKED_STATUSES, RETURN_REASONS, TRANSITIONS, canTransition } from "@/lib/order-flow";
 import { normalizeLibyanPhone } from "@/lib/phone";
+import { expandStockLines } from "../catalog/bundles";
 import { fail, ok, type Result } from "../catalog/result";
 import { t, type StoreScope, type StoreScopeCore } from "../tenant";
 
@@ -41,10 +42,13 @@ async function bumpCustomer(tx: Tx, customerId: string, d: { orders?: number; de
 }
 
 async function addStock(tx: Tx, items: { variantId: string; quantity: number }[], reason: "return" | "cancel", orderId: string, note: string, actor: string | null) {
-  for (const i of items) {
-    if (i.quantity <= 0) continue;
-    await tx.update(t.productVariants, { stock: sql`${t.productVariants.stock} + ${i.quantity}` as unknown as number }, eq(t.productVariants.id, i.variantId));
-    await tx.insert(t.stockMovements, { variantId: i.variantId, delta: i.quantity, reason, orderId, note, actorUserId: actor });
+  for (const item of items) {
+    if (item.quantity <= 0) continue;
+    // الباقة المجمعة: يرجع مخزون مكوناتها مش الباقة نفسها
+    for (const i of await expandStockLines(tx, item.variantId, item.quantity)) {
+      await tx.update(t.productVariants, { stock: sql`${t.productVariants.stock} + ${i.quantity}` as unknown as number }, eq(t.productVariants.id, i.variantId));
+      await tx.insert(t.stockMovements, { variantId: i.variantId, delta: i.quantity, reason, orderId, note, actorUserId: actor });
+    }
   }
 }
 

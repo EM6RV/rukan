@@ -67,7 +67,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           subtotal: order.subtotal, discount: order.discount, deliveryFee: order.deliveryFee, total: order.total, couponCode: order.couponCode,
           courierId: order.courierId, shipmentNumber: order.shipmentNumber, internalNotes: order.internalNotes, source: order.source,
         }}
-        items={d.items.map((i) => ({ id: i.id, name: i.name, variantLabel: i.variantLabel, unitPrice: i.unitPrice, quantity: i.quantity, imageMediaId: i.imageMediaId, remaining: remainingByItem[i.id]! }))}
+        items={d.items.map((i) => ({ id: i.id, name: i.name, variantLabel: i.variantLabel, unitPrice: i.unitPrice, quantity: i.quantity, imageMediaId: i.imageMediaId, personalization: i.personalizationText, remaining: remainingByItem[i.id]! }))}
         history={d.history.map((h) => ({ id: h.id, from: h.fromStatus, to: h.toStatus, note: h.note, at: h.createdAt.getTime(), actor: h.actorUserId ? (actorName.get(h.actorUserId) ?? "موظف") : null }))}
         receipts={d.receipts.map((r) => ({ id: r.id, status: r.status, url: `/api/media/${r.mediaId}`, at: r.createdAt.getTime() }))}
         returns={d.returns.map((r) => ({ id: r.id, reason: r.reason, note: r.reasonNote, restocked: r.restocked, shippingLoss: r.shippingLoss, at: r.createdAt.getTime(), items: r.items.map((ri) => ({ name: d.items.find((i) => i.id === ri.orderItemId)?.name ?? "—", quantity: ri.quantity })) }))}

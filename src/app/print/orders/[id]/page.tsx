@@ -75,7 +75,7 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
             <thead><tr className="border-y border-black text-start"><th className="py-2 text-start">المنتج</th><th className="text-center">الكمية</th><th className="text-center">السعر</th><th className="text-end">الإجمالي</th></tr></thead>
             <tbody>
               {items.map((i) => (
-                <tr key={i.id} className="border-b border-neutral-200"><td className="py-2">{i.name}{i.variantLabel ? ` (${i.variantLabel})` : ""}</td><td className="text-center">{i.quantity}</td><td className="text-center">{formatMoney(i.unitPrice)}</td><td className="text-end">{formatMoney(i.unitPrice * i.quantity)}</td></tr>
+                <tr key={i.id} className="border-b border-neutral-200"><td className="py-2">{i.name}{i.variantLabel ? ` (${i.variantLabel})` : ""}{i.personalizationText ? <div className="text-xs">✎ {i.personalizationText}</div> : null}</td><td className="text-center">{i.quantity}</td><td className="text-center">{formatMoney(i.unitPrice)}</td><td className="text-end">{formatMoney(i.unitPrice * i.quantity)}</td></tr>
               ))}
             </tbody>
           </table>

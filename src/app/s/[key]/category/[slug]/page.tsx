@@ -11,7 +11,7 @@ import { getCatalog, getFacets } from "@/server/storefront/data";
 import { decodeKey, getRequestContext, loadStore } from "@/server/storefront/request";
 import type { CatalogSort } from "@/server/storefront/types";
 
-type Props = { params: Promise<{ key: string; slug: string }>; searchParams: Promise<{ sort?: string; page?: string; min?: string; max?: string; stock?: string; opt?: string }> };
+type Props = { params: Promise<{ key: string; slug: string }>; searchParams: Promise<{ sort?: string; page?: string; min?: string; max?: string; stock?: string; opt?: string; brand?: string; tag?: string }> };
 
 const SORTS: { key: CatalogSort; label: string }[] = [
   { key: "newest", label: "الأحدث" }, { key: "price_asc", label: "الأقل سعراً" }, { key: "price_desc", label: "الأعلى سعراً" },
@@ -47,6 +47,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     if (f.active.max) q.set("max", f.active.max);
     if (f.active.stock) q.set("stock", "1");
     if (f.active.opt) q.set("opt", f.active.opt);
+    if (f.active.brand) q.set("brand", f.active.brand);
+    if (f.active.tag) q.set("tag", f.active.tag);
     if ((over.page ?? 1) > 1) q.set("page", String(over.page));
     return `${base}/category/${encodeURIComponent(slug)}${q.size ? `?${q}` : ""}`;
   };

@@ -215,7 +215,7 @@ function CheckoutInner({ initial, rates, payments, defaultCityId }: { initial: S
                 {l.image && <MediaImage id={l.image} alt="" sizes="56px" widths={[160]} />}
                 <span className="absolute end-0 top-0 min-w-5 bg-(--sp) px-1 text-center text-[11px] font-bold leading-5 text-(--sp-fg)">{l.quantity}</span>
               </span>
-              <span className="min-w-0 flex-1"><span className="line-clamp-1 font-medium">{l.name}</span>{l.variantLabel && <span className="block text-xs text-(--sp-muted)">{l.variantLabel}</span>}</span>
+              <span className="min-w-0 flex-1"><span className="line-clamp-1 font-medium">{l.name}</span>{l.variantLabel && <span className="block text-xs text-(--sp-muted)">{l.variantLabel}</span>}{l.note && <span className="block text-xs text-(--sp-muted)">✎ {l.note}</span>}</span>
               <span className="font-semibold">{formatMoney(l.price * l.quantity)}</span>
             </li>
           ))}

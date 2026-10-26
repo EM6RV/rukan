@@ -5,7 +5,7 @@ import type { StoreModule } from "./constants";
 
 export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
-  | "reports" | "reviews" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
+  | "reports" | "reviews" | "brands" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
 export type NavGroupKey = "sales" | "catalog" | "marketing" | "store" | "team" | "settings";
 export const NAV_GROUPS: { key: NavGroupKey; title: string }[] = [
@@ -36,6 +36,7 @@ export const NAV: NavDef[] = [
   { href: "/dashboard/returns", label: "المرتجعات", icon: "returns", group: "sales", permission: "returns", keywords: "مرتجع ارجاع" },
   { href: "/dashboard/reports", label: "التقارير", icon: "reports", group: "sales", permission: "reports", keywords: "تقرير ارباح اكسل" },
   { href: "/dashboard/products", label: "المنتجات", icon: "products", group: "catalog", permission: "products", keywords: "منتج مخزون اسعار" },
+  { href: "/dashboard/catalog", label: "البراندات والخيارات", icon: "brands", group: "catalog", permission: "products", keywords: "براند ماركة وسوم تاج خيارات مقاسات الوان مكتبة انتهاء صلاحية" },
   { href: "/dashboard/categories", label: "الأقسام", icon: "categories", group: "catalog", permission: "categories", keywords: "قسم تصنيف" },
   { href: "/dashboard/coupons", label: "الكوبونات", icon: "coupons", group: "marketing", permission: "marketing", keywords: "كوبون خصم كود" },
   { href: "/dashboard/reviews", label: "التقييمات", icon: "reviews", group: "marketing", permission: "marketing", keywords: "تقييم نجوم رأي مراجعة" },

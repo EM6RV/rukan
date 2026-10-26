@@ -164,6 +164,12 @@ export const products = sqliteTable(
     isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
     isVisible: integer("is_visible", { mode: "boolean" }).notNull().default(true),
     position: integer("position").notNull().default(0),
+    brandId: text("brand_id"), // البراند من نفس المتجر (يتأكد في الخدمة)
+    kind: text("kind", { enum: ["simple", "bundle"] }).notNull().default("simple"), // bundle: مخزونه من مكوناته
+    // تخصيص (نقش / إهداء): label موجود = مفعّل
+    personalizationLabel: text("personalization_label"),
+    personalizationMaxChars: integer("personalization_max_chars"),
+    personalizationPrice: integer("personalization_price").notNull().default(0),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }), // حذف ناعم علشان الطلبيات القديمة
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -252,6 +258,7 @@ export const productVariants = sqliteTable(
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     imageMediaId: text("image_media_id"),
     position: integer("position").notNull().default(0),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }), // تاريخ انتهاء اختياري
   },
   (t) => [
     uniqueIndex("product_variants_store_id_uq").on(t.storeId, t.id),
@@ -351,6 +358,69 @@ export const coupons = sqliteTable(
   ],
 );
 
+// ===== الكتالوج: براندات، وسوم، مكتبة خيارات، باقات مجمعة =====
+
+export const brands = sqliteTable(
+  "brands",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("brands_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("brands_slug_uq").on(t.storeId, t.slug),
+  ],
+);
+
+export const productTags = sqliteTable(
+  "product_tags",
+  {
+    storeId: storeIdCol(),
+    productId: text("product_id").notNull(),
+    tag: text("tag").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.productId, t.tag] }),
+    index("product_tags_tag_idx").on(t.storeId, t.tag),
+    scopedFk("ptag_product_fk", [t.storeId, t.productId], [products.storeId, products.id], "cascade"),
+  ],
+);
+
+/** مكتبة الخيارات: «المقاسات: S, M, L» تتعرف مرة وتتحط في أي منتج */
+export const optionPresets = sqliteTable(
+  "option_presets",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    values: text("values", { mode: "json" }).$type<{ value: string; colorHex: string | null }[]>().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("option_presets_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("option_presets_name_uq").on(t.storeId, t.name),
+  ],
+);
+
+/** مكونات الباقة المجمعة: المنتج من نوع bundle يتكون من متغيرات بكميات */
+export const bundleItems = sqliteTable(
+  "bundle_items",
+  {
+    storeId: storeIdCol(),
+    bundleProductId: text("bundle_product_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+  },
+  (t) => [
+    primaryKey({ columns: [t.bundleProductId, t.variantId] }),
+    scopedFk("bi_bundle_fk", [t.storeId, t.bundleProductId], [products.storeId, products.id], "cascade"),
+    scopedFk("bi_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id], "cascade"),
+  ],
+);
+
 // ===== تقييمات المنتجات =====
 
 export const productReviews = sqliteTable(
@@ -436,6 +506,7 @@ export const orderItems = sqliteTable(
     unitCost: integer("unit_cost"),
     quantity: integer("quantity").notNull(),
     imageMediaId: text("image_media_id"),
+    personalizationText: text("personalization_text"), // نقش / رسالة إهداء كتبها الزبون
   },
   (t) => [
     uniqueIndex("order_items_store_id_uq").on(t.storeId, t.id),

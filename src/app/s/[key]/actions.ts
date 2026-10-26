@@ -15,7 +15,7 @@ import { isStoreOpen, loadStore } from "@/server/storefront/request";
 import type { CartLine } from "@/server/storefront/types";
 import { forStore } from "@/server/tenant";
 
-const cartItems = z.array(z.object({ variantId: z.string().min(1).max(40), quantity: z.number().int().min(1).max(20) })).max(50);
+const cartItems = z.array(z.object({ variantId: z.string().min(1).max(40), quantity: z.number().int().min(1).max(20), note: z.string().max(200).nullish() })).max(50);
 
 async function openStore(key: string) {
   const sf = await loadStore(key);

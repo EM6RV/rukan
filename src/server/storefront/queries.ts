@@ -5,6 +5,7 @@ import { canUse } from "@/lib/entitlements";
 import { loadStoreLimits } from "../entitlements";
 import { priceRange, variantCompareAt, variantPrice } from "@/lib/pricing";
 import { forStore, t, type StoreScope } from "../tenant";
+import { withBundleStock } from "../catalog/bundles";
 import type { CardProduct, CartLine, CatalogFacets, CatalogPage, CatalogQuery, DeliveryRate, ProductDetail, Storefront } from "./types";
 
 
@@ -99,10 +100,11 @@ const visible = () => and(eq(t.products.isVisible, true), isNull(t.products.dele
 async function toCards(scope: StoreScope, rows: (typeof t.products.$inferSelect)[]): Promise<CardProduct[]> {
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id);
-  const [variants, images] = await Promise.all([
+  const [rawVariants, images] = await Promise.all([
     scope.from(t.productVariants, and(inArray(t.productVariants.productId, ids), eq(t.productVariants.isActive, true))!),
     scope.from(t.productImages, inArray(t.productImages.productId, ids)).orderBy(t.productImages.position),
   ]);
+  const variants = await withBundleStock(scope, rows, rawVariants);
   return rows.map((p) => {
     const vs = variants.filter((v) => v.productId === p.id);
     const imgs = images.filter((i) => i.productId === p.id);
@@ -137,6 +139,14 @@ export async function queryProducts(scope: StoreScope, opts: CatalogQuery = {}):
       WHERE v.store_id = ${t.products.storeId} AND v.product_id = ${t.products.id} AND v.is_active = 1 AND pov.value = ${opts.optionValue.trim().slice(0, 40)}
     )`);
   }
+  if (opts.brandSlug) {
+    const [b] = await scope.from(t.brands, eq(t.brands.slug, opts.brandSlug.slice(0, 80))).limit(1);
+    if (!b) return { items: [], total: 0, page: 1, pageCount: 1 };
+    conds.push(eq(t.products.brandId, b.id));
+  }
+  if (opts.tag?.trim()) {
+    conds.push(sql`EXISTS (SELECT 1 FROM ${t.productTags} pt WHERE pt.store_id = ${t.products.storeId} AND pt.product_id = ${t.products.id} AND pt.tag = ${opts.tag.trim().slice(0, 30)})`);
+  }
   if (opts.categorySlug) {
     const [cat] = await scope.from(t.categories, and(eq(t.categories.slug, opts.categorySlug), eq(t.categories.isVisible, true))!).limit(1);
     if (!cat) return { items: [], total: 0, page: 1, pageCount: 1 };
@@ -158,25 +168,34 @@ export async function queryProducts(scope: StoreScope, opts: CatalogQuery = {}):
 
 /** قيم الخيارات المستعملة في المتجر (للفلاتر): نفس اسم الخيار يتجمع (مقاس، لون…) */
 export async function queryFacets(scope: StoreScope): Promise<CatalogFacets> {
-  const [opts, values] = await Promise.all([scope.from(t.productOptions), scope.from(t.productOptionValues).orderBy(t.productOptionValues.position)]);
+  const [opts, values, brands, tagRows] = await Promise.all([scope.from(t.productOptions), scope.from(t.productOptionValues).orderBy(t.productOptionValues.position), scope.from(t.brands).orderBy(t.brands.name), scope.from(t.productTags)]);
+  const tagCount = new Map<string, number>();
+  for (const r of tagRows) tagCount.set(r.tag, (tagCount.get(r.tag) ?? 0) + 1);
   const byName = new Map<string, Set<string>>();
   for (const o of opts) {
     const set = byName.get(o.name) ?? new Set<string>();
     for (const v of values) if (v.optionId === o.id) set.add(v.value);
     byName.set(o.name, set);
   }
-  return { options: [...byName].map(([name, set]) => ({ name, values: [...set].slice(0, 24) })).filter((o) => o.values.length > 0).slice(0, 4) };
+  return {
+    options: [...byName].map(([name, set]) => ({ name, values: [...set].slice(0, 24) })).filter((o) => o.values.length > 0).slice(0, 4),
+    brands: brands.map((b) => ({ slug: b.slug, name: b.name })),
+    tags: [...tagCount].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([tg]) => tg),
+  };
 }
 
 export async function queryProductDetail(scope: StoreScope, slug: string): Promise<ProductDetail | null> {
   const [p] = await scope.from(t.products, and(eq(t.products.slug, slug), visible())!).limit(1);
   if (!p) return null;
-  const [imgs, opts, vars, cats] = await Promise.all([
+  const [imgs, opts, rawVars, cats, brandRow, tagRows] = await Promise.all([
     scope.from(t.productImages, eq(t.productImages.productId, p.id)).orderBy(t.productImages.position),
     scope.from(t.productOptions, eq(t.productOptions.productId, p.id)).orderBy(t.productOptions.position),
     scope.from(t.productVariants, and(eq(t.productVariants.productId, p.id), eq(t.productVariants.isActive, true))!).orderBy(t.productVariants.position),
     scope.from(t.productCategories, eq(t.productCategories.productId, p.id)),
+    p.brandId ? scope.from(t.brands, eq(t.brands.id, p.brandId)).limit(1) : [],
+    scope.from(t.productTags, eq(t.productTags.productId, p.id)),
   ]);
+  const vars = await withBundleStock(scope, [p], rawVars);
   const optIds = opts.map((o) => o.id);
   const varIds = vars.map((v) => v.id);
   const [values, links, catRows] = await Promise.all([
@@ -195,6 +214,10 @@ export async function queryProductDetail(scope: StoreScope, slug: string): Promi
     options: opts.map((o) => ({ id: o.id, name: o.name, values: values.filter((v) => v.optionId === o.id).map((v) => ({ id: v.id, value: v.value, colorHex: v.colorHex })) })),
     variants,
     categories: catRows.map((c) => ({ id: c.id, slug: c.slug, name: c.name })),
+    brand: brandRow[0] ? { name: brandRow[0].name, slug: brandRow[0].slug } : null,
+    tags: tagRows.map((x) => x.tag).sort(),
+    isBundle: p.kind === "bundle",
+    personalization: p.personalizationLabel ? { label: p.personalizationLabel, maxChars: p.personalizationMaxChars ?? 40, price: p.personalizationPrice } : null,
     updatedAt: p.updatedAt.getTime(),
   };
 }
@@ -225,12 +248,13 @@ export async function queryDeliveryRates(db: Db, scope: StoreScope): Promise<Del
 // ===== السلة =====
 
 /** يحل بنود السلة (variantId + كمية) لبيانات حقيقية. البنود غير المتاحة تنشال. الكمية تتقص على المخزون. */
-export async function resolveCart(scope: StoreScope, items: { variantId: string; quantity: number }[]): Promise<CartLine[]> {
+export async function resolveCart(scope: StoreScope, items: { variantId: string; quantity: number; note?: string | null }[]): Promise<CartLine[]> {
   const wanted = items.filter((i) => i.variantId && Number.isInteger(i.quantity) && i.quantity > 0).slice(0, 50);
   if (!wanted.length) return [];
-  const variants = await scope.from(t.productVariants, and(inArray(t.productVariants.id, wanted.map((w) => w.variantId)), eq(t.productVariants.isActive, true))!);
-  if (!variants.length) return [];
-  const products = await scope.from(t.products, and(inArray(t.products.id, [...new Set(variants.map((v) => v.productId))]), visible())!);
+  const rawVariants = await scope.from(t.productVariants, and(inArray(t.productVariants.id, wanted.map((w) => w.variantId)), eq(t.productVariants.isActive, true))!);
+  if (!rawVariants.length) return [];
+  const products = await scope.from(t.products, and(inArray(t.products.id, [...new Set(rawVariants.map((v) => v.productId))]), visible())!);
+  const variants = await withBundleStock(scope, products, rawVariants);
   const pById = new Map(products.map((p) => [p.id, p]));
   const labels = await variantLabels(scope, variants.map((v) => v.id));
   const images = products.length ? await scope.from(t.productImages, inArray(t.productImages.productId, products.map((p) => p.id))).orderBy(t.productImages.position) : [];
@@ -243,9 +267,10 @@ export async function resolveCart(scope: StoreScope, items: { variantId: string;
     const merged = lines.find((l) => l.variantId === v.id);
     const qty = Math.min(w.quantity + (merged?.quantity ?? 0), v.stock, 20);
     if (merged) { merged.quantity = qty; continue; }
+    const note = p.personalizationLabel && w.note ? w.note.trim().slice(0, p.personalizationMaxChars ?? 40) : null;
     lines.push({
-      variantId: v.id, productId: p.id, slug: p.slug, name: p.name, variantLabel: labels.get(v.id) ?? null,
-      price: variantPrice(p, v), compareAt: variantCompareAt(p, v), stock: v.stock, quantity: qty,
+      variantId: v.id, productId: p.id, slug: p.slug, name: p.name, variantLabel: labels.get(v.id) ?? null, note,
+      price: variantPrice(p, v) + (note ? p.personalizationPrice : 0), compareAt: variantCompareAt(p, v), stock: v.stock, quantity: qty,
       image: images.find((i) => i.productId === p.id)?.mediaId ?? null,
     });
   }

@@ -25,7 +25,7 @@ type Props = {
     paymentMethod: string; paymentStatus: string; subtotal: number; discount: number; deliveryFee: number; total: number; couponCode: string | null;
     courierId: string | null; shipmentNumber: string | null; internalNotes: string | null; source: string | null;
   };
-  items: { id: string; name: string; variantLabel: string | null; unitPrice: number; quantity: number; imageMediaId: string | null; remaining: number }[];
+  items: { id: string; name: string; variantLabel: string | null; unitPrice: number; quantity: number; imageMediaId: string | null; personalization: string | null; remaining: number }[];
   history: { id: string; from: OrderStatus | null; to: OrderStatus; note: string | null; at: number; actor: string | null }[];
   receipts: { id: string; status: "pending" | "approved" | "rejected"; url: string; at: number }[];
   returns: { id: string; reason: string; note: string | null; restocked: boolean; shippingLoss: number; at: number; items: { name: string; quantity: number }[] }[];
@@ -120,7 +120,7 @@ export function OrderDetailView(p: Props) {
               {p.items.map((i) => (
                 <li key={i.id} className="flex items-center gap-3 p-4">
                   {i.imageMediaId ? <img src={`/api/media/${i.imageMediaId}?w=160`} alt="" className="size-14 shrink-0 rounded-md bg-surface-2 object-cover" /> : <div className="size-14 shrink-0 rounded-md bg-surface-2" />}
-                  <div className="min-w-0 flex-1"><p className="truncate font-medium">{i.name}</p>{i.variantLabel && <p className="text-sm text-muted">{i.variantLabel}</p>}<p className="text-sm text-muted">{formatMoney(i.unitPrice)} × {i.quantity}</p></div>
+                  <div className="min-w-0 flex-1"><p className="truncate font-medium">{i.name}</p>{i.variantLabel && <p className="text-sm text-muted">{i.variantLabel}</p>}{i.personalization && <p className="text-sm font-medium text-gold-fg">✎ {i.personalization}</p>}<p className="text-sm text-muted">{formatMoney(i.unitPrice)} × {i.quantity}</p></div>
                   <span className="font-semibold">{formatMoney(i.unitPrice * i.quantity)}</span>
                 </li>
               ))}
@@ -337,7 +337,7 @@ function ReturnModal({ order, items, onClose }: { order: Props["order"]; items: 
           <fieldset className="space-y-2"><legend className="mb-1 text-sm font-medium">الكميات المرتجعة</legend>
             {items.filter((i) => i.remaining > 0).map((i) => (
               <div key={i.id} className="flex items-center justify-between gap-3 rounded-md bg-surface-2 p-2.5 text-sm">
-                <span className="min-w-0 truncate">{i.name}{i.variantLabel ? ` (${i.variantLabel})` : ""}</span>
+                <span className="min-w-0 truncate">{i.name}{i.variantLabel ? ` (${i.variantLabel})` : ""}{i.personalization ? ` ✎ ${i.personalization}` : ""}</span>
                 <input aria-label={`كمية ${i.name}`} type="number" min={0} max={i.remaining} value={qty[i.id] ?? 0} onChange={(e) => setQty((q) => ({ ...q, [i.id]: Math.max(0, Math.min(i.remaining, Math.floor(Number(e.target.value)) || 0)) }))} className="h-9 w-20 rounded-md border border-line bg-surface px-2 text-center" />
               </div>
             ))}

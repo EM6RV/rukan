@@ -5,14 +5,14 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
   BarChart3, Blocks, Brush, CreditCard, FolderTree, LayoutDashboard, LayoutGrid, Package, Palette, PanelRightClose, PanelRightOpen,
-  PenLine, RotateCcw, Star, Search, Settings, ShoppingBag, ShoppingCart, Ticket, Truck, UserCog, Users, type LucideIcon,
+  PenLine, RotateCcw, Star, Tags, Search, Settings, ShoppingBag, ShoppingCart, Ticket, Truck, UserCog, Users, type LucideIcon,
 } from "lucide-react";
 import { activeHref, BOTTOM_NAV, MENU_HREF, NAV_GROUPS, type NavIcon, type NavItem } from "@/lib/dashboard-nav";
 import { cn } from "@/lib/cn";
 
 export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   home: LayoutDashboard, orders: ShoppingBag, products: Package, categories: FolderTree, customers: Users, carts: ShoppingCart, couriers: Truck,
-  returns: RotateCcw, coupons: Ticket, reviews: Star, reports: BarChart3, services: Brush, content: PenLine, design: Palette, staff: UserCog, billing: CreditCard,
+  returns: RotateCcw, coupons: Ticket, reviews: Star, brands: Tags, reports: BarChart3, services: Brush, content: PenLine, design: Palette, staff: UserCog, billing: CreditCard,
   settings: Settings, modules: Blocks, menu: LayoutGrid,
 };
 

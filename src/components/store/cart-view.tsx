@@ -82,6 +82,7 @@ export function CartView() {
                 <div>
                   <Link href={store.href(`/product/${encodeURIComponent(l.slug)}`)} className="line-clamp-2 font-semibold hover:underline">{l.name}</Link>
                   {l.variantLabel && <p className="text-sm text-(--sp-muted)">{l.variantLabel}</p>}
+                  {l.note && <p className="text-sm text-(--sp-muted)">✎ {l.note}</p>}
                   <Price price={l.price} compareAt={l.compareAt} size="sm" />
                   {l.stock <= 3 && <p className="text-xs font-semibold text-(--sa-text)">باقي {l.stock} فقط</p>}
                 </div>

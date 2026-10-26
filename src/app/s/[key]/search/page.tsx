@@ -9,7 +9,7 @@ import { FilterBar, parseFilters } from "@/components/store/filter-bar";
 import { getCatalog, getFacets } from "@/server/storefront/data";
 import { getRequestContext, loadStore } from "@/server/storefront/request";
 
-type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ q?: string; page?: string; min?: string; max?: string; stock?: string; opt?: string }> };
+type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ q?: string; page?: string; min?: string; max?: string; stock?: string; opt?: string; brand?: string; tag?: string }> };
 
 export const metadata: Metadata = { title: "كل المنتجات", robots: { index: false, follow: true } };
 
@@ -24,7 +24,7 @@ export default async function SearchPage({ params, searchParams }: Props) {
   const page = Math.max(1, Number(sp.page) || 1);
   const f = parseFilters(sp);
   const [result, facets] = await Promise.all([getCatalog(sf.id, { q, page, sort: "newest", ...f.query }), getFacets(sf.id)]);
-  const extra: Record<string, string> = { ...(f.active.min ? { min: f.active.min } : {}), ...(f.active.max ? { max: f.active.max } : {}), ...(f.active.stock ? { stock: "1" } : {}), ...(f.active.opt ? { opt: f.active.opt } : {}) };
+  const extra: Record<string, string> = { ...(f.active.min ? { min: f.active.min } : {}), ...(f.active.max ? { max: f.active.max } : {}), ...(f.active.stock ? { stock: "1" } : {}), ...(f.active.opt ? { opt: f.active.opt } : {}), ...(f.active.brand ? { brand: f.active.brand } : {}), ...(f.active.tag ? { tag: f.active.tag } : {}) };
   const url = (p: number) => `${base}/search?${new URLSearchParams({ ...(q ? { q } : {}), ...extra, ...(p > 1 ? { page: String(p) } : {}) })}`;
 
   return (
