@@ -20,7 +20,16 @@ const link = z.string().trim().max(300, "الرابط طويل").transform((v, c
   return z.NEVER;
 });
 
+const slug = z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,30}$/, "الرمز بالإنجليزي صغير وأرقام وشرطة (مثلاً: perfume)");
 const schema = z.object({
+  trust: z.object({ items: z.array(str(40, "شارة الثقة", 2)).max(6, "الحد الأقصى 6 شارات"), partnersTitle: str(60, "عنوان الشركاء"), partners: z.array(z.object({ name: str(40, "اسم الشركة", 2) })).max(12, "الحد الأقصى 12 شركة") }).default(DEFAULT_SITE_CONTENT.trust),
+  niches: z.object({
+    title: str(60, "عنوان الأنشطة", 2), subtitle: str(200, "وصف الأنشطة"),
+    items: z.array(z.object({ slug, title: str(40, "اسم النشاط", 2), headline: str(90, "عنوان صفحة النشاط", 2), text: str(260, "نص النشاط", 2), benefits: z.array(str(90, "ميزة", 2)).min(1).max(5), template: z.enum(STORE_TEMPLATES, { error: "قالب غير صحيح" }), primary: hexColorSchema, accent: hexColorSchema, example: str(40, "اسم المتجر المثال", 2) }))
+      .max(9, "الحد الأقصى 9 أنشطة").refine((a) => new Set(a.map((x) => x.slug)).size === a.length, "رمز نشاط مكرر"),
+  }).default(DEFAULT_SITE_CONTENT.niches),
+  templates: z.object({ title: str(80, "عنوان القوالب", 2), subtitle: str(200, "وصف القوالب"), button: str(30, "نص زر القالب", 2), items: z.array(z.object({ template: z.enum(STORE_TEMPLATES, { error: "قالب غير صحيح" }), blurb: str(120, "وصف القالب", 2), primary: hexColorSchema, accent: hexColorSchema })).max(6, "الحد الأقصى 6 قوالب") }).default(DEFAULT_SITE_CONTENT.templates),
+  stories: z.object({ title: str(80, "عنوان القصص", 2), subtitle: str(200, "وصف القصص"), items: z.array(z.object({ icon: z.enum(FEATURE_ICONS, { error: "أيقونة غير صحيحة" }), title: str(50, "عنوان القصة", 2), text: str(260, "نص القصة", 2), points: z.array(str(70, "نقطة", 2)).max(4, "الحد الأقصى 4 نقاط") })).max(6, "الحد الأقصى 6 قصص") }).default(DEFAULT_SITE_CONTENT.stories),
   hero: z.object({ badge: str(60, "شارة الهيرو"), title: str(90, "عنوان الهيرو", 2), subtitle: str(300, "وصف الهيرو"), primaryCta: str(30, "نص الزر الرئيسي", 2), secondaryCta: str(30, "نص الزر الثاني"), imageMediaId: z.string().min(1).nullish().transform((v) => v ?? null) }),
   features: z.object({ title: str(80, "عنوان المميزات", 2), subtitle: str(200, "وصف المميزات"), items: z.array(z.object({ icon: z.enum(FEATURE_ICONS, { error: "أيقونة غير صحيحة" }), title: str(50, "عنوان الميزة", 2), text: str(220, "نص الميزة", 2) })).min(1, "ميزة وحدة على الأقل").max(9, "الحد الأقصى 9 مميزات") }),
   showcase: z.object({ title: str(80, "عنوان الأمثلة", 2), subtitle: str(200, "وصف الأمثلة"), items: z.array(z.object({ name: str(40, "اسم المتجر", 2), category: str(40, "نوع النشاط"), primary: hexColorSchema, accent: hexColorSchema, template: z.enum(STORE_TEMPLATES, { error: "قالب غير صحيح" }), href: link })).max(6, "الحد الأقصى 6 أمثلة") }),

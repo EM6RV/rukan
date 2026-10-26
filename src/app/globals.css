@@ -193,3 +193,19 @@
     .sf-reveal { animation: fade-up 0.6s ease-out both; animation-timeline: view(); animation-range: entry 0% entry 30%; }
   }
 }
+
+/* عرض الهيرو الحي (موقع رُكن): تسلسل 8 ثواني بدون JavaScript. يتعطل مع «تقليل الحركة» ويعرض الحالة النهائية. */
+@keyframes demo-tap { 0%, 18% { transform: scale(1); } 22% { transform: scale(0.94); } 28%, 100% { transform: scale(1); } }
+@keyframes demo-toast { 0%, 26% { opacity: 0; transform: translateY(8px); } 32%, 60% { opacity: 1; transform: none; } 66%, 100% { opacity: 0; transform: translateY(-4px); } }
+@keyframes demo-order { 0%, 40% { opacity: 0; transform: translateY(-14px) scale(0.97); max-height: 0; } 48%, 94% { opacity: 1; transform: none; max-height: 5rem; } 100% { opacity: 0; max-height: 5rem; } }
+@keyframes demo-bell { 0%, 44% { transform: rotate(0); } 48% { transform: rotate(14deg); } 52% { transform: rotate(-12deg); } 56% { transform: rotate(8deg); } 60%, 100% { transform: rotate(0); } }
+@keyframes demo-count { 0%, 44% { content: "1,240"; } 48%, 100% { content: "1,325"; } }
+.demo-tap { animation: demo-tap 8s ease-in-out infinite; }
+.demo-toast { animation: demo-toast 8s ease-in-out infinite; }
+.demo-order { animation: demo-order 8s ease-in-out infinite; overflow: hidden; }
+.demo-bell { animation: demo-bell 8s ease-in-out infinite; transform-origin: top center; }
+@media (prefers-reduced-motion: reduce) {
+  .demo-tap, .demo-bell { animation: none; }
+  .demo-toast { animation: none; opacity: 0; }
+  .demo-order { animation: none; opacity: 1; max-height: 5rem; }
+}

@@ -14,6 +14,7 @@ import { FEATURE_ICONS, FEATURE_ICON_LABELS, type SiteContent } from "@/lib/site
 import { resetSiteContentAction, saveSiteContentAction } from "../actions";
 
 type Img = { id: string; url: string } | null;
+const slugify = (v: string) => v.toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 30);
 
 function ListButtons({ i, n, move, remove }: { i: number; n: number; move: (from: number, to: number) => void; remove: () => void }) {
   const b = "flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface-2 disabled:opacity-40";
@@ -78,6 +79,70 @@ export function SiteEditor({ initial, heroImage }: { initial: SiteContent; heroI
           </div>
         ))}
         {c.showcase.items.length < 6 && <Button variant="outline" size="sm" onClick={() => add("showcase", { name: "متجر جديد", category: "نشاط", primary: "#0D263E", accent: "#C19E58", template: "naqa", href: "" })}><Plus className="size-4" aria-hidden /> مثال</Button>}
+      </CardBody></Card>
+
+      <Card><CardHeader title="شريط الثقة" description="شارات صغيرة تحت الغلاف. الشركاء: شركات ليبية مربوطة فعلاً فقط (فاضية = ما تظهر)." /><CardBody className="space-y-4">
+        <Textarea label="الشارات (كل واحدة في سطر)" rows={4} maxLength={300} value={c.trust.items.join("\n")} onChange={(e) => set("trust", { items: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 6) })} />
+        <Input label="عنوان الشركاء" value={c.trust.partnersTitle} maxLength={60} onChange={(e) => set("trust", { partnersTitle: e.target.value })} />
+        <Textarea label="الشركاء (كل شركة في سطر)" rows={3} maxLength={400} value={c.trust.partners.map((p) => p.name).join("\n")} onChange={(e) => set("trust", { partners: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 12).map((name) => ({ name })) })} hint="مثال: فانكس، درب السبيل، النورس — لا تكتب إلا شركة مربوطة فعلاً." />
+      </CardBody></Card>
+
+      <Card><CardHeader title="شن نشاطك؟ (صفحات الأنشطة)" description="كل نشاط له صفحة خاصة /for/الرمز بمثال وقالب مقترح." /><CardBody className="space-y-4">
+        <Input label="العنوان" value={c.niches.title} maxLength={60} onChange={(e) => set("niches", { title: e.target.value })} />
+        <Input label="الوصف" value={c.niches.subtitle} maxLength={200} onChange={(e) => set("niches", { subtitle: e.target.value })} />
+        {c.niches.items.map((it, i) => {
+          const upd = (patch: Partial<typeof it>) => setC((x) => ({ ...x, niches: { ...x.niches, items: x.niches.items.map((n, j) => (j === i ? { ...n, ...patch } : n)) } }));
+          return (
+            <div key={i} className="space-y-3 rounded-lg border border-line p-3">
+              <div className="flex items-end gap-2"><div className="min-w-0 flex-1"><Input label="اسم النشاط" value={it.title} maxLength={40} onChange={(e) => upd({ title: e.target.value })} /></div>
+                <div className="flex shrink-0">
+                  <button type="button" aria-label="لفوق" className="flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface-2 disabled:opacity-40" disabled={i === 0} onClick={() => setC((x) => ({ ...x, niches: { ...x.niches, items: swap(x.niches.items, i, i - 1) } }))}><ArrowUp className="size-4" /></button>
+                  <button type="button" aria-label="لتحت" className="flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface-2 disabled:opacity-40" disabled={i === c.niches.items.length - 1} onClick={() => setC((x) => ({ ...x, niches: { ...x.niches, items: swap(x.niches.items, i, i + 1) } }))}><ArrowDown className="size-4" /></button>
+                  <button type="button" aria-label="حذف" className="flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface-2" onClick={() => setC((x) => ({ ...x, niches: { ...x.niches, items: x.niches.items.filter((_, j) => j !== i) } }))}><Trash2 className="size-4 text-danger-fg" /></button>
+                </div></div>
+              <div className="grid gap-3 sm:grid-cols-2"><Input label="الرمز في الرابط (إنجليزي)" dir="ltr" className="text-right" value={it.slug} maxLength={30} onChange={(e) => upd({ slug: slugify(e.target.value) })} hint={`/for/${it.slug}`} /><Select label="القالب المقترح" value={it.template} onChange={(e) => upd({ template: e.target.value as never })}>{STORE_TEMPLATES.map((v) => <option key={v} value={v}>{STORE_TEMPLATE_LABELS[v]}</option>)}</Select></div>
+              <Input label="عنوان الصفحة" value={it.headline} maxLength={90} onChange={(e) => upd({ headline: e.target.value })} />
+              <Textarea label="الوصف" rows={2} maxLength={260} value={it.text} onChange={(e) => upd({ text: e.target.value })} />
+              <Textarea label="المميزات (كل ميزة في سطر)" rows={3} maxLength={450} value={it.benefits.join("\n")} onChange={(e) => upd({ benefits: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 5) })} />
+              <div className="grid items-end gap-3 sm:grid-cols-3"><Input label="متجر المثال" value={it.example} maxLength={40} onChange={(e) => upd({ example: e.target.value })} /><label className="flex items-center gap-2 text-sm font-medium">الأساسي <input type="color" value={it.primary} onChange={(e) => upd({ primary: e.target.value })} className="h-9 w-14 rounded border border-line" /></label><label className="flex items-center gap-2 text-sm font-medium">التمييز <input type="color" value={it.accent} onChange={(e) => upd({ accent: e.target.value })} className="h-9 w-14 rounded border border-line" /></label></div>
+            </div>
+          );
+        })}
+        {c.niches.items.length < 9 && <Button variant="outline" size="sm" onClick={() => setC((x) => ({ ...x, niches: { ...x.niches, items: [...x.niches.items, { slug: `activity-${x.niches.items.length + 1}`, title: "نشاط جديد", headline: "عنوان الصفحة", text: "وصف النشاط", benefits: ["ميزة"], template: "naqa", primary: "#0D263E", accent: "#C19E58", example: "متجر المثال" }] } }))}><Plus className="size-4" aria-hidden /> نشاط</Button>}
+      </CardBody></Card>
+
+      <Card><CardHeader title="معرض القوالب" description="القوالب الستة بمعاينة حية. اللون والوصف لكل واحد." /><CardBody className="space-y-4">
+        <Input label="العنوان" value={c.templates.title} maxLength={80} onChange={(e) => set("templates", { title: e.target.value })} />
+        <Input label="الوصف" value={c.templates.subtitle} maxLength={200} onChange={(e) => set("templates", { subtitle: e.target.value })} />
+        <Input label="نص زر القالب" value={c.templates.button} maxLength={30} onChange={(e) => set("templates", { button: e.target.value })} />
+        {c.templates.items.map((it, i) => {
+          const upd = (patch: Partial<typeof it>) => setC((x) => ({ ...x, templates: { ...x.templates, items: x.templates.items.map((n, j) => (j === i ? { ...n, ...patch } : n)) } }));
+          return (
+            <div key={i} className="grid items-end gap-3 rounded-lg border border-line p-3 sm:grid-cols-[8rem_1fr_auto_auto]">
+              <Select label="القالب" value={it.template} onChange={(e) => upd({ template: e.target.value as never })}>{STORE_TEMPLATES.map((v) => <option key={v} value={v}>{STORE_TEMPLATE_LABELS[v]}</option>)}</Select>
+              <Input label="الوصف" value={it.blurb} maxLength={120} onChange={(e) => upd({ blurb: e.target.value })} />
+              <label className="flex items-center gap-2 text-sm font-medium">الأساسي <input type="color" value={it.primary} onChange={(e) => upd({ primary: e.target.value })} className="h-9 w-12 rounded border border-line" /></label>
+              <label className="flex items-center gap-2 text-sm font-medium">التمييز <input type="color" value={it.accent} onChange={(e) => upd({ accent: e.target.value })} className="h-9 w-12 rounded border border-line" /></label>
+            </div>
+          );
+        })}
+      </CardBody></Card>
+
+      <Card><CardHeader title="المميزات كقصص" /><CardBody className="space-y-4">
+        <Input label="العنوان" value={c.stories.title} maxLength={80} onChange={(e) => set("stories", { title: e.target.value })} />
+        <Input label="الوصف" value={c.stories.subtitle} maxLength={200} onChange={(e) => set("stories", { subtitle: e.target.value })} />
+        {c.stories.items.map((it, i) => {
+          const upd = (patch: Partial<typeof it>) => setC((x) => ({ ...x, stories: { ...x.stories, items: x.stories.items.map((n, j) => (j === i ? { ...n, ...patch } : n)) } }));
+          return (
+            <div key={i} className="space-y-3 rounded-lg border border-line p-3">
+              <div className="flex items-end gap-2"><div className="w-36"><Select label="الأيقونة" value={it.icon} onChange={(e) => upd({ icon: e.target.value as never })}>{FEATURE_ICONS.map((k) => <option key={k} value={k}>{FEATURE_ICON_LABELS[k]}</option>)}</Select></div><div className="min-w-0 flex-1"><Input label="العنوان" value={it.title} maxLength={50} onChange={(e) => upd({ title: e.target.value })} /></div>
+                <button type="button" aria-label="حذف" className="flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface-2" onClick={() => setC((x) => ({ ...x, stories: { ...x.stories, items: x.stories.items.filter((_, j) => j !== i) } }))}><Trash2 className="size-4 text-danger-fg" /></button></div>
+              <Textarea label="الحكاية" rows={2} maxLength={260} value={it.text} onChange={(e) => upd({ text: e.target.value })} />
+              <Textarea label="نقاط (كل نقطة في سطر)" rows={3} maxLength={300} value={it.points.join("\n")} onChange={(e) => upd({ points: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 4) })} />
+            </div>
+          );
+        })}
+        {c.stories.items.length < 6 && <Button variant="outline" size="sm" onClick={() => setC((x) => ({ ...x, stories: { ...x.stories, items: [...x.stories.items, { icon: "store", title: "قصة جديدة", text: "الحكاية", points: [] }] } }))}><Plus className="size-4" aria-hidden /> قصة</Button>}
       </CardBody></Card>
 
       <Card><CardHeader title="خدمات التصميم" description="قسم في الصفحة الرئيسية يعلن عن الريلز واللوجو والهوية. الطلب نفسه يجي من لوحة البياع." /><CardBody className="space-y-4">

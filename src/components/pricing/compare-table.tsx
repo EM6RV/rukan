@@ -12,7 +12,7 @@ function Cell({ v }: { v: CompareValue }) {
 /** جدول مقارنة كامل: الميزات صفوف والباقات أعمدة. على الموبايل يتمرر أفقي وعمود الميزة ثابت. */
 export function CompareTable({ plans, rows }: { plans: PricingPlan[]; rows?: Record<string, string> }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
+    <div tabIndex={0} role="region" aria-label="جدول مقارنة الباقات" className="overflow-x-auto rounded-2xl border border-line bg-surface">
       <table className="w-full min-w-[40rem] border-collapse text-sm">
         <caption className="sr-only">مقارنة الباقات</caption>
         <thead>

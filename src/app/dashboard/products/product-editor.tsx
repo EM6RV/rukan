@@ -385,7 +385,7 @@ export function ProductEditor({
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:start-64">
         <div className="mx-auto flex max-w-5xl items-center justify-end gap-3 lg:px-5">
-          <Link href="/dashboard/products" className="px-3 text-sm font-medium text-muted hover:text-fg">إلغاء</Link>
+          <Link href="/dashboard/products" className="inline-flex min-h-10 items-center px-3 text-sm font-medium text-muted hover:text-fg">إلغاء</Link>
           <Button size="lg" loading={pending} disabled={!writable || (quotaBlocked && !initial) || uploading > 0} onClick={save}>{initial ? "حفظ التعديلات" : "إضافة المنتج"}</Button>
         </div>
       </div>
