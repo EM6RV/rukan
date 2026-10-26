@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { stores } from "@/db/schema/platform";
+import { writeAudit } from "@/server/audit";
 import { deleteAnnouncement, saveAnnouncement } from "@/server/admin/announcements";
 import { saveAddon, savePlan } from "@/server/admin/plans";
 import { SITE_TAG } from "@/server/admin/site-cache";
@@ -98,6 +101,18 @@ export async function adminDomainStatusAction(domainId: unknown, status: unknown
   const p = z.object({ domainId: id, status: z.enum(["verified", "failed"]) }).safeParse({ domainId, status });
   if (!p.success) return bad();
   return run(({ db, userId }) => adminSetDomainStatus(db, p.data.domainId, p.data.status, userId), (d) => { touch({ id: d.storeId, slug: d.domain }); });
+}
+
+// ===== صندوق الرسائل (تجربة لمتاجر معينة) =====
+export async function setInboxBetaAction(storeId: unknown, enabled: unknown) {
+  const p = z.object({ storeId: id, enabled: z.boolean() }).safeParse({ storeId, enabled });
+  if (!p.success) return bad();
+  return run(async ({ db, userId }) => {
+    const rows = await db.update(stores).set({ inboxBeta: p.data.enabled }).where(eq(stores.id, p.data.storeId)).returning({ id: stores.id, slug: stores.slug });
+    if (!rows[0]) return { ok: false as const, error: "ما لقينا المتجر." };
+    await writeAudit(db, { actorUserId: userId, storeId: p.data.storeId, action: p.data.enabled ? "store.inbox_beta_on" : "store.inbox_beta_off" });
+    return { ok: true as const, data: { id: rows[0].id, slug: rows[0].slug } };
+  }, (d) => touch(d));
 }
 
 // ===== كلمة سر المالك (نسيها) =====

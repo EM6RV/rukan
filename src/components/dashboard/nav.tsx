@@ -5,14 +5,14 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
   BarChart3, Blocks, Brush, CreditCard, FolderTree, LayoutDashboard, LayoutGrid, Package, Palette, PanelRightClose, PanelRightOpen,
-  PenLine, RotateCcw, Star, Tags, PackageMinus, History, ScrollText, Activity, Warehouse, ArrowLeftRight, ClipboardCheck, ClipboardList, Handshake, Wallet, Receipt, HandCoins, LineChart, Search, Settings, ShoppingBag, ShoppingCart, Ticket, Truck, UserCog, Users, type LucideIcon,
+  PenLine, RotateCcw, Star, Tags, PackageMinus, History, ScrollText, Activity, Warehouse, ArrowLeftRight, ClipboardCheck, ClipboardList, Handshake, Wallet, Receipt, HandCoins, LineChart, MessagesSquare, Search, Settings, ShoppingBag, ShoppingCart, Ticket, Truck, UserCog, Users, type LucideIcon,
 } from "lucide-react";
 import { activeHref, BOTTOM_NAV, MENU_HREF, NAV_GROUPS, type NavIcon, type NavItem } from "@/lib/dashboard-nav";
 import { cn } from "@/lib/cn";
 
 export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   home: LayoutDashboard, orders: ShoppingBag, products: Package, categories: FolderTree, customers: Users, carts: ShoppingCart, couriers: Truck,
-  returns: RotateCcw, coupons: Ticket, reviews: Star, brands: Tags, lowstock: PackageMinus, stock: History, audit: ScrollText, analytics: Activity, warehouse: Warehouse, transfer: ArrowLeftRight, stocktake: ClipboardCheck, purchase: ClipboardList, supplier: Handshake, wallet: Wallet, expense: Receipt, debt: HandCoins, pnl: LineChart, reports: BarChart3, services: Brush, content: PenLine, design: Palette, staff: UserCog, billing: CreditCard,
+  returns: RotateCcw, coupons: Ticket, reviews: Star, brands: Tags, lowstock: PackageMinus, stock: History, audit: ScrollText, analytics: Activity, warehouse: Warehouse, transfer: ArrowLeftRight, stocktake: ClipboardCheck, purchase: ClipboardList, supplier: Handshake, wallet: Wallet, expense: Receipt, debt: HandCoins, pnl: LineChart, inbox: MessagesSquare, reports: BarChart3, services: Brush, content: PenLine, design: Palette, staff: UserCog, billing: CreditCard,
   settings: Settings, modules: Blocks, menu: LayoutGrid,
 };
 

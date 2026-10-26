@@ -7,6 +7,10 @@ import { fail, ok, type Result } from "./catalog/result";
 
 export type ModuleState = "on" | "off" | "locked" | "soon";
 
+/** الوحدات المتاحة لمتجر معين: المبنية للكل + صندوق الرسائل للمتاجر اللي فعّلها لها الأدمن كتجربة */
+export const availableFor = (store: { inboxBeta?: boolean }, base: readonly StoreModule[] = AVAILABLE_MODULES): readonly StoreModule[] =>
+  store.inboxBeta ? [...new Set<StoreModule>([...base, "marketplaceInbox"])] : base;
+
 /** الباقة تسمح بالوحدة؟ (غير محدد في الباقة = لا) */
 export const planAllowsModule = (limits: PlanLimits, key: StoreModule) => limits.modules?.[key] === true;
 
@@ -18,16 +22,17 @@ export function moduleState(enabled: readonly StoreModule[], limits: PlanLimits,
 }
 
 /** الوحدة شغّالة فعلاً للمتجر؟ (هذا اللي يتفحص في السيرفر قبل أي صفحة أو إجراء يخص الوحدة) */
-export const isModuleOn = (store: { enabledModules: readonly StoreModule[] }, limits: PlanLimits, key: StoreModule, available: readonly StoreModule[] = AVAILABLE_MODULES) =>
-  moduleState(store.enabledModules, limits, key, available) === "on";
+export const isModuleOn = (store: { enabledModules: readonly StoreModule[]; inboxBeta?: boolean }, limits: PlanLimits, key: StoreModule, available?: readonly StoreModule[]) =>
+  moduleState(store.enabledModules, limits, key, available ?? availableFor(store)) === "on";
 
 const toggleSchema = z.object({ key: z.enum(STORE_MODULES, { error: "وحدة مش معروفة" }), on: z.boolean({ error: "اختار شغّال أو مطفي" }) });
 
 /** تشغيل/طفي وحدة. الطفي يخفيها بس: بياناتها تبقى، ولو رجع فعّلها يلقاها. */
 export async function setModuleEnabled(
-  db: Db, store: { id: string; enabledModules: readonly StoreModule[] }, limits: PlanLimits, input: unknown,
-  available: readonly StoreModule[] = AVAILABLE_MODULES,
+  db: Db, store: { id: string; enabledModules: readonly StoreModule[]; inboxBeta?: boolean }, limits: PlanLimits, input: unknown,
+  availableOverride?: readonly StoreModule[],
 ): Promise<Result> {
+  const available = availableOverride ?? availableFor(store);
   const p = toggleSchema.safeParse(input);
   if (!p.success) return fail(p.error.issues[0]?.message ?? "فيه خانة غلط");
   const { key, on } = p.data;

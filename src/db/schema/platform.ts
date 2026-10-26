@@ -148,6 +148,8 @@ export const stores = sqliteTable(
     useCouriers: integer("use_couriers", { mode: "boolean" }).notNull().default(true),
     /** الوحدات الاختيارية اللي فعّلها البياع. الطفي ما يمسح بياناتها. */
     enabledModules: text("enabled_modules", { mode: "json" }).$type<StoreModule[]>().notNull().default(sql`'[]'`),
+    /** تجربة صندوق الرسائل: الأدمن يفعّلها لمتاجر معينة (الوحدة لسه «قريباً» للباقي) */
+    inboxBeta: integer("inbox_beta", { mode: "boolean" }).notNull().default(false),
     /** رسالة تحويل الباقة (نظام الباقات الجديد) تبان في اللوحة لين يقفلها: "from:to:cycle" */
     planNotice: text("plan_notice"),
     logoMediaId: text("logo_media_id"),

@@ -15,12 +15,12 @@ import { createManualOrderAction } from "./actions";
 type City = { id: string; name: string; fee: number | null };
 type Item = { variantId: string; label: string; price: number; stock: number };
 
-export function ManualOrderForm({ cities, items, warehouses, writable }: { cities: City[]; items: Item[]; warehouses: { id: string; name: string }[]; writable: boolean }) {
+export function ManualOrderForm({ initialName = "", cities, items, warehouses, writable }: { initialName?: string; cities: City[]; items: Item[]; warehouses: { id: string; name: string }[]; writable: boolean }) {
   const router = useRouter();
   const { toast } = useToast();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [v, setV] = useState({ name: "", phone: "", cityId: "", address: "", notes: "", source: "whatsapp" as (typeof MANUAL_SOURCES)[number], payment: "cod" as "cod" | "bank_transfer", fee: "", discount: "", warehouseId: "" });
+  const [v, setV] = useState({ name: initialName, phone: "", cityId: "", address: "", notes: "", source: "whatsapp" as (typeof MANUAL_SOURCES)[number], payment: "cod" as "cod" | "bank_transfer", fee: "", discount: "", warehouseId: "" });
   const [lines, setLines] = useState<{ variantId: string; quantity: string }[]>([]);
 
   const city = cities.find((c) => c.id === v.cityId);

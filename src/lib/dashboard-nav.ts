@@ -6,7 +6,7 @@ import type { StoreModule } from "./constants";
 export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
   | "reports" | "reviews" | "brands" | "lowstock" | "stock" | "audit" | "analytics"
-  | "warehouse" | "transfer" | "stocktake" | "purchase" | "supplier" | "wallet" | "expense" | "debt" | "pnl" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
+  | "inbox" | "warehouse" | "transfer" | "stocktake" | "purchase" | "supplier" | "wallet" | "expense" | "debt" | "pnl" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
 export type NavGroupKey = "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
 export const NAV_GROUPS: { key: NavGroupKey; title: string }[] = [
@@ -34,6 +34,7 @@ export type NavDef = {
 export const NAV: NavDef[] = [
   { href: "/dashboard", label: "الرئيسية", icon: "home", group: null, permission: "dashboard", keywords: "ملخص مبيعات" },
   { href: "/dashboard/orders", label: "الطلبيات", icon: "orders", group: "sales", permission: "orders", keywords: "طلب طلبية" },
+  { href: "/dashboard/inbox", label: "صندوق الرسائل", icon: "inbox", group: "sales", permission: "orders", keywords: "رسائل محادثات انستغرام فيسبوك واتساب", module: "marketplaceInbox" },
   { href: "/dashboard/customers", label: "الزبائن", icon: "customers", group: "sales", permission: "customers", keywords: "زبون عملاء" },
   { href: "/dashboard/abandoned-carts", label: "السلات المتروكة", icon: "carts", group: "sales", permission: "customers", keywords: "سلة متروكة" },
   { href: "/dashboard/couriers", label: "المندوبون والكاش", icon: "couriers", group: "sales", permission: "couriers", keywords: "مندوب توصيل فلوس كاش تسوية", needsCouriers: true },

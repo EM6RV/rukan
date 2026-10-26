@@ -21,6 +21,7 @@ import { eq } from "drizzle-orm";
 import { getStoreDetail } from "@/server/admin/stores";
 import { getStoreDomain } from "@/server/domains";
 import { DomainAdmin } from "./domain-admin";
+import { InboxBeta } from "./inbox-beta";
 import { ResetOwnerPassword } from "./reset-password";
 import { StoreActions } from "./store-actions";
 
@@ -81,6 +82,8 @@ export default async function StoreDetail({ params }: { params: Promise<{ id: st
           currentAddons={Object.fromEntries(current.map((c) => [c.addonId, c.quantity]))}
         />
       </div>
+
+      <InboxBeta storeId={store.id} enabled={store.inboxBeta} />
 
       <ResetOwnerPassword userId={store.ownerUserId} storeId={store.id} ownerName={d.ownerName} />
 

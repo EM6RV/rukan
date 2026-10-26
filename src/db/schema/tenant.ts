@@ -766,6 +766,64 @@ export const cashClosings = sqliteTable(
   (t) => [scopedFk("cc_account_fk", [t.storeId, t.accountId], [finAccounts.storeId, finAccounts.id])],
 );
 
+// ===== صندوق الرسائل (هيكل فقط — «قريباً»: ما فيه ربط حقيقي مع أي قناة) =====
+
+export const inboxChannels = sqliteTable(
+  "inbox_channels",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    kind: text("kind", { enum: ["instagram", "facebook", "whatsapp", "site"] }).notNull(),
+    label: text("label").notNull(),
+    status: text("status", { enum: ["disconnected", "connected", "error"] }).notNull().default("disconnected"),
+    externalId: text("external_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("inbox_channels_store_id_uq").on(t.storeId, t.id), uniqueIndex("inbox_channels_kind_uq").on(t.storeId, t.kind)],
+);
+
+export const inboxConversations = sqliteTable(
+  "inbox_conversations",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    channelId: text("channel_id").notNull(),
+    customerId: text("customer_id"), // ربط بالزبون لو عرفناه
+    orderId: text("order_id"), // بعد التحويل لطلبية
+    externalThreadId: text("external_thread_id"),
+    participantName: text("participant_name").notNull(),
+    participantHandle: text("participant_handle"),
+    status: text("status", { enum: ["open", "closed", "converted"] }).notNull().default("open"),
+    unreadCount: integer("unread_count").notNull().default(0),
+    lastMessageAt: integer("last_message_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("inbox_conv_store_id_uq").on(t.storeId, t.id),
+    index("inbox_conv_last_idx").on(t.storeId, t.lastMessageAt),
+    scopedFk("ic_channel_fk", [t.storeId, t.channelId], [inboxChannels.storeId, inboxChannels.id], "cascade"),
+    scopedFk("ic_customer_fk", [t.storeId, t.customerId], [customers.storeId, customers.id]),
+    scopedFk("ic_order_fk", [t.storeId, t.orderId], [orders.storeId, orders.id]),
+  ],
+);
+
+export const inboxMessages = sqliteTable(
+  "inbox_messages",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    conversationId: text("conversation_id").notNull(),
+    direction: text("direction", { enum: ["in", "out"] }).notNull(),
+    body: text("body").notNull(),
+    externalId: text("external_id"),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [
+    index("inbox_msg_conv_idx").on(t.storeId, t.conversationId, t.sentAt),
+    scopedFk("im_conv_fk", [t.storeId, t.conversationId], [inboxConversations.storeId, inboxConversations.id], "cascade"),
+  ],
+);
+
 // ===== تقييمات المنتجات =====
 
 export const productReviews = sqliteTable(

@@ -12,7 +12,8 @@ import { ManualOrderForm } from "./manual-order-form";
 
 export const metadata: Metadata = { title: "طلبية يدوية" };
 
-export default async function NewOrderPage() {
+export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ name?: string }> }) {
+  const sp = await searchParams;
   const ctx = await requireStoreContext("orders");
   const [delivery, lookups, variants, products] = await Promise.all([
     getDeliveryConfig(getDb(), ctx.scope), loadEditorLookups(ctx.scope, ctx.limits),
@@ -27,7 +28,7 @@ export default async function NewOrderPage() {
   return (
     <div className="space-y-5">
       <div><h1 className="text-2xl">طلبية يدوية</h1><p className="text-muted">سجّل طلبية جات من واتساب أو إنستا أو اتصال في ثواني. المخزون ينقص تلقائياً.</p></div>
-      <ManualOrderForm warehouses={warehouses} cities={delivery.rows.map((r) => ({ id: r.cityId, name: r.cityName, fee: r.isActive ? r.fee : null }))} items={items} writable={ctx.access.writable} />
+      <ManualOrderForm initialName={sp.name?.slice(0, 80) ?? ""} warehouses={warehouses} cities={delivery.rows.map((r) => ({ id: r.cityId, name: r.cityName, fee: r.isActive ? r.fee : null }))} items={items} writable={ctx.access.writable} />
     </div>
   );
 }

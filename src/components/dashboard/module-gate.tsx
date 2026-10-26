@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Lock, PowerOff } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { STORE_MODULE_INFO, type StoreModule } from "@/lib/constants";
-import { moduleState } from "@/server/modules";
+import { availableFor, moduleState } from "@/server/modules";
 import type { StoreContext } from "@/server/store-context";
 
 /**
@@ -10,7 +10,7 @@ import type { StoreContext } from "@/server/store-context";
  * الاستعمال: const gate = moduleGate(ctx, "warehouses"); if (gate) return gate;
  */
 export function moduleGate(ctx: Pick<StoreContext, "store" | "limits">, key: StoreModule) {
-  const state = moduleState(ctx.store.enabledModules, ctx.limits, key);
+  const state = moduleState(ctx.store.enabledModules, ctx.limits, key, availableFor(ctx.store));
   if (state === "on") return null;
   const info = STORE_MODULE_INFO[key];
   return (
@@ -18,7 +18,7 @@ export function moduleGate(ctx: Pick<StoreContext, "store" | "limits">, key: Sto
       <div className="flex size-14 items-center justify-center rounded-full bg-surface-2">{state === "locked" ? <Lock className="size-6" aria-hidden /> : <PowerOff className="size-6" aria-hidden />}</div>
       <h1 className="text-xl">{info.title}</h1>
       <p className="max-w-sm leading-7 text-muted">{info.description}</p>
-      {state === "locked" ? (
+      {state === "soon" ? <p className="rounded-full bg-gold/20 px-4 py-1.5 text-sm font-semibold">قريباً</p> : state === "locked" ? (
         <><p className="text-sm">الوحدة هذي مش في باقتك الحالية.</p><ButtonLink href="/dashboard/billing">رقّي باقتك</ButtonLink></>
       ) : (
         <><p className="text-sm">الوحدة مطفية. فعّلها من الإعدادات وبياناتك تبقى محفوظة.</p><ButtonLink href="/dashboard/settings/modules">تفعيل الوحدة</ButtonLink></>
