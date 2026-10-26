@@ -12,7 +12,7 @@ export function auditStore(ctx: Pick<StoreContext, "user" | "store">, action: st
 export const ACTION_LABELS: Record<string, string> = {
   "products.write": "تعديل المنتجات", "orders.write": "تعديل الطلبيات", "settings.write": "تعديل الإعدادات", "marketing.write": "تعديل التسويق والكوبونات",
   "categories.write": "تعديل الأقسام", "couriers.write": "تعديل المندوبين والكاش", "customers.write": "تعديل الزبائن", "staff.write": "تعديل الموظفين",
-  "billing.write": "الاشتراك", "content.write": "تعديل المحتوى", "returns.write": "المرتجعات", "reports.write": "التقارير",
+  "billing.write": "الاشتراك", "accounting.write": "الحسابات والمصاريف", "content.write": "تعديل المحتوى", "returns.write": "المرتجعات", "reports.write": "التقارير",
   "staff.add": "إضافة موظف", "staff.role": "تغيير صلاحية موظف", "staff.password": "تغيير كلمة سر موظف", "staff.remove": "حذف موظف",
   "order.status": "تغيير حالة طلبية", "order.manual": "تسجيل طلبية يدوية", "product.delete": "حذف منتجات", "product.price": "تعديل أسعار جماعي",
 };

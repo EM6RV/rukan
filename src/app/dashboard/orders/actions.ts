@@ -9,6 +9,7 @@ import { bulkAssignCourier, changeOrderStatus, registerReturn, reviewReceipt, se
 import { getDb } from "@/db";
 import { notifyCourierAssigned } from "@/server/push";
 import { invalidateStore } from "@/server/storefront/data";
+import { ledgerAccountFor } from "@/server/accounting/hooks";
 import { SHIPPING_COMPANY_IDS } from "@/lib/shipping-companies";
 import { auditStore } from "@/server/store-audit";
 import { actionContext, type StoreContext } from "@/server/store-context";
@@ -82,7 +83,7 @@ export async function reviewReceiptAction(receiptId: string, decision: unknown) 
   return run("orders", { staffOnly: true }, async (ctx) => {
     const [rc] = await ctx.scope.from(t.paymentReceipts, eq(t.paymentReceipts.id, p.data.receiptId)).limit(1);
     if (rc && (await lockedOrderIds(ctx.scope, ctx.limits, [rc.orderId])).length) return { ok: false, error: ORDER_LOCKED_ERROR };
-    return reviewReceipt(ctx.scope, p.data.receiptId, p.data.decision, ctx.user.id);
+    return reviewReceipt(ctx.scope, p.data.receiptId, p.data.decision, ctx.user.id, p.data.decision === "approved" ? await ledgerAccountFor(ctx, "bank") : null);
   });
 }
 

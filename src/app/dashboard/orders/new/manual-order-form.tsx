@@ -15,12 +15,12 @@ import { createManualOrderAction } from "./actions";
 type City = { id: string; name: string; fee: number | null };
 type Item = { variantId: string; label: string; price: number; stock: number };
 
-export function ManualOrderForm({ cities, items, writable }: { cities: City[]; items: Item[]; writable: boolean }) {
+export function ManualOrderForm({ cities, items, warehouses, writable }: { cities: City[]; items: Item[]; warehouses: { id: string; name: string }[]; writable: boolean }) {
   const router = useRouter();
   const { toast } = useToast();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [v, setV] = useState({ name: "", phone: "", cityId: "", address: "", notes: "", source: "whatsapp" as (typeof MANUAL_SOURCES)[number], payment: "cod" as "cod" | "bank_transfer", fee: "", discount: "" });
+  const [v, setV] = useState({ name: "", phone: "", cityId: "", address: "", notes: "", source: "whatsapp" as (typeof MANUAL_SOURCES)[number], payment: "cod" as "cod" | "bank_transfer", fee: "", discount: "", warehouseId: "" });
   const [lines, setLines] = useState<{ variantId: string; quantity: string }[]>([]);
 
   const city = cities.find((c) => c.id === v.cityId);
@@ -39,7 +39,7 @@ export function ManualOrderForm({ cities, items, writable }: { cities: City[]; i
     start(async () => {
       const r = await createManualOrderAction({
         items: lines.map((l) => ({ variantId: l.variantId, quantity: Number(l.quantity) })), name: v.name, phone: v.phone, cityId: v.cityId, address: v.address, notes: v.notes,
-        paymentMethod: v.payment, manualSource: v.source, deliveryFee: fe, discount: di,
+        paymentMethod: v.payment, manualSource: v.source, deliveryFee: fe, discount: di, warehouseId: v.warehouseId || null,
       });
       if (!r.ok) return setError(r.error);
       toast(`تم تسجيل الطلبية #${r.data.number}`);
@@ -89,6 +89,7 @@ export function ManualOrderForm({ cities, items, writable }: { cities: City[]; i
           <Select label="طريقة الدفع" value={v.payment} onChange={(e) => setV({ ...v, payment: e.target.value as typeof v.payment })}><option value="cod">عند الاستلام</option><option value="bank_transfer">تحويل مصرفي</option></Select>
           <Input label="سعر التوصيل (د.ل)" inputMode="decimal" value={v.fee} placeholder={city?.fee != null ? String(city.fee / 1000) : "حسب المدينة"} onChange={(e) => setV({ ...v, fee: e.target.value })} hint="اتركه فاضي لسعر المدينة" />
           <Input label="خصم (د.ل)" inputMode="decimal" value={v.discount} onChange={(e) => setV({ ...v, discount: e.target.value })} />
+          {warehouses.length > 0 && <Select label="تنسحب من مخزن" value={v.warehouseId} onChange={(e) => setV({ ...v, warehouseId: e.target.value })}><option value="">الرئيسي</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</Select>}
           <div className="sm:col-span-3"><Textarea label="ملاحظات (اختياري)" rows={2} maxLength={300} value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} /></div>
         </CardBody>
       </Card>

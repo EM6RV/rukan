@@ -5,12 +5,16 @@ import type { StoreModule } from "./constants";
 
 export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
-  | "reports" | "reviews" | "brands" | "lowstock" | "stock" | "audit" | "analytics" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
+  | "reports" | "reviews" | "brands" | "lowstock" | "stock" | "audit" | "analytics"
+  | "warehouse" | "transfer" | "stocktake" | "purchase" | "supplier" | "wallet" | "expense" | "debt" | "pnl" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
-export type NavGroupKey = "sales" | "catalog" | "marketing" | "store" | "team" | "settings";
+export type NavGroupKey = "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
 export const NAV_GROUPS: { key: NavGroupKey; title: string }[] = [
   { key: "sales", title: "المبيعات" },
   { key: "catalog", title: "الكتالوج" },
+  { key: "inventory", title: "المخزون" },
+  { key: "purchasing", title: "المشتريات" },
+  { key: "accounting", title: "الحسابات" },
   { key: "marketing", title: "التسويق" },
   { key: "store", title: "المتجر" },
   { key: "team", title: "الفريق" },
@@ -41,6 +45,16 @@ export const NAV: NavDef[] = [
   { href: "/dashboard/low-stock", label: "قرب يخلص", icon: "lowstock", group: "catalog", permission: "products", keywords: "مخزون قليل ينفد تنبيه" },
   { href: "/dashboard/stock-movements", label: "حركة المخزون", icon: "stock", group: "catalog", permission: "products", keywords: "سجل مخزون حركات جرد" },
   { href: "/dashboard/categories", label: "الأقسام", icon: "categories", group: "catalog", permission: "categories", keywords: "قسم تصنيف" },
+  { href: "/dashboard/warehouses", label: "المخازن", icon: "warehouse", group: "inventory", permission: "products", keywords: "مخزن مخازن قيمة المخزون", module: "warehouses" },
+  { href: "/dashboard/warehouses/transfers", label: "التحويلات", icon: "transfer", group: "inventory", permission: "products", keywords: "تحويل نقل بين المخازن", module: "warehouses" },
+  { href: "/dashboard/warehouses/stocktake", label: "الجرد", icon: "stocktake", group: "inventory", permission: "products", keywords: "جرد عد فرق", module: "warehouses" },
+  { href: "/dashboard/purchasing", label: "فواتير الشراء", icon: "purchase", group: "purchasing", permission: "products", keywords: "شراء فاتورة استلام بضاعة", module: "purchasing" },
+  { href: "/dashboard/purchasing/suppliers", label: "الموردين", icon: "supplier", group: "purchasing", permission: "products", keywords: "مورد موردين دفعات رصيد", module: "purchasing" },
+  { href: "/dashboard/purchasing/report", label: "تقرير المشتريات", icon: "pnl", group: "purchasing", permission: "products", keywords: "تقرير مشتريات موردين", module: "purchasing" },
+  { href: "/dashboard/accounting", label: "الحسابات", icon: "wallet", group: "accounting", permission: "accounting", keywords: "خزنة بنك محفظة رصيد حركات", module: "accounting" },
+  { href: "/dashboard/accounting/expenses", label: "المصاريف", icon: "expense", group: "accounting", permission: "accounting", keywords: "مصروف مصاريف", module: "accounting" },
+  { href: "/dashboard/accounting/receivables", label: "ديون الزباين", icon: "debt", group: "accounting", permission: "accounting", keywords: "دين ذمم زبون مستحقات", module: "accounting" },
+  { href: "/dashboard/accounting/reports", label: "الأرباح والتدفق", icon: "pnl", group: "accounting", permission: "accounting", keywords: "ارباح خسائر تدفق نقدي اقفال", module: "accounting" },
   { href: "/dashboard/coupons", label: "الكوبونات", icon: "coupons", group: "marketing", permission: "marketing", keywords: "كوبون خصم كود" },
   { href: "/dashboard/reviews", label: "التقييمات", icon: "reviews", group: "marketing", permission: "marketing", keywords: "تقييم نجوم رأي مراجعة" },
   { href: "/dashboard/content", label: "محتوى المتجر", icon: "content", group: "store", permission: "settings", keywords: "نصوص بانر من نحن سياسات" },

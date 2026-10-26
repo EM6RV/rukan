@@ -2,11 +2,11 @@ import type { MemberRole } from "@/lib/constants";
 
 export type Permission =
   | "dashboard" | "products" | "categories" | "settings" | "orders" | "customers"
-  | "couriers" | "returns" | "marketing" | "reports" | "staff" | "billing" | "media";
+  | "couriers" | "returns" | "marketing" | "reports" | "staff" | "billing" | "media" | "accounting";
 
 const ALL: Permission[] = [
   "dashboard", "products", "categories", "settings", "orders", "customers",
-  "couriers", "returns", "marketing", "reports", "staff", "billing", "media",
+  "couriers", "returns", "marketing", "reports", "staff", "billing", "media", "accounting",
 ];
 
 const MATRIX: Record<MemberRole, Permission[]> = {
@@ -24,7 +24,7 @@ export const homeFor = (role: MemberRole): string => (can(role, "dashboard") ? "
 export const PERMISSION_LABELS: Record<Permission, string> = {
   dashboard: "الرئيسية والإحصائيات", products: "المنتجات والمخزون", categories: "الأقسام", settings: "الإعدادات وتصميم المتجر",
   orders: "الطلبيات", customers: "الزبائن والسلات المتروكة", couriers: "المندوبين والكاش", returns: "المرتجعات",
-  marketing: "الكوبونات والتقييمات", reports: "التقارير", staff: "الموظفين", billing: "الاشتراك", media: "الصور",
+  marketing: "الكوبونات والتقييمات", reports: "التقارير", staff: "الموظفين", billing: "الاشتراك", media: "الصور", accounting: "الحسابات والمصاريف",
 };
 /** الصلاحيات اللي ينفع تُعطى لدور مخصص (الموظفين والاشتراك للمالك بس، منعاً لتصعيد الصلاحيات) */
 export const ASSIGNABLE_PERMISSIONS: Permission[] = ALL.filter((p) => p !== "staff" && p !== "billing");

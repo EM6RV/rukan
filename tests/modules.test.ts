@@ -68,6 +68,7 @@ describe("الوحدات الاختيارية", () => {
   });
 
   it("بدون وحدات مبنية: كل الوحدات «قريباً»", () => {
-    expect(moduleState([], ALL, "warehouses")).toBe("soon");
+    expect(moduleState([], ALL, "warehouses", [])).toBe("soon");
+    expect(moduleState([], ALL, "marketplaceInbox")).toBe("soon"); // صندوق الرسائل: هيكل فقط
   });
 });

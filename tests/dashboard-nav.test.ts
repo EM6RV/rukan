@@ -81,9 +81,10 @@ describe("بحث لوحة الأوامر (Ctrl+K)", () => {
 });
 
 describe("خريطة صفحات اللوحة", () => {
-  const nav = (role: Parameters<typeof can>[0], useCouriers = true) => navFor({ can: (p) => can(role, p), useCouriers, isCourier: role === "courier", moduleOn: () => false });
+  const nav = (role: Parameters<typeof can>[0], useCouriers = true, modules = false) => navFor({ can: (p) => can(role, p), useCouriers, isCourier: role === "courier", moduleOn: () => modules });
   it("كل دور يشوف صفحاته بس", () => {
-    expect(nav("owner").length).toBe(NAV.length);
+    expect(nav("owner", true, true).length).toBe(NAV.length);
+    expect(nav("owner").length).toBe(NAV.filter((d) => !d.module).length); // الوحدات المطفية تختفي من القائمة
     expect(nav("courier").map((i) => i.href)).toEqual(["/dashboard/orders"]);
     expect(nav("orders_staff").some((i) => i.href === "/dashboard/products")).toBe(false);
     expect(nav("manager").some((i) => i.href === "/dashboard/billing")).toBe(false);

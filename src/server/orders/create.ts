@@ -8,6 +8,7 @@ import { cities, media, plans, stores } from "@/db/schema/platform";
 import { canUse } from "@/lib/entitlements";
 import { loadStoreLimits, ordersThisMonth } from "../entitlements";
 import { withBundleStock, expandStockLines } from "../catalog/bundles";
+import { bumpRow } from "../inventory/warehouses";
 import { shippingCompanyName, trackingUrl } from "@/lib/shipping-companies";
 import { MANUAL_SOURCES, MANUAL_SOURCE_LABELS } from "@/lib/manual-sources";
 import { variantPrice } from "@/lib/pricing";
@@ -68,16 +69,17 @@ export const manualOrderSchema = orderInputSchema.omit({ couponCode: true, recei
   manualSource: z.enum(MANUAL_SOURCES, { error: "اختار مصدر الطلبية" }),
   deliveryFee: z.number().int().min(0, "سعر التوصيل 0 أو أكثر").max(100_000_000).nullish().transform((v) => v ?? null),
   discount: z.number().int().min(0, "الخصم 0 أو أكثر").max(1_000_000_000).default(0),
+  warehouseId: z.string().min(1).nullish().transform((v) => v ?? null),
 });
-type ManualOpts = { source: string; deliveryFee: number | null; discount: number };
+type ManualOpts = { source: string; deliveryFee: number | null; discount: number; warehouseId: string | null };
 
 export async function createManualOrder(db: Db, storeId: string, rawInput: unknown): Promise<{ ok: true; data: CreatedOrder } | { ok: false; error: string }> {
   const parsed = manualOrderSchema.safeParse(rawInput);
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
-  const { manualSource, deliveryFee, discount, ...rest } = parsed.data;
+  const { manualSource, deliveryFee, discount, warehouseId, ...rest } = parsed.data;
   const input = { ...rest, couponCode: null, receiptMediaId: null, source: `manual:${manualSource}` };
   try {
-    const data = await writeTransaction(db, async (tx) => place(tx as unknown as Db, storeId, input, { source: manualSource, deliveryFee, discount }));
+    const data = await writeTransaction(db, async (tx) => place(tx as unknown as Db, storeId, input, { source: manualSource, deliveryFee, discount, warehouseId }));
     return { ok: true, data };
   } catch (e) {
     if (e instanceof OrderError) return { ok: false, error: e.message };
@@ -209,12 +211,23 @@ async function place(db: Db, storeId: string, input: z.output<typeof orderInputS
   })));
   await scope.insert(t.orderStatusHistory, { orderId, fromStatus: null, toStatus: "new", note: manual ? `طلبية يدوية (${MANUAL_SOURCE_LABELS[manual.source as (typeof MANUAL_SOURCES)[number]] ?? manual.source})` : "طلبية جديدة من المتجر" });
 
+  // المخزن اللي تنسحب منه الطلبية (وحدة المخازن): الرئيسي = null، وغيره لازم يكون مفتوح وفيه الكمية
+  let wh: { id: string } | null = null;
+  if (manual?.warehouseId) {
+    const [w] = await scope.from(t.warehouses, eq(t.warehouses.id, manual.warehouseId)).limit(1);
+    if (!w || !w.isActive) throw new OrderError("المخزن غير موجود أو موقوف.");
+    if (w.isLocked) throw new OrderError(`المخزن «${w.name}» مقفول أثناء الجرد.`);
+    if (!w.isDefault) wh = w;
+  }
+  if (wh) await scope.update(t.orders, { warehouseId: wh.id }, eq(t.orders.id, orderId));
+
   // --- خصم المخزون ذرّياً: الشرط stock >= qty داخل نفس الـ UPDATE يمنع البيع الزايد ---
   for (const l of lines) {
     for (const c of await expandStockLines(scope, l.v.id, l.quantity)) {
       const updated = await scope.update(t.productVariants, { stock: sql`${t.productVariants.stock} - ${c.quantity}` as unknown as number }, and(eq(t.productVariants.id, c.variantId), gte(t.productVariants.stock, c.quantity)));
       if (!updated.length) throw new OrderError(`«${l.p.name}» نفد من المخزون للتو. حدّث السلة وجرّب.`);
-      await scope.insert(t.stockMovements, { variantId: c.variantId, delta: -c.quantity, reason: "order", orderId, note: c.viaBundle ? `طلبية #${number} (ضمن باقة ${l.p.name})` : `طلبية #${number}` });
+      if (wh) { try { await bumpRow(scope, wh.id, c.variantId, -c.quantity); } catch { throw new OrderError(`«${l.p.name}» الكمية في المخزن المختار أقل من المطلوب.`); } }
+      await scope.insert(t.stockMovements, { variantId: c.variantId, delta: -c.quantity, reason: "order", orderId, warehouseId: wh?.id ?? null, note: c.viaBundle ? `طلبية #${number} (ضمن باقة ${l.p.name})` : `طلبية #${number}` });
     }
   }
 

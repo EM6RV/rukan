@@ -82,7 +82,7 @@ export const STORE_MODULE_INFO: Record<StoreModule, { title: string; description
   marketplaceInbox: { title: "صندوق الرسائل", description: "رسايل إنستغرام وفيسبوك وواتساب في مكان واحد، وتحويل المحادثة لطلبية." },
 };
 /** الوحدات اللي اتبنت فعلاً. الباقي يبان «قريباً» وما يتفعلش. */
-export const AVAILABLE_MODULES: readonly StoreModule[] = [];
+export const AVAILABLE_MODULES: readonly StoreModule[] = ["warehouses", "purchasing", "accounting"];
 
 // الإضافات المدفوعة فوق الباقة
 export const ADDON_KINDS = ["staff", "warehouse", "products", "custom_domain"] as const;

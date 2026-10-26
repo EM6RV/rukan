@@ -457,6 +457,315 @@ export const storeVisits = sqliteTable(
   (t) => [primaryKey({ columns: [t.storeId, t.day, t.kind, t.source, t.productId] })],
 );
 
+// ===== وحدة المخازن =====
+// المخزون الكلي لكل متغير يبقى في product_variants.stock. المخزن الرئيسي (isDefault) كميته = الكلي − مجموع باقي المخازن،
+// وباقي المخازن كمياتها مخزّنة هنا. فكل مسار قديم (طلبية، مرتجع، تعديل) يشتغل على الرئيسي تلقائياً.
+
+export const warehouses = sqliteTable(
+  "warehouses",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    address: text("address"),
+    isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    isLocked: integer("is_locked", { mode: "boolean" }).notNull().default(false), // مقفول أثناء الجرد
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("warehouses_store_id_uq").on(t.storeId, t.id), uniqueIndex("warehouses_name_uq").on(t.storeId, t.name)],
+);
+
+export const warehouseStock = sqliteTable(
+  "warehouse_stock",
+  {
+    storeId: storeIdCol(),
+    warehouseId: text("warehouse_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    quantity: integer("quantity").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.warehouseId, t.variantId] }),
+    scopedFk("ws_warehouse_fk", [t.storeId, t.warehouseId], [warehouses.storeId, warehouses.id], "cascade"),
+    scopedFk("ws_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id], "cascade"),
+  ],
+);
+
+export const stockTransfers = sqliteTable(
+  "stock_transfers",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    number: integer("number").notNull(),
+    fromWarehouseId: text("from_warehouse_id").notNull(),
+    toWarehouseId: text("to_warehouse_id").notNull(),
+    status: text("status", { enum: ["draft", "in_transit", "received", "cancelled"] }).notNull().default("draft"),
+    note: text("note"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("stock_transfers_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("stock_transfers_number_uq").on(t.storeId, t.number),
+    scopedFk("st_from_fk", [t.storeId, t.fromWarehouseId], [warehouses.storeId, warehouses.id]),
+    scopedFk("st_to_fk", [t.storeId, t.toWarehouseId], [warehouses.storeId, warehouses.id]),
+  ],
+);
+
+export const stockTransferItems = sqliteTable(
+  "stock_transfer_items",
+  {
+    storeId: storeIdCol(),
+    transferId: text("transfer_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    quantity: integer("quantity").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.transferId, t.variantId] }),
+    scopedFk("sti_transfer_fk", [t.storeId, t.transferId], [stockTransfers.storeId, stockTransfers.id], "cascade"),
+    scopedFk("sti_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
+  ],
+);
+
+export const stocktakes = sqliteTable(
+  "stocktakes",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    warehouseId: text("warehouse_id").notNull(),
+    status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+    lockWarehouse: integer("lock_warehouse", { mode: "boolean" }).notNull().default(false),
+    note: text("note"),
+    createdAt: createdAt(),
+    closedAt: integer("closed_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    uniqueIndex("stocktakes_store_id_uq").on(t.storeId, t.id),
+    scopedFk("stk_warehouse_fk", [t.storeId, t.warehouseId], [warehouses.storeId, warehouses.id]),
+  ],
+);
+
+export const stocktakeItems = sqliteTable(
+  "stocktake_items",
+  {
+    storeId: storeIdCol(),
+    stocktakeId: text("stocktake_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    expected: integer("expected").notNull(), // الرصيد وقت فتح الجرد
+    counted: integer("counted"), // null = لسا ما اتعدّ
+  },
+  (t) => [
+    primaryKey({ columns: [t.stocktakeId, t.variantId] }),
+    scopedFk("stki_stocktake_fk", [t.storeId, t.stocktakeId], [stocktakes.storeId, stocktakes.id], "cascade"),
+    scopedFk("stki_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
+  ],
+);
+
+// ===== وحدة المشتريات والموردين =====
+
+export const suppliers = sqliteTable(
+  "suppliers",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    phone: text("phone"),
+    city: text("city"),
+    notes: text("notes"),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("suppliers_store_id_uq").on(t.storeId, t.id)],
+);
+
+export const purchaseInvoices = sqliteTable(
+  "purchase_invoices",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    number: integer("number").notNull(),
+    supplierId: text("supplier_id").notNull(),
+    warehouseId: text("warehouse_id"), // null = الرئيسي
+    status: text("status", { enum: ["draft", "partial", "received", "cancelled"] }).notNull().default("draft"),
+    note: text("note"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("purchase_invoices_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("purchase_invoices_number_uq").on(t.storeId, t.number),
+    scopedFk("pi_supplier_fk", [t.storeId, t.supplierId], [suppliers.storeId, suppliers.id]),
+  ],
+);
+
+export const purchaseItems = sqliteTable(
+  "purchase_items",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    invoiceId: text("invoice_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    receivedQuantity: integer("received_quantity").notNull().default(0),
+    unitCost: integer("unit_cost").notNull(),
+  },
+  (t) => [
+    uniqueIndex("purchase_items_store_id_uq").on(t.storeId, t.id),
+    index("purchase_items_invoice_idx").on(t.storeId, t.invoiceId),
+    scopedFk("pit_invoice_fk", [t.storeId, t.invoiceId], [purchaseInvoices.storeId, purchaseInvoices.id], "cascade"),
+    scopedFk("pit_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
+  ],
+);
+
+export const supplierReturns = sqliteTable(
+  "supplier_returns",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    supplierId: text("supplier_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    warehouseId: text("warehouse_id"),
+    quantity: integer("quantity").notNull(),
+    unitCost: integer("unit_cost").notNull(),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    scopedFk("sr_supplier_fk", [t.storeId, t.supplierId], [suppliers.storeId, suppliers.id]),
+    scopedFk("sr_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
+  ],
+);
+
+// ===== وحدة الحسابات =====
+
+export const finAccounts = sqliteTable(
+  "fin_accounts",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: ["cash", "bank", "wallet"] }).notNull(),
+    isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false), // الافتراضي لكل نوع (خزنة/بنك)
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("fin_accounts_store_id_uq").on(t.storeId, t.id), uniqueIndex("fin_accounts_name_uq").on(t.storeId, t.name)],
+);
+
+/** دفتر الحركات: غير قابل للتعديل ولا الحذف. التصحيح بحركة عكسية (reversesId). المبلغ موجب = دخل، سالب = خرج. */
+export const ledgerEntries = sqliteTable(
+  "ledger_entries",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    accountId: text("account_id").notNull(),
+    amount: integer("amount").notNull(),
+    kind: text("kind", {
+      enum: ["courier_settlement", "bank_transfer", "supplier_payment", "expense", "customer_refund", "deposit", "withdrawal", "transfer_in", "transfer_out", "receivable_payment", "closing_adjustment", "opening", "reversal"],
+    }).notNull(),
+    refType: text("ref_type"),
+    refId: text("ref_id"),
+    groupId: text("group_id"), // يربط طرفي التحويل
+    reversesId: text("reverses_id"),
+    memo: text("memo"),
+    actorUserId: text("actor_user_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("ledger_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("ledger_reverses_uq").on(t.storeId, t.reversesId), // الحركة تتعكس مرة وحدة بس
+    index("ledger_account_idx").on(t.storeId, t.accountId, t.createdAt),
+    scopedFk("le_account_fk", [t.storeId, t.accountId], [finAccounts.storeId, finAccounts.id]),
+  ],
+);
+
+export const expenseCategories = sqliteTable(
+  "expense_categories",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("expense_categories_store_id_uq").on(t.storeId, t.id), uniqueIndex("expense_categories_name_uq").on(t.storeId, t.name)],
+);
+
+export const expenses = sqliteTable(
+  "expenses",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    categoryId: text("category_id"),
+    accountId: text("account_id").notNull(),
+    amount: integer("amount").notNull(), // موجب
+    note: text("note"),
+    receiptMediaId: text("receipt_media_id"),
+    spentAt: integer("spent_at", { mode: "timestamp_ms" }).notNull(),
+    ledgerEntryId: text("ledger_entry_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("expenses_store_id_uq").on(t.storeId, t.id),
+    index("expenses_date_idx").on(t.storeId, t.spentAt),
+    scopedFk("ex_category_fk", [t.storeId, t.categoryId], [expenseCategories.storeId, expenseCategories.id]),
+    scopedFk("ex_account_fk", [t.storeId, t.accountId], [finAccounts.storeId, finAccounts.id]),
+    scopedFk("ex_receipt_fk", [t.storeId, t.receiptMediaId], [media.storeId, media.id]),
+  ],
+);
+
+export const supplierPayments = sqliteTable(
+  "supplier_payments",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    supplierId: text("supplier_id").notNull(),
+    accountId: text("account_id"), // null لو الحسابات مطفية
+    amount: integer("amount").notNull(),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    scopedFk("sp_supplier_fk", [t.storeId, t.supplierId], [suppliers.storeId, suppliers.id]),
+    scopedFk("sp_account_fk", [t.storeId, t.accountId], [finAccounts.storeId, finAccounts.id]),
+  ],
+);
+
+/** ديون الزباين: زبون عليه فلوس بتاريخ استحقاق */
+export const receivables = sqliteTable(
+  "receivables",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    customerName: text("customer_name").notNull(),
+    customerPhone: text("customer_phone"),
+    amount: integer("amount").notNull(),
+    paid: integer("paid").notNull().default(0),
+    dueDate: integer("due_date", { mode: "timestamp_ms" }),
+    note: text("note"),
+    orderId: text("order_id"),
+    createdAt: createdAt(),
+    remindedAt: integer("reminded_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [uniqueIndex("receivables_store_id_uq").on(t.storeId, t.id), scopedFk("rc_order_fk", [t.storeId, t.orderId], [orders.storeId, orders.id])],
+);
+
+/** إقفال الخزنة: الرصيد المتوقع (من الدفتر) مقابل الفعلي (جرد النقد) */
+export const cashClosings = sqliteTable(
+  "cash_closings",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    accountId: text("account_id").notNull(),
+    expected: integer("expected").notNull(),
+    actual: integer("actual").notNull(),
+    difference: integer("difference").notNull(),
+    note: text("note"),
+    actorUserId: text("actor_user_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [scopedFk("cc_account_fk", [t.storeId, t.accountId], [finAccounts.storeId, finAccounts.id])],
+);
+
 // ===== تقييمات المنتجات =====
 
 export const productReviews = sqliteTable(
@@ -510,6 +819,7 @@ export const orders = sqliteTable(
     courierId: text("courier_id"),
     shipmentNumber: text("shipment_number"),
     shippingCompany: text("shipping_company"), // vanex | darb | nawras | other
+    warehouseId: text("warehouse_id"), // المخزن اللي انسحبت منه الطلبية (null = الرئيسي)
     internalNotes: text("internal_notes"),
     source: text("source"), // instagram, tiktok, direct…
     /** ترتيب الطلبية في شهرها (بتوقيت ليبيا) وقت إنشائها: لحد «طلبيات في الشهر». null = قديمة (ظاهرة دايماً) */
@@ -613,7 +923,8 @@ export const stockMovements = sqliteTable(
     storeId: storeIdCol(),
     variantId: text("variant_id").notNull(),
     delta: integer("delta").notNull(),
-    reason: text("reason", { enum: ["order", "return", "manual", "import", "cancel"] }).notNull(),
+    reason: text("reason", { enum: ["order", "return", "manual", "import", "cancel", "transfer", "stocktake", "purchase", "purchase_return"] }).notNull(),
+    warehouseId: text("warehouse_id"), // المخزن المتأثر (null = الرئيسي / وحدة المخازن مطفية)
     orderId: text("order_id"),
     note: text("note"),
     actorUserId: text("actor_user_id"),

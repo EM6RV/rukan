@@ -4,7 +4,9 @@ import { ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/constants";
 import { SHIPPING_COMPANY_IDS } from "@/lib/shipping-companies";
 import { LOCKED_STATUSES, RETURN_REASONS, TRANSITIONS, canTransition } from "@/lib/order-flow";
 import { normalizeLibyanPhone } from "@/lib/phone";
+import { postEntry } from "../accounting/ledger";
 import { expandStockLines } from "../catalog/bundles";
+import { bumpRow } from "../inventory/warehouses";
 import { fail, ok, type Result } from "../catalog/result";
 import { t, type StoreScope, type StoreScopeCore } from "../tenant";
 
@@ -42,13 +44,14 @@ async function bumpCustomer(tx: Tx, customerId: string, d: { orders?: number; de
   if (Object.keys(set).length) await tx.update(t.customers, set as never, eq(col.id, customerId));
 }
 
-async function addStock(tx: Tx, items: { variantId: string; quantity: number }[], reason: "return" | "cancel", orderId: string, note: string, actor: string | null) {
+async function addStock(tx: Tx, items: { variantId: string; quantity: number }[], reason: "return" | "cancel", orderId: string, note: string, actor: string | null, warehouseId: string | null = null) {
   for (const item of items) {
     if (item.quantity <= 0) continue;
     // الباقة المجمعة: يرجع مخزون مكوناتها مش الباقة نفسها
     for (const i of await expandStockLines(tx, item.variantId, item.quantity)) {
       await tx.update(t.productVariants, { stock: sql`${t.productVariants.stock} + ${i.quantity}` as unknown as number }, eq(t.productVariants.id, i.variantId));
-      await tx.insert(t.stockMovements, { variantId: i.variantId, delta: i.quantity, reason, orderId, note, actorUserId: actor });
+      if (warehouseId) await bumpRow(tx, warehouseId, i.variantId, i.quantity); // رجّع للمخزن اللي انسحبت منه
+      await tx.insert(t.stockMovements, { variantId: i.variantId, delta: i.quantity, reason, orderId, note, actorUserId: actor, warehouseId });
     }
   }
 }
@@ -107,7 +110,7 @@ export function changeOrderStatus(scope: StoreScope, input: StatusInput): Promis
 
       if (to === "cancelled") {
         const items = await tx.from(t.orderItems, eq(t.orderItems.orderId, order.id));
-        await addStock(tx, items, "cancel", order.id, `إلغاء طلبية #${order.number}`, input.actorUserId);
+        await addStock(tx, items, "cancel", order.id, `إلغاء طلبية #${order.number}`, input.actorUserId, order.warehouseId);
         if (order.couponId) {
           await tx.update(t.coupons, { usedCount: sql`max(0, ${t.coupons.usedCount} - 1)` as unknown as number }, eq(t.coupons.id, order.couponId));
           await tx.delete(t.couponRedemptions, eq(t.couponRedemptions.orderId, order.id));
@@ -260,7 +263,7 @@ export function registerReturn(scope: StoreScope, input: unknown, actorUserId: s
       await tx.insert(t.returnItems, [...wanted].map(([orderItemId, quantity]) => ({ returnId: ret!.id, orderItemId, quantity })));
 
       if (p.restock) {
-        await addStock(tx, [...wanted].map(([id, quantity]) => ({ variantId: items.find((i: OrderItem) => i.id === id)!.variantId, quantity })), "return", order.id, `مرتجع طلبية #${order.number}`, actorUserId);
+        await addStock(tx, [...wanted].map(([id, quantity]) => ({ variantId: items.find((i: OrderItem) => i.id === id)!.variantId, quantity })), "return", order.id, `مرتجع طلبية #${order.number}`, actorUserId, order.warehouseId);
       }
 
       const refund = [...wanted].reduce((s, [id, q]) => s + items.find((i) => i.id === id)!.unitPrice * q, 0);
@@ -281,14 +284,18 @@ export function registerReturn(scope: StoreScope, input: unknown, actorUserId: s
 
 // ===== إيصالات التحويل =====
 
-export function reviewReceipt(scope: StoreScope, receiptId: string, decision: "approved" | "rejected", actorUserId: string | null): Promise<Result> {
+export function reviewReceipt(scope: StoreScope, receiptId: string, decision: "approved" | "rejected", actorUserId: string | null, ledgerAccountId: string | null = null): Promise<Result> {
   return attempt(() =>
     scope.transaction(async (tx) => {
       const [r] = await tx.from(t.paymentReceipts, eq(t.paymentReceipts.id, receiptId)).limit(1);
       if (!r) throw new OrderOpError("ما لقينا الإيصال. يمكن انحذف، حدّث الصفحة.");
       const order = await loadOrder(tx, r.orderId);
       await tx.update(t.paymentReceipts, { status: decision }, eq(t.paymentReceipts.id, r.id));
-      if (decision === "approved") await tx.update(t.orders, { paymentStatus: "paid" }, eq(t.orders.id, order.id));
+      if (decision === "approved") {
+        await tx.update(t.orders, { paymentStatus: "paid" }, eq(t.orders.id, order.id));
+        // وحدة الحسابات شغّالة: التحويل المصرفي يدخل حساب البنك (مرة وحدة لكل طلبية)
+        if (ledgerAccountId && order.paymentStatus !== "paid") await postEntry(tx, { accountId: ledgerAccountId, amount: order.total, kind: "bank_transfer", refType: "order", refId: order.id, memo: `تحويل طلبية #${order.number}`, actorUserId });
+      }
       await history(tx, order, order.status, order.status, decision === "approved" ? "تم قبول إيصال التحويل" : "تم رفض إيصال التحويل", actorUserId);
     }),
   );
