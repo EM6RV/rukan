@@ -3,12 +3,13 @@ import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Search } from "lucide-react";
 import { getKit } from "@/components/store/templates";
-import { getCatalog } from "@/server/storefront/data";
+import { SearchBox } from "@/components/store/search-box";
+import { FilterBar, parseFilters } from "@/components/store/filter-bar";
+import { getCatalog, getFacets } from "@/server/storefront/data";
 import { getRequestContext, loadStore } from "@/server/storefront/request";
 
-type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ q?: string; page?: string }> };
+type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ q?: string; page?: string; min?: string; max?: string; stock?: string; opt?: string }> };
 
 export const metadata: Metadata = { title: "كل المنتجات", robots: { index: false, follow: true } };
 
@@ -21,16 +22,16 @@ export default async function SearchPage({ params, searchParams }: Props) {
   const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : BASE_TEMPLATE);
   const q = (sp.q ?? "").trim().slice(0, 80);
   const page = Math.max(1, Number(sp.page) || 1);
-  const result = await getCatalog(sf.id, { q, page, sort: "newest" });
-  const url = (p: number) => `${base}/search?${new URLSearchParams({ ...(q ? { q } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`;
+  const f = parseFilters(sp);
+  const [result, facets] = await Promise.all([getCatalog(sf.id, { q, page, sort: "newest", ...f.query }), getFacets(sf.id)]);
+  const extra: Record<string, string> = { ...(f.active.min ? { min: f.active.min } : {}), ...(f.active.max ? { max: f.active.max } : {}), ...(f.active.stock ? { stock: "1" } : {}), ...(f.active.opt ? { opt: f.active.opt } : {}) };
+  const url = (p: number) => `${base}/search?${new URLSearchParams({ ...(q ? { q } : {}), ...extra, ...(p > 1 ? { page: String(p) } : {}) })}`;
 
   return (
     <div className={`${kit.cls.container} space-y-8 py-8 md:py-12`}>
       <h1 className={kit.cls.heading}>{q ? `نتائج «${q}»` : "كل المنتجات"}</h1>
-      <form action={`${base}/search`} role="search" className="flex gap-2">
-        <input name="q" defaultValue={q} placeholder="ابحث عن منتج…" aria-label="بحث" className={kit.cls.input} />
-        <button className={kit.cls.btn} aria-label="بحث"><Search className="size-5" /></button>
-      </form>
+      <SearchBox defaultValue={q} />
+      <FilterBar action={`${base}/search`} cls={kit.cls} facets={facets} active={f.active} keep={q ? { q } : {}} />
       <p className="text-sm text-(--sp-muted)">{result.total} منتج</p>
       {result.items.length === 0 ? (
         <div className={`${kit.cls.panel} text-center`}>{q ? "ما لقينا منتجات بهذا الاسم. جرّب كلمة ثانية." : "المنتجات تنضاف قريب."}</div>

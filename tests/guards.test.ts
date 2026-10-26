@@ -28,6 +28,7 @@ const PUBLIC_ROUTES: Record<string, RegExp> = {
   "src/app/api/media/[id]/route.ts": /isPrivate/, // الصور العامة فقط؛ الخاصة (إيصالات) تتحقق من العضوية
   "src/app/api/s/[key]/receipt/route.ts": /hitRateLimit/, // رفع إيصال من الزبون: rate limit + CSRF
   "src/app/s/[key]/robots.txt/route.ts": /./, "src/app/s/-/sitemap.xml/route.ts": /./, "src/app/s/[key]/sitemap.xml/route.ts": /./,
+  "src/app/s/[key]/suggest/route.ts": /isStoreOpen/, // اقتراحات بحث عامة: منتجات ظاهرة فقط من كاش المتجر المفتوح
 };
 
 describe("حارس صلاحيات الـ server actions", () => {

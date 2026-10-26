@@ -5,7 +5,7 @@ import { canUse } from "@/lib/entitlements";
 import { loadStoreLimits } from "../entitlements";
 import { priceRange, variantCompareAt, variantPrice } from "@/lib/pricing";
 import { forStore, t, type StoreScope } from "../tenant";
-import type { CardProduct, CartLine, CatalogPage, CatalogQuery, DeliveryRate, ProductDetail, Storefront } from "./types";
+import type { CardProduct, CartLine, CatalogFacets, CatalogPage, CatalogQuery, DeliveryRate, ProductDetail, Storefront } from "./types";
 
 
 const PAGE_SIZE = 24;
@@ -124,6 +124,19 @@ export async function queryProducts(scope: StoreScope, opts: CatalogQuery = {}):
     const term = escapeLike(opts.q.slice(0, 80));
     conds.push(sql`(${t.products.name} LIKE ${term} ESCAPE '\\' OR ${t.products.description} LIKE ${term} ESCAPE '\\')`);
   }
+  if (opts.minPrice && opts.minPrice > 0) conds.push(sql`${t.products.price} >= ${Math.floor(opts.minPrice)}`);
+  if (opts.maxPrice && opts.maxPrice > 0) conds.push(sql`${t.products.price} <= ${Math.floor(opts.maxPrice)}`);
+  if (opts.inStock) {
+    conds.push(sql`EXISTS (SELECT 1 FROM ${t.productVariants} v WHERE v.store_id = ${t.products.storeId} AND v.product_id = ${t.products.id} AND v.is_active = 1 AND v.stock > 0)`);
+  }
+  if (opts.optionValue?.trim()) {
+    conds.push(sql`EXISTS (
+      SELECT 1 FROM ${t.productVariants} v
+      JOIN ${t.variantOptionValues} vov ON vov.store_id = v.store_id AND vov.variant_id = v.id
+      JOIN ${t.productOptionValues} pov ON pov.store_id = vov.store_id AND pov.id = vov.option_value_id
+      WHERE v.store_id = ${t.products.storeId} AND v.product_id = ${t.products.id} AND v.is_active = 1 AND pov.value = ${opts.optionValue.trim().slice(0, 40)}
+    )`);
+  }
   if (opts.categorySlug) {
     const [cat] = await scope.from(t.categories, and(eq(t.categories.slug, opts.categorySlug), eq(t.categories.isVisible, true))!).limit(1);
     if (!cat) return { items: [], total: 0, page: 1, pageCount: 1 };
@@ -141,6 +154,18 @@ export async function queryProducts(scope: StoreScope, opts: CatalogQuery = {}):
     : [desc(t.products.createdAt), t.products.id];
   const rows = await scope.from(t.products, where).orderBy(...order).limit(size).offset((page - 1) * size);
   return { items: await toCards(scope, rows), total, page, pageCount };
+}
+
+/** قيم الخيارات المستعملة في المتجر (للفلاتر): نفس اسم الخيار يتجمع (مقاس، لون…) */
+export async function queryFacets(scope: StoreScope): Promise<CatalogFacets> {
+  const [opts, values] = await Promise.all([scope.from(t.productOptions), scope.from(t.productOptionValues).orderBy(t.productOptionValues.position)]);
+  const byName = new Map<string, Set<string>>();
+  for (const o of opts) {
+    const set = byName.get(o.name) ?? new Set<string>();
+    for (const v of values) if (v.optionId === o.id) set.add(v.value);
+    byName.set(o.name, set);
+  }
+  return { options: [...byName].map(([name, set]) => ({ name, values: [...set].slice(0, 24) })).filter((o) => o.values.length > 0).slice(0, 4) };
 }
 
 export async function queryProductDetail(scope: StoreScope, slug: string): Promise<ProductDetail | null> {

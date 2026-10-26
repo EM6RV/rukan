@@ -59,6 +59,7 @@ export function FooterColumns({ linkClass, headingClass }: { linkClass?: string;
         <h2 className={cn("mb-3 text-base font-bold", headingClass)}>معلومات</h2>
         <ul className="space-y-0.5 text-sm [&_a]:inline-flex [&_a]:min-h-10 [&_a]:items-center">
           {pages.map((p) => <li key={p.slug}><Link className={linkClass} href={href(`/page/${p.slug}`)}>{p.title}</Link></li>)}
+          <li><Link className={linkClass} href={href("/favorites")}>مفضلتي</Link></li>
           <li><Link className={linkClass} href={href("/track")}>تتبع طلبيتك</Link></li>
         </ul>
       </div>

@@ -9,6 +9,7 @@ import { mediaUrl } from "@/lib/media-url";
 import { discountPercent } from "@/lib/pricing";
 import { trackPixel } from "@/lib/pixels";
 import type { ProductDetail } from "@/server/storefront/types";
+import { FavoriteButton } from "./favorites";
 import { useCart } from "./cart-context";
 import { useStore } from "./store-context";
 import { getKit } from "./templates";
@@ -18,6 +19,13 @@ import { MediaImage, Price } from "./ui";
 function Gallery({ images, name, frame }: { images: string[]; name: string; frame: string }) {
   const track = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
+  const [zoom, setZoom] = useState(false);
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setZoom(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoom]);
 
   const go = (i: number) => {
     const el = track.current;
@@ -39,7 +47,7 @@ function Gallery({ images, name, frame }: { images: string[]; name: string; fram
       <div className={cn("relative overflow-hidden", frame)}>
         <div ref={track} tabIndex={0} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-roledescription="معرض صور" role="group">
           {images.map((id, i) => (
-            <div key={id} className="aspect-square w-full shrink-0 snap-center md:aspect-[4/5]">
+            <div key={id} className="aspect-square w-full shrink-0 cursor-zoom-in snap-center md:aspect-[4/5]" onClick={() => setZoom(true)}>
               <MediaImage id={id} alt={`${name} - صورة ${i + 1}`} priority={i === 0} sizes="(min-width: 1024px) 50vw, 100vw" widths={[640, 960, 1280]} />
             </div>
           ))}
@@ -50,6 +58,13 @@ function Gallery({ images, name, frame }: { images: string[]; name: string; fram
           </div>
         )}
       </div>
+      {zoom && (
+        <div role="dialog" aria-modal="true" aria-label="تكبير الصورة" className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/85 p-4" onClick={() => setZoom(false)}>
+          { }
+          <img src={mediaUrl(images[index] ?? images[0]!, 1600)} alt={name} className="max-h-full max-w-full object-contain" />
+          <button type="button" aria-label="إغلاق" className="absolute end-4 top-4 flex size-11 items-center justify-center rounded-full bg-white/90 text-xl text-black">×</button>
+        </div>
+      )}
       {images.length > 1 && (
         <div className="hidden gap-2 lg:flex">
           {images.map((id, i) => (
@@ -194,7 +209,13 @@ export function ProductView({ product }: { product: ProductDetail }) {
             <div className="whitespace-pre-line leading-8">{product.description}</div>
           </div>
         )}
-        <button type="button" onClick={share} className="inline-flex items-center gap-2 text-sm font-medium text-(--sp-muted) hover:text-(--sp)"><Share2 className="size-4" /> مشاركة المنتج</button>
+        <div className="flex items-center gap-3">
+          <FavoriteButton product={{ id: product.id, slug: product.slug, name: product.name, price: product.price, compareAt: product.compareAt, thumb: product.images[0] ?? null }} />
+          <button type="button" onClick={share} className="inline-flex items-center gap-2 text-sm font-medium text-(--sp-muted) hover:text-(--sp)"><Share2 className="size-4" /> مشاركة المنتج</button>
+          {store.pages.some((p) => p.slug === "size-guide") && product.options.some((o) => /مقاس|size/i.test(o.name)) && (
+            <a href={store.href("/page/size-guide")} className="text-sm font-medium underline underline-offset-4">دليل المقاسات</a>
+          )}
+        </div>
       </div>
 
       {/* شريط الشراء الثابت على الموبايل */}

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { phoneSchema } from "@/lib/validation";
 import { getClientIp } from "@/server/auth/current";
 import { captureCart } from "@/server/marketing/abandoned-carts";
+import { submitReview } from "@/server/reviews";
 import { checkCoupon, createOrder, trackOrder, type CreatedOrder, type TrackedOrder } from "@/server/orders/create";
 import { hitRateLimit } from "@/server/ratelimit";
 import { invalidateStore } from "@/server/storefront/data";
@@ -103,4 +104,15 @@ export async function captureCartAction(key: string, input: unknown): Promise<{ 
   if (!byPhone.allowed) return { ok: false };
   const r = await captureCart(forStore(db, sf.id), { ...parsed.data, phone: phone.data });
   return { ok: r.ok };
+}
+
+/** تقييم منتج من مشترٍ موثّق (رقم الطلبية + الهاتف). يدخل بانتظار موافقة البياع. */
+export async function submitReviewAction(key: string, input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+  const sf = await openStore(key);
+  if (!sf) return { ok: false, error: "المتجر مقفول مؤقتاً. جرّب بعد شوية." };
+  const ip = (await getClientIp()) ?? "unknown";
+  const limit = await hitRateLimit(getDb(), `review:${sf.id}:${ip}`, { limit: 8, windowMs: 60 * 60_000 });
+  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
+  const r = await submitReview(forStore(getDb(), sf.id), input);
+  return r.ok ? { ok: true } : r;
 }

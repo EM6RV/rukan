@@ -5,7 +5,7 @@ import type { StoreModule } from "./constants";
 
 export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
-  | "reports" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
+  | "reports" | "reviews" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
 export type NavGroupKey = "sales" | "catalog" | "marketing" | "store" | "team" | "settings";
 export const NAV_GROUPS: { key: NavGroupKey; title: string }[] = [
@@ -38,6 +38,7 @@ export const NAV: NavDef[] = [
   { href: "/dashboard/products", label: "المنتجات", icon: "products", group: "catalog", permission: "products", keywords: "منتج مخزون اسعار" },
   { href: "/dashboard/categories", label: "الأقسام", icon: "categories", group: "catalog", permission: "categories", keywords: "قسم تصنيف" },
   { href: "/dashboard/coupons", label: "الكوبونات", icon: "coupons", group: "marketing", permission: "marketing", keywords: "كوبون خصم كود" },
+  { href: "/dashboard/reviews", label: "التقييمات", icon: "reviews", group: "marketing", permission: "marketing", keywords: "تقييم نجوم رأي مراجعة" },
   { href: "/dashboard/content", label: "محتوى المتجر", icon: "content", group: "store", permission: "settings", keywords: "نصوص بانر من نحن سياسات" },
   { href: "/dashboard/design", label: "التصميم", icon: "design", group: "store", permission: "settings", keywords: "قالب الوان خط" },
   { href: "/dashboard/design-services", label: "خدمات التصميم", icon: "services", group: "store", permission: "settings", keywords: "ريلز لوجو هوية" },

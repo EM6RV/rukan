@@ -54,5 +54,11 @@ export type CartLine = {
 export type DeliveryRate = { cityId: string; city: string; fee: number; eta: string | null };
 
 export type CatalogSort = "newest" | "price_asc" | "price_desc";
-export type CatalogQuery = { categorySlug?: string; q?: string; featured?: boolean; sort?: CatalogSort; page?: number; pageSize?: number };
+export type CatalogQuery = {
+  categorySlug?: string; q?: string; featured?: boolean; sort?: CatalogSort; page?: number; pageSize?: number;
+  /** فلاتر (الأسعار بالدرهم: 1 د.ل = 1000) */
+  minPrice?: number; maxPrice?: number; inStock?: boolean; optionValue?: string;
+};
+/** قيم الفلاتر المتاحة في المتجر (مقاسات، ألوان…) */
+export type CatalogFacets = { options: { name: string; values: string[] }[] };
 export type CatalogPage = { items: CardProduct[]; total: number; page: number; pageCount: number };

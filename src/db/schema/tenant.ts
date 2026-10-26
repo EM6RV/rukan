@@ -351,6 +351,30 @@ export const coupons = sqliteTable(
   ],
 );
 
+// ===== تقييمات المنتجات =====
+
+export const productReviews = sqliteTable(
+  "product_reviews",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    productId: text("product_id").notNull(),
+    orderId: text("order_id"), // مشترٍ موثّق = طلبية مسلّمة فيها المنتج
+    customerName: text("customer_name").notNull(),
+    rating: integer("rating").notNull(), // 1-5
+    body: text("body"),
+    status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+    isVerified: integer("is_verified", { mode: "boolean" }).notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("product_reviews_store_id_uq").on(t.storeId, t.id),
+    index("product_reviews_product_idx").on(t.storeId, t.productId, t.status),
+    uniqueIndex("product_reviews_order_product_uq").on(t.storeId, t.orderId, t.productId),
+    scopedFk("pr_product_fk", [t.storeId, t.productId], [products.storeId, products.id], "cascade"),
+  ],
+);
+
 // ===== الطلبيات =====
 
 export const orders = sqliteTable(
