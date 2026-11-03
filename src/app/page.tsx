@@ -6,7 +6,7 @@ import { MockStore } from "@/components/marketing/mock-store";
 import { SectionHead, SiteFooter, SiteHeader } from "@/components/marketing/site-shell";
 import { daysText } from "@/lib/billing";
 import { CompareTable } from "@/components/pricing/compare-table";
-import { PricingTable } from "@/components/pricing/pricing-table";
+import { LinePricingTabs } from "@/components/pricing/line-pricing";
 import { promoActive } from "@/server/admin/settings";
 import { ButtonLink } from "@/components/ui/button";
 import { FadeIn } from "@/components/ui/motion";
@@ -28,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const { content: c, plans, supportWhatsapp, trialDays, promo } = await getMarketingData();
+  const { content: c, plans, linePlans, supportWhatsapp, trialDays, promo } = await getMarketingData();
   const heroImg = c.hero.imageMediaId;
   const demo = c.showcase.items[0] ?? { name: "عطور الندى", category: "عطور", primary: "#2B1B3D", accent: "#C19E58", template: "makhmal" as const };
 
@@ -91,6 +91,25 @@ export default async function Home() {
             )}
           </div>
         </section>
+
+        {/* رُكن مش بس متجر */}
+        {c.systems.items.length > 0 && (
+          <section id="systems" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 md:py-20">
+            <SectionHead title={c.systems.title} subtitle={c.systems.subtitle} />
+            <ul className="grid gap-5 md:grid-cols-3">
+              {c.systems.items.map((x) => (
+                <li key={x.slug}>
+                  <Link href={`/systems/${x.slug}`} className="group flex h-full flex-col rounded-3xl border border-line bg-surface p-7 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-gold/60 hover:shadow-lift">
+                    <span className="text-2xl font-bold">{x.name}</span>
+                    <span className="mt-1 text-sm font-semibold text-link-strong">{x.tagline}</span>
+                    <span className="mt-3 flex-1 text-sm leading-7 text-muted">{x.text}</span>
+                    <span className="mt-5 inline-flex items-center gap-1.5 font-semibold">{x.cta}<ArrowLeft className="size-4 transition-transform group-hover:-translate-x-1" aria-hidden /></span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* شن نشاطك؟ */}
         {c.niches.items.length > 0 && (
@@ -218,7 +237,7 @@ export default async function Home() {
         <section id="pricing" className="scroll-mt-20 bg-surface-2 py-16 md:py-20">
           <div className="mx-auto max-w-6xl px-4">
             <SectionHead title={c.pricing.title} subtitle={c.pricing.subtitle} />
-            {plans.length > 0 ? <PricingTable plans={plans} cta={{ kind: "register", label: c.hero.primaryCta }} labels={{ popularBadge: c.pricing.popularBadge, rows: c.pricing.rows }} /> : <p className="text-center text-muted">الأسعار قريباً.</p>}
+            {plans.length > 0 || Object.values(linePlans).some((x) => x.length > 0) ? <LinePricingTabs store={plans} lines={linePlans} cta={c.hero.primaryCta} labels={{ popularBadge: c.pricing.popularBadge, rows: c.pricing.rows }} /> : <p className="text-center text-muted">الأسعار قريباً.</p>}
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted">{c.pricing.note}</p>
             {plans.length > 0 && (
               <div className="mt-16">

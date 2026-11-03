@@ -87,6 +87,21 @@ export function SiteEditor({ initial, heroImage }: { initial: SiteContent; heroI
         <Textarea label="الشركاء (كل شركة في سطر)" rows={3} maxLength={400} value={c.trust.partners.map((p) => p.name).join("\n")} onChange={(e) => set("trust", { partners: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 12).map((name) => ({ name })) })} hint="مثال: فانكس، درب السبيل، النورس — لا تكتب إلا شركة مربوطة فعلاً." />
       </CardBody></Card>
 
+      <Card><CardHeader title="رُكن مش بس متجر (المنظومات)" description="ثلاث بطاقات في الرئيسية وصفحة لكل منظومة /systems/الرمز." /><CardBody className="space-y-4">
+        <Input label="العنوان" value={c.systems.title} maxLength={60} onChange={(e) => set("systems", { title: e.target.value })} />
+        <Input label="الوصف" value={c.systems.subtitle} maxLength={200} onChange={(e) => set("systems", { subtitle: e.target.value })} />
+        {c.systems.items.map((it, i) => {
+          const upd = (patch: Partial<typeof it>) => setC((x) => ({ ...x, systems: { ...x.systems, items: x.systems.items.map((n, j) => (j === i ? { ...n, ...patch } : n)) } }));
+          return (
+            <div key={it.slug} className="space-y-3 rounded-lg border border-line p-3">
+              <div className="grid gap-3 sm:grid-cols-3"><Input label="الاسم" value={it.name} maxLength={30} onChange={(e) => upd({ name: e.target.value })} /><Input label="الشعار" value={it.tagline} maxLength={80} onChange={(e) => upd({ tagline: e.target.value })} /><Input label="نص الزر" value={it.cta} maxLength={30} onChange={(e) => upd({ cta: e.target.value })} /></div>
+              <Textarea label="الوصف" rows={3} maxLength={300} value={it.text} onChange={(e) => upd({ text: e.target.value })} />
+              <Textarea label="المميزات (كل ميزة في سطر)" rows={5} maxLength={640} value={it.points.join("\n")} onChange={(e) => upd({ points: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 8) })} />
+            </div>
+          );
+        })}
+      </CardBody></Card>
+
       <Card><CardHeader title="شن نشاطك؟ (صفحات الأنشطة)" description="كل نشاط له صفحة خاصة /for/الرمز بمثال وقالب مقترح." /><CardBody className="space-y-4">
         <Input label="العنوان" value={c.niches.title} maxLength={60} onChange={(e) => set("niches", { title: e.target.value })} />
         <Input label="الوصف" value={c.niches.subtitle} maxLength={200} onChange={(e) => set("niches", { subtitle: e.target.value })} />

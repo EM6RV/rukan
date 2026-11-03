@@ -9,6 +9,7 @@ import {
   setPortalPassword,
 } from "@/server/gym/service";
 import { portalLogin, portalMember, portalLogout, portalView, portalCancel } from "@/server/gym/portal";
+import { publicLine } from "@/server/public-line";
 import { createStoreForUser } from "@/server/store-service";
 import { forStore, t, type StoreScope } from "@/server/tenant";
 import { makeTestDb } from "./helpers/db";
@@ -172,5 +173,13 @@ describe("الحصص والمدربين", () => {
     expect((await portalCancel(a.scope, other.id, "nope")).ok).toBe(false);
     await portalLogout(a.scope, good.data.cookie);
     expect(await portalMember(a.scope, good.data.cookie)).toBeNull();
+  });
+
+  it("الصفحة العامة: المنظومة المشتركة فقط، وبدون تسرب بين المتاجر", async () => {
+    const ok = await publicLine(db, "fit-a", "gym");
+    expect(ok?.store.slug).toBe("fit-a");
+    expect(await publicLine(db, "fit-a", "lounge")).toBeNull(); // منظومة غير مشترك فيها
+    expect(await publicLine(db, "no-such-store", "gym")).toBeNull();
+    expect(ok?.scope.storeId ?? ok?.store.id).toBe(a.storeId);
   });
 });

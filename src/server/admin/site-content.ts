@@ -23,6 +23,11 @@ const link = z.string().trim().max(300, "الرابط طويل").transform((v, c
 const slug = z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,30}$/, "الرمز بالإنجليزي صغير وأرقام وشرطة (مثلاً: perfume)");
 const schema = z.object({
   trust: z.object({ items: z.array(str(40, "شارة الثقة", 2)).max(6, "الحد الأقصى 6 شارات"), partnersTitle: str(60, "عنوان الشركاء"), partners: z.array(z.object({ name: str(40, "اسم الشركة", 2) })).max(12, "الحد الأقصى 12 شركة") }).default(DEFAULT_SITE_CONTENT.trust),
+  systems: z.object({
+    title: str(60, "عنوان المنظومات", 2), subtitle: str(200, "وصف المنظومات"),
+    items: z.array(z.object({ slug: z.enum(["market", "play", "fit"]), name: str(30, "اسم المنظومة", 2), tagline: str(80, "شعار المنظومة", 2), text: str(300, "وصف المنظومة", 2), points: z.array(str(80, "ميزة", 2)).max(8, "الحد الأقصى 8 مميزات"), cta: str(30, "نص الزر", 2) }))
+      .min(1).max(3).refine((a) => new Set(a.map((x) => x.slug)).size === a.length, "منظومة مكررة"),
+  }).default(DEFAULT_SITE_CONTENT.systems),
   niches: z.object({
     title: str(60, "عنوان الأنشطة", 2), subtitle: str(200, "وصف الأنشطة"),
     items: z.array(z.object({ slug, title: str(40, "اسم النشاط", 2), headline: str(90, "عنوان صفحة النشاط", 2), text: str(260, "نص النشاط", 2), benefits: z.array(str(90, "ميزة", 2)).min(1).max(5), template: z.enum(STORE_TEMPLATES, { error: "قالب غير صحيح" }), primary: hexColorSchema, accent: hexColorSchema, example: str(40, "اسم المتجر المثال", 2) }))

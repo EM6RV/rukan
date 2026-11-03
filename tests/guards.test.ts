@@ -37,6 +37,7 @@ const PUBLIC_ROUTES: Record<string, RegExp> = {
   "src/app/api/pos/sales/route.ts": /deviceContext\([\s\S]*hitRateLimit/,
   "src/app/api/gym/kiosk/route.ts": /deviceContext\([\s\S]*kind !== "kiosk"[\s\S]*hitRateLimit/, // الكشك: توكن جهاز «kiosk» (دخول بس) + rate limit + CSRF
   "src/app/api/gym/portal/[key]/route.ts": /hitRateLimit[\s\S]*portalMember/, // صفحة العضو: دخول بهاتف+كلمة سر، جلسة hash، rate limit + CSRF، محدودة بعضو واحد
+  "src/app/api/lounge/public/[key]/route.ts": /publicLine\([\s\S]*hitRateLimit/, // الصفحة العامة للصالة: حجز بانتظار التأكيد وتسجيل بطولة، rate limit بالـ IP والرقم + CSRF
   "src/app/api/lounge/wall/route.ts": /deviceContext\([\s\S]*kind !== "wall"[\s\S]*hitRateLimit/, // شاشة الحائط: توكن جهاز «wall» (عرض بس) + rate limit // جهاز مفعّل: فواتير فرعه بس // اقتراحات بحث عامة: منتجات ظاهرة فقط من كاش المتجر المفتوح
 };
 

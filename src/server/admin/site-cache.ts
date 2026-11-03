@@ -17,6 +17,7 @@ const cachedMarketingData = unstable_cache(
     return {
       content,
       plans: await publicPlans(db, config.freePlanEnabled),
+      linePlans: { market: await publicPlans(db, false, "market"), lounge: await publicPlans(db, false, "lounge"), gym: await publicPlans(db, false, "gym") },
       trialDays: config.trialDays,
       supportWhatsapp: config.supportWhatsapp,
       startMode: config.startMode,
@@ -33,6 +34,6 @@ export async function getMarketingData() {
     return await cachedMarketingData();
   } catch (e) {
     console.error("marketing data unavailable, using defaults", e);
-    return { content: DEFAULT_SITE_CONTENT, plans: [] as PricingPlan[], trialDays: 3, supportWhatsapp: null as string | null, startMode: "trial" as const, promo: { enabled: false, text: "", linkLabel: "", endsAt: null } as Promo };
+    return { content: DEFAULT_SITE_CONTENT, plans: [] as PricingPlan[], linePlans: { market: [] as PricingPlan[], lounge: [] as PricingPlan[], gym: [] as PricingPlan[] }, trialDays: 3, supportWhatsapp: null as string | null, startMode: "trial" as const, promo: { enabled: false, text: "", linkLabel: "", endsAt: null } as Promo };
   }
 }

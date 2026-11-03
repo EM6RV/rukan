@@ -12,6 +12,8 @@ export type SiteContent = {
   features: { title: string; subtitle: string; items: { icon: FeatureIcon; title: string; text: string }[] };
   /** «شن نشاطك؟»: كل نشاط له صفحة /for/[slug] */
   niches: { title: string; subtitle: string; items: Niche[] };
+  /** «رُكن مش بس متجر»: ثلاث منظومات بصفحة لكل واحدة /systems/[slug] */
+  systems: { title: string; subtitle: string; items: SystemCard[] };
   /** معرض القوالب الستة بمعاينة حية */
   templates: { title: string; subtitle: string; button: string; items: { template: import("./constants").StoreTemplate; blurb: string; primary: string; accent: string }[] };
   /** مميزات كقصص قصيرة */
@@ -25,6 +27,15 @@ export type SiteContent = {
   footer: { text: string };
   seo: { title: string; description: string };
 };
+
+export type SystemSlug = "market" | "play" | "fit";
+export type SystemCard = { slug: SystemSlug; name: string; tagline: string; text: string; points: string[]; cta: string };
+export const SYSTEM_LINE: Record<SystemSlug, "market" | "lounge" | "gym"> = { market: "market", play: "lounge", fit: "gym" };
+export const DEFAULT_SYSTEMS: SystemCard[] = [
+  { slug: "market", name: "رُكن ماركت", tagline: "كاشير ومخزون للبقالة والسوبرماركت", text: "كاشير سريع بالباركود والميزان، وشغال بدون نت. دفتر ديون الزباين، وصلاحيات الدفعات، وجرد بكاميرا الموبايل.", points: ["كاشير يشتغل بدون إنترنت ويزامن بعدين", "باركود وميزان وأصناف بالوزن", "دفعات وتواريخ صلاحية وهالك", "ديون الزباين ومحافظهم ونقاط الولاء", "اقتراح شراء حسب المبيعات"], cta: "جرّب رُكن ماركت" },
+  { slug: "play", name: "رُكن بلاي", tagline: "إدارة صالة الألعاب بالساعة والماتش", text: "عدّاد لكل جهاز بتسعير بالساعة أو الماتش، باقات ساعات، حجوزات، شاشة حائط، وبطولات بقرعة وترتيب تلقائي.", points: ["عدّاد وتسعير لكل جهاز وغرفة VIP", "باقات ساعات ومحافظ للاعبين", "حجز مسبق ومنع التعارض", "شاشة حائط بحالة الأجهزة والبطولات", "تقارير الإشغال والذروة"], cta: "جرّب رُكن بلاي" },
+  { slug: "fit", name: "رُكن فِت", tagline: "إدارة النادي: أعضاء واشتراكات ودخول", text: "اشتراكات بالأقساط والتجميد والترقية، دخول بالباركود أو الهاتف، حصص بقائمة انتظار، مدربين بعمولات، وصفحة شخصية لكل عضو.", points: ["أنواع اشتراك وأقساط وتجميد وترقية", "دخول بالباركود أو كشك عند الباب", "حصص جماعية وحجز وقائمة انتظار", "مدربين وحصص PT وعمولات", "رسائل واتساب جاهزة للتجديد والأقساط"], cta: "جرّب رُكن فِت" },
+];
 
 export type Niche = { slug: string; title: string; headline: string; text: string; benefits: string[]; template: import("./constants").StoreTemplate; primary: string; accent: string; example: string };
 
@@ -47,6 +58,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     imageMediaId: null,
   },
   trust: { items: ["الدفع عند الاستلام", "بالدينار الليبي", "توصيل لكل مدن ليبيا", "واجهة عربية بالكامل"], partnersTitle: "شركاء التوصيل والدفع", partners: [] },
+  systems: { title: "رُكن مش بس متجر", subtitle: "نفس الحساب، وكل نشاطك في مكان واحد: ماركت، صالة ألعاب، أو نادي.", items: DEFAULT_SYSTEMS },
   niches: { title: "شن نشاطك؟", subtitle: "اختار نشاطك وشوف كيف رُكن يفيدك، والقالب المناسب، ومثال جاهز.", items: DEFAULT_NICHES },
   templates: {
     title: "ستة قوالب بشخصيات مختلفة",
