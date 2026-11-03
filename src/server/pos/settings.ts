@@ -12,11 +12,21 @@ const schema = z.object({
   defaultCreditLimit: z.number().int().min(0).max(1_000_000_000).nullable(),
   debtAlertDays: z.number().int().min(1).max(365),
   showLogo: z.boolean(),
+  /** باركود الميزان */
+  scale: z.object({
+    prefixes: z.array(z.string().regex(/^\d{2}$/, "بادئة الميزان رقمين")).min(1, "حط بادئة وحدة على الأقل").max(10),
+    itemDigits: z.number().int().min(4, "أرقام الصنف من 4 لـ 6").max(6, "أرقام الصنف من 4 لـ 6"),
+    value: z.enum(["weight", "price"]),
+    priceMultiplier: z.union([z.literal(1), z.literal(10), z.literal(100)]),
+  }).optional(),
+  reorderCoverDays: z.number().int().min(3, "الأيام من 3 لـ 90").max(90, "الأيام من 3 لـ 90").optional(),
 });
 
 export async function savePosConfig(scope: StoreScope, input: unknown): Promise<Result> {
   const p = schema.safeParse(input);
   if (!p.success) return fail(firstError(p.error));
-  await scope.update(t.storeSettings, { posConfig: p.data satisfies PosConfig });
+  // نحافظوا على أي إعداد قديم ما جاش في النموذج
+  const [cur] = await scope.from(t.storeSettings).limit(1);
+  await scope.update(t.storeSettings, { posConfig: { ...(cur?.posConfig ?? {}), ...p.data } satisfies PosConfig });
   return ok(undefined);
 }

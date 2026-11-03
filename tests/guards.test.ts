@@ -13,7 +13,8 @@ const read = (p: string) => readFileSync(p, "utf8");
 
 const ACTION_FILES = all.filter((p) => /actions?\.ts$/.test(p) || /-actions\.ts$/.test(p));
 const ROUTES = all.filter((p) => p.endsWith("/route.ts"));
-const AUTH_CALL = /(actionContext|adminContext|getCurrentUser|requireAdmin|requireStoreContext|runOwner\(|\brun\()/;
+// lineActionContext = actionContext + اشتراك المنظومة (نفس التحقق وزيادة)
+const AUTH_CALL = /(actionContext|lineActionContext|adminContext|getCurrentUser|requireAdmin|requireStoreContext|runOwner\(|\brun\()/;
 
 /** أكشنات عامة مقصودة (واجهة المتجر للزباين بدون حساب، والدخول/التسجيل): لازم تكون محمية بـ rate limit بدل الصلاحيات */
 const PUBLIC_ACTIONS: Record<string, RegExp> = {
@@ -50,7 +51,7 @@ describe("حارس صلاحيات الـ server actions", () => {
       return;
     }
     const isAdmin = (name as string).startsWith("src/app/admin/");
-    expect(src, `${name}: لازم يستعمل ${isAdmin ? "adminContext" : "actionContext/getCurrentUser"}`).toMatch(isAdmin ? /adminContext\(/ : /(actionContext|getCurrentUser)\(/);
+    expect(src, `${name}: لازم يستعمل ${isAdmin ? "adminContext" : "actionContext/getCurrentUser"}`).toMatch(isAdmin ? /adminContext\(/ : /(actionContext|lineActionContext|getCurrentUser)\(/);
     const parts = src.split(/export async function /).slice(1);
     expect(parts.length, `${name}: ما فيه دوال مصدّرة؟`).toBeGreaterThan(0);
     for (const part of parts) {
@@ -76,14 +77,14 @@ describe("حارس مسارات الـ API", () => {
     if (PUBLIC_ROUTES[name as string]) {
       expect(src, `${name}: الحماية المعلنة ناقصة`).toMatch(PUBLIC_ROUTES[name as string]!);
     } else {
-      expect(src, `${name}: مسار بدون تحقق صلاحية ولا هو في قائمة العام`).toMatch(/(actionContext|adminContext|getCurrentUser|requireAdmin)\(/);
+      expect(src, `${name}: مسار بدون تحقق صلاحية ولا هو في قائمة العام`).toMatch(/(actionContext|lineActionContext|adminContext|getCurrentUser|requireAdmin)\(/);
     }
     // أي مسار يغيّر بيانات (POST/PUT/DELETE/PATCH) لازم يفحص الأصل (CSRF)
     if (/export async function (POST|PUT|PATCH|DELETE)/.test(src)) expect(src, `${name}: يغيّر بيانات بدون sameOriginError`).toMatch(/sameOriginError\(/);
   });
 
   it("مسارات GET الحساسة مفحوصة (تصدير/نبضة)", () => {
-    for (const p of ROUTES.filter((r) => /export|pulse/.test(r))) expect(read(p)).toMatch(/actionContext\(/);
+    for (const p of ROUTES.filter((r) => /export|pulse/.test(r))) expect(read(p)).toMatch(/(actionContext|lineActionContext)\(/);
   });
 });
 

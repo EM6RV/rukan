@@ -1,6 +1,6 @@
 // بيانات بداية الجهاز (تتخزن في IndexedDB باش الكاشير يشتغل بدون نت): المنتجات والأسعار والزباين وأرصدتهم
 // والموظفين (بالـ PIN hash للتبديل بدون نت) والوردية المفتوحة والإعدادات.
-import { and, eq, isNull } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { canUse } from "@/lib/entitlements";
 import { LINE_INFO } from "@/lib/product-lines";
 import { loadPromotions } from "../market/promotions";
@@ -31,7 +31,8 @@ export async function posBootstrap(dc: DeviceCtx, now = Date.now()) {
     hardware: canUse(limits, "hardware"), batches: canUse(limits, "batches"),
   };
   const [products, variantsRaw, cats, images, customers, staff, shift, settings, unitsRaw, barcodes, levelRows, promotions] = await Promise.all([
-    scope.from(t.products, and(isNull(t.products.deletedAt), eq(t.products.isVisible, true))!),
+    // المخفي من المتجر الأونلاين يتباع عادي في المحل
+    scope.from(t.products, isNull(t.products.deletedAt)),
     scope.from(t.productVariants, eq(t.productVariants.isActive, true)),
     scope.from(t.productCategories),
     scope.from(t.productImages),

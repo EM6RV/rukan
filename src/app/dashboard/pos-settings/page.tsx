@@ -12,7 +12,7 @@ export default async function PosSettingsPage() {
   return (
     <div className="space-y-5">
       <div><h1 className="text-2xl">إعدادات الكاشير</h1><p className="text-muted">الطابعة والفاتورة، حد الخصم بدون موافقة، نقاط الولاء، وحد الدين. رأس وذيل الفاتورة لكل فرع من «الفروع والأجهزة».</p></div>
-      <PosSettingsForm initial={posConfigOf(s?.posConfig)} writable={ctx.access.writable} />
+      <PosSettingsForm initial={posConfigOf(s?.posConfig)} writable={ctx.access.writable} market={ctx.lines.market.subscribed} />
     </div>
   );
 }

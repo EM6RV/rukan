@@ -8,11 +8,13 @@ export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
   | "reports" | "reviews" | "brands" | "lowstock" | "stock" | "audit" | "analytics"
   | "market" | "lounge" | "gym" | "lines" | "receipt" | "shift" | "branch" | "pos"
+  | "barcode" | "expiry" | "promo" | "reorder" | "prep" | "waste" | "mreports"
   | "inbox" | "warehouse" | "transfer" | "stocktake" | "purchase" | "supplier" | "wallet" | "expense" | "debt" | "pnl" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
-export type NavGroupKey = "systems" | "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
+export type NavGroupKey = "systems" | "market" | "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
 export const NAV_GROUPS: { key: NavGroupKey; title: string }[] = [
   { key: "systems", title: "المنظومات" },
+  { key: "market", title: "الماركت" },
   { key: "sales", title: "المبيعات" },
   { key: "catalog", title: "الكتالوج" },
   { key: "inventory", title: "المخزون" },
@@ -34,6 +36,8 @@ export type NavDef = {
   module?: StoreModule;
   /** تبان بس لو النشاط مشترك في المنظومة (أو وحدة منهم على الأقل لو قائمة) */
   line?: ProductLine | readonly ProductLine[];
+  /** وتحتاج كمان المنظومات هذي كلها (مثلاً تجهيز الطلبيات = ماركت + متجر أونلاين) */
+  alsoLines?: readonly ProductLine[];
 };
 
 /** صفحات المحرك المشترك (الكاشير/الصالة/الاستقبال): تبان لو فيه منظومة تشغيل وحدة على الأقل */
@@ -47,6 +51,13 @@ export const NAV: NavDef[] = [
   { href: "/dashboard/sales", label: "فواتير الكاشير", icon: "receipt", group: "systems", permission: "reports", keywords: "فاتورة كاشير مبيعات مراجعة مرتجع", line: OPS },
   { href: "/dashboard/shifts", label: "الورديات", icon: "shift", group: "systems", permission: "reports", keywords: "وردية تقرير z خزنة درج عجز زيادة", line: OPS },
   { href: "/dashboard/debts", label: "الديون والمحافظ", icon: "debt", group: "systems", permission: "customers", keywords: "دين كناش محفظة نقاط ولاء كشف حساب", line: OPS },
+  { href: "/dashboard/market/products", label: "الباركود والوحدات", icon: "barcode", group: "market", permission: "products", keywords: "باركود وحدة كرتونة جملة ميزان موزون ملصقات رف ازرار سريعة", line: "market" },
+  { href: "/dashboard/market/expiry", label: "الصلاحية والهالك", icon: "expiry", group: "market", permission: "products", keywords: "صلاحية انتهاء دفعة اتلاف هالك تالف", line: "market" },
+  { href: "/dashboard/market/promotions", label: "العروض", icon: "promo", group: "market", permission: "marketing", keywords: "عرض اشتري خذ مجانا الحبة الثانية ساعة سعيدة باقة", line: "market" },
+  { href: "/dashboard/market/purchase", label: "اقتراح الشراء", icon: "reorder", group: "market", permission: "products", keywords: "طلب شراء مورد ناقص اعادة طلب واتساب مستحقات", line: "market" },
+  { href: "/dashboard/market/stocktake", label: "الجرد بالمسح", icon: "stocktake", group: "market", permission: "products", keywords: "جرد مسح عد فروقات تسوية رف", line: "market" },
+  { href: "/dashboard/market/prep", label: "تجهيز الطلبيات", icon: "prep", group: "market", permission: "orders", keywords: "تجهيز طلبيات اونلاين تجميع بديل", line: "market", alsoLines: ["store"] },
+  { href: "/dashboard/market/reports", label: "تقارير الماركت", icon: "mreports", group: "market", permission: "reports", keywords: "تقرير مبيعات ربح كاشير وردية قسم ذروة راكد", line: "market" },
   { href: "/dashboard/orders", label: "الطلبيات", icon: "orders", group: "sales", permission: "orders", keywords: "طلب طلبية", line: "store" },
   { href: "/dashboard/inbox", label: "صندوق الرسائل", icon: "inbox", group: "sales", permission: "orders", keywords: "رسائل محادثات انستغرام فيسبوك واتساب", module: "marketplaceInbox", line: "store" },
   { href: "/dashboard/customers", label: "الزبائن", icon: "customers", group: "sales", permission: "customers", keywords: "زبون عملاء" },
@@ -97,7 +108,7 @@ export type NavItem = Pick<NavDef, "href" | "label" | "icon" | "group" | "keywor
 export function navFor(o: { can: (p: Permission) => boolean; useCouriers: boolean; isCourier: boolean; moduleOn: (m: StoreModule) => boolean; hasLine?: (l: ProductLine) => boolean }): NavItem[] {
   const hasLine = o.hasLine ?? ((l: ProductLine) => l === "store");
   const lineOk = (l: NavDef["line"]) => !l || (typeof l === "string" ? hasLine(l) : l.some(hasLine));
-  return NAV.filter((d) => o.can(d.permission) && (!d.needsCouriers || o.useCouriers || o.isCourier) && (!d.module || o.moduleOn(d.module)) && lineOk(d.line))
+  return NAV.filter((d) => o.can(d.permission) && (!d.needsCouriers || o.useCouriers || o.isCourier) && (!d.module || o.moduleOn(d.module)) && lineOk(d.line) && (d.alsoLines ?? []).every(hasLine))
     .map(({ href, label, icon, group, keywords }) => ({ href, label, icon, group, keywords }));
 }
 

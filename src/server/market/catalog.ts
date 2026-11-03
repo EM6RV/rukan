@@ -192,3 +192,76 @@ export async function listQuickKeys(scope: StoreScope) {
   const rows = await scope.from(t.products, isNull(t.products.deletedAt));
   return rows.filter((p) => p.quickPosition !== null).sort((a, b) => a.quickPosition! - b.quickPosition!).map((p) => ({ id: p.id, name: p.name, color: p.quickColor, position: p.quickPosition! }));
 }
+
+/** قائمة المنتجات ببيانات الماركت (للوحة والملصقات) */
+export async function listMarketProducts(scope: StoreScope, q?: string) {
+  const [products, variants, units, barcodes] = await Promise.all([
+    scope.from(t.products, isNull(t.products.deletedAt)).orderBy(t.products.name),
+    scope.from(t.productVariants),
+    scope.from(t.productUnits),
+    scope.from(t.productBarcodes),
+  ]);
+  const needle = q?.trim().toLowerCase();
+  const codesOf = (vids: Set<string>) => barcodes.filter((b) => vids.has(b.variantId));
+  return products.map((p) => {
+    const vs = variants.filter((v) => v.productId === p.id);
+    const vids = new Set(vs.map((v) => v.id));
+    const codes = codesOf(vids);
+    return {
+      id: p.id, name: p.name, price: p.price, soldBy: p.soldBy, plu: p.pluCode, shelf: p.shelf, quick: p.quickPosition, kind: p.kind,
+      stock: vs.reduce((s, v) => s + v.stock, 0), variants: vs.length,
+      units: units.filter((u) => u.productId === p.id).map((u) => `${u.name} ${u.factor}`),
+      barcode: codes.find((b) => !b.unitId)?.code ?? vs.find((v) => v.sku)?.sku ?? null, barcodes: codes.length,
+    };
+  }).filter((p) => !needle || p.name.toLowerCase().includes(needle) || p.barcode?.toLowerCase() === needle || p.plu === needle || p.shelf?.toLowerCase() === needle);
+}
+
+/** بيانات الملصقات: اسم وسعر وباركود */
+export async function labelData(scope: StoreScope, productIds: string[]) {
+  const ids = [...new Set(productIds)].slice(0, 300);
+  if (!ids.length) return [];
+  const [products, variants, barcodes] = await Promise.all([
+    scope.from(t.products, and(inArray(t.products.id, ids), isNull(t.products.deletedAt))!),
+    scope.from(t.productVariants, inArray(t.productVariants.productId, ids)),
+    scope.from(t.productBarcodes),
+  ]);
+  const out: { variantId: string; name: string; price: number; perKg: boolean; code: string | null; shelf: string | null }[] = [];
+  for (const p of products) {
+    for (const v of variants.filter((x) => x.productId === p.id && x.isActive)) {
+      const code = barcodes.find((b) => b.variantId === v.id && !b.unitId)?.code ?? v.sku ?? null;
+      out.push({ variantId: v.id, name: p.name, price: v.price ?? p.price, perKg: p.soldBy === "weight", code, shelf: p.shelf });
+    }
+  }
+  return out;
+}
+
+/** يولّد باركود داخلي لكل متغير ما عندوش باركود (غير الموزون) */
+export async function generateMissingBarcodes(scope: StoreScope, productIds: string[]): Promise<Result<{ created: number }>> {
+  const ids = [...new Set(productIds)].slice(0, 300);
+  if (!ids.length) return ok({ created: 0 });
+  const [products, variants, barcodes] = await Promise.all([
+    scope.from(t.products, and(inArray(t.products.id, ids), isNull(t.products.deletedAt))!),
+    scope.from(t.productVariants, inArray(t.productVariants.productId, ids)),
+    scope.from(t.productBarcodes),
+  ]);
+  let created = 0;
+  for (const p of products.filter((x) => x.soldBy !== "weight")) {
+    for (const v of variants.filter((x) => x.productId === p.id)) {
+      if (v.sku || barcodes.some((b) => b.variantId === v.id && !b.unitId)) continue;
+      const g = await generateInternalBarcode(scope, v.id);
+      if (g.ok) created++;
+    }
+  }
+  return ok({ created });
+}
+
+/** خيارات اختيار صنف (متغير) في النماذج: الاسم + المتغير */
+export async function variantOptions(scope: StoreScope) {
+  const [products, variants] = await Promise.all([scope.from(t.products, and(isNull(t.products.deletedAt), eq(t.products.kind, "simple"))!).orderBy(t.products.name), scope.from(t.productVariants, eq(t.productVariants.isActive, true))]);
+  const out: { variantId: string; productId: string; name: string; stock: number; isWeighed: boolean; price: number; cost: number | null }[] = [];
+  for (const p of products) {
+    const vs = variants.filter((v) => v.productId === p.id);
+    for (const [i, v] of vs.entries()) out.push({ variantId: v.id, productId: p.id, name: vs.length > 1 ? `${p.name} (${v.sku ?? i + 1})` : p.name, stock: v.stock, isWeighed: p.soldBy === "weight", price: v.price ?? p.price, cost: v.costPrice ?? p.costPrice });
+  }
+  return out;
+}

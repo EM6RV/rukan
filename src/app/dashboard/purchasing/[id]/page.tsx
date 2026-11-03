@@ -22,7 +22,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     <div className="space-y-5">
       <h1 className="text-2xl">فاتورة شراء #{inv.number}</h1>
       <InvoiceEditor
-        initial={{ id: inv.id, number: inv.number, status: inv.status, supplierId: inv.supplierId, warehouseId: inv.warehouseId, note: inv.note, items: inv.items }}
+        initial={{ id: inv.id, number: inv.number, status: inv.status, supplierId: inv.supplierId, warehouseId: inv.warehouseId, note: inv.note, dueAt: inv.dueAt?.getTime() ?? null, items: inv.items }}
         suppliers={suppliers.map((s) => ({ id: s.id, name: s.name }))} warehouses={warehouses} items={lookups.components} writable={ctx.access.writable}
       />
     </div>

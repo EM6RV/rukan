@@ -18,6 +18,7 @@ page.on("pageerror", (e) => errs.push(e.message));
 
 await login(page);
 await page.goto(`${BASE}/dashboard/lines`);
+await page.waitForSelector("main h1", { timeout: 20000 });
 const start = page.getByRole("button", { name: /ابدا تجربة مجانية/ }).first();
 if (await start.count()) { await start.click(); await page.waitForURL(/\/dashboard\/market/); }
 check("الماركت مفعّل للنشاط", page.url().includes("/dashboard/market") || (await page.locator("main").innerText()).includes("رُكن ماركت"));

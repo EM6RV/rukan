@@ -161,7 +161,7 @@ export function PosApp() {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_26rem]">
         {/* المنتجات */}
-        <section className="flex min-h-0 flex-col gap-2 p-3" aria-label="المنتجات">
+        <section className="flex min-h-0 min-w-0 flex-col gap-2 p-3" aria-label="المنتجات">
           <form className="relative" onSubmit={(e) => {
             e.preventDefault();
             const code = q.trim();

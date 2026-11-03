@@ -2,6 +2,8 @@
 // الراكد، ديون الزبائن، مستحقات الموردين، الهالك، مقارنة اليوم/الأسبوع، خريطة ساعات الذروة، وتصدير Excel.
 import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import writeExcelFile from "write-excel-file/node";
+import type { Db } from "@/db";
+import { storeMembers, users } from "@/db/schema/platform";
 import { PAY_METHOD_LABELS, type PayMethod } from "@/lib/constants";
 import { libyaClock } from "@/lib/promotions";
 import { customerBalances } from "../pos/customers";
@@ -171,4 +173,10 @@ export async function marketReportWorkbook(scope: StoreScope, range: Range, o: {
     { name: "الهالك", rows: [[h("الصنف"), h("الكمية"), h("السبب"), h("التكلفة (د.ل)")], ...waste.items.map((w) => [w.name, w.quantity, w.reason === "expired" ? "منتهي" : w.reason === "damaged" ? "تالف" : "آخر", money(w.totalCost)])] },
   ];
   return writeExcelFile(sheets.map((s) => ({ data: s.rows, sheet: s.name, rightToLeft: true, stickyRowsCount: 1, columns: s.rows[0]!.map((_, i) => ({ width: i === 0 ? 30 : 16 })) })) as never).toBuffer() as Promise<Buffer>;
+}
+
+/** أسماء موظفين النشاط (للتقارير بالكاشير) */
+export async function memberNames(db: Db, storeId: string): Promise<Map<string, string>> {
+  const rows = await db.select({ id: users.id, name: users.name }).from(storeMembers).innerJoin(users, eq(users.id, storeMembers.userId)).where(eq(storeMembers.storeId, storeId));
+  return new Map(rows.map((r) => [r.id, r.name]));
 }
