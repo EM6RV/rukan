@@ -13,9 +13,11 @@ import { useToast } from "@/components/ui/toast";
 import type { MemberRole } from "@/lib/constants";
 import { formatDate } from "@/lib/datetime";
 import { STAFF_ROLES, STAFF_ROLE_HINTS, STAFF_ROLE_LABELS, type StaffRole } from "@/lib/staff-roles";
-import { addStaffAction, changeRoleAction, removeStaffAction, resetPasswordAction } from "./actions";
+import { addStaffAction, changeRoleAction, removeStaffAction, resetPasswordAction, setBranchesAction, setPinAction } from "./actions";
+import { Toggle } from "@/components/ui/toggle";
 
-type Member = { id: string; name: string; phone: string; role: MemberRole; customRoleId: string | null; createdAt: number };
+type Member = { id: string; name: string; phone: string; role: MemberRole; customRoleId: string | null; createdAt: number; hasPin?: boolean; branchIds?: string[] | null };
+type PosInfo = { branches: { id: string; name: string }[] } | null;
 export type RoleOption = { id: string; name: string };
 type Res = { ok: boolean; error?: string };
 
@@ -67,8 +69,9 @@ function ResetForm({ member, onClose }: { member: Member; onClose: () => void })
   );
 }
 
-export function StaffManager({ members, canAdd, writable, roles }: { members: Member[]; canAdd: boolean; writable: boolean; roles: RoleOption[] }) {
+export function StaffManager({ members, canAdd, writable, roles, pos = null }: { members: Member[]; canAdd: boolean; writable: boolean; roles: RoleOption[]; pos?: PosInfo }) {
   const [adding, setAdding] = useState(false);
+  const [pinFor, setPinFor] = useState<Member | null>(null);
   const [resetting, setResetting] = useState<Member | null>(null);
   const [removing, setRemoving] = useState<Member | null>(null);
   const role = useAct();
@@ -91,14 +94,46 @@ export function StaffManager({ members, canAdd, writable, roles }: { members: Me
                   <Button size="sm" variant="ghost" disabled={!writable} aria-label={`حذف ${m.name}`} onClick={() => { del.setError(null); setRemoving(m); }}><Trash2 className="size-4 text-danger-fg" /></Button>
                 </div>
               )}
+              {pos && <Button size="sm" variant="outline" disabled={!writable} onClick={() => setPinFor(m)}>{m.hasPin ? "PIN ✓" : "حدد PIN"}{m.branchIds?.length ? ` · ${m.branchIds.length} فرع` : ""}</Button>}
               <p className="w-full text-xs text-muted">انضم {formatDate(m.createdAt)}</p>
             </Card>
           </li>
         ))}
       </ul>
       {adding && <AddForm roles={roles} onClose={() => setAdding(false)} />}
+      {pinFor && pos && <PinForm key={pinFor.id} member={pinFor} branches={pos.branches} onClose={() => setPinFor(null)} />}
       {resetting && <ResetForm key={resetting.id} member={resetting} onClose={() => setResetting(null)} />}
       <ConfirmModal open={!!removing} onClose={() => setRemoving(null)} danger loading={del.pending} title="حذف الموظف" message={del.error ?? `تحذف «${removing?.name}»؟ حسابه يتقفل ويتسجل خروجه فوراً، والطلبيات والسجل يبقوا.`} confirmLabel="حذف" onConfirm={() => removing && del.act(() => removeStaffAction(removing.id), "تم الحذف", () => setRemoving(null))} />
     </div>
+  );
+}
+
+/** PIN الكاشير والفروع المسموحة */
+function PinForm({ member, branches, onClose }: { member: Member; branches: { id: string; name: string }[]; onClose: () => void }) {
+  const [pin, setPin] = useState("");
+  const [sel, setSel] = useState<string[]>(member.branchIds ?? []);
+  const a = useAct();
+  return (
+    <Modal open onClose={onClose} title={`PIN ${member.name}`}
+      footer={<>
+        {member.hasPin && <Button variant="ghost" className="me-auto" loading={a.pending} onClick={() => a.act(() => setPinAction(member.id, null), "اتشال الـ PIN", onClose)}>شيل الـ PIN</Button>}
+        <Button variant="ghost" onClick={onClose}>إلغاء</Button>
+        <Button loading={a.pending} onClick={() => a.act(async () => {
+          if (pin) { const r = await setPinAction(member.id, pin); if (!r.ok) return r; }
+          if (branches.length > 1) return setBranchesAction(member.id, sel.length ? sel : null);
+          return { ok: true };
+        }, "تم الحفظ", onClose)}>حفظ</Button>
+      </>}>
+      <div className="space-y-4">
+        <Input label={member.hasPin ? "PIN جديد (4 أرقام، فاضي = بدون تغيير)" : "PIN (4 أرقام)"} inputMode="numeric" autoComplete="off" dir="ltr" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))} hint="الموظف يدخل بيه على جهاز الكاشير. ما تستعملش أرقام متكررة أو متتالية." />
+        {branches.length > 1 && (
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">الفروع المسموحة (فاضي = كل الفروع)</legend>
+            {branches.map((b) => <Toggle key={b.id} label={b.name} checked={sel.includes(b.id)} onChange={(c) => setSel(c ? [...sel, b.id] : sel.filter((x) => x !== b.id))} />)}
+          </fieldset>
+        )}
+        {a.error && <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger-fg">{a.error}</p>}
+      </div>
+    </Modal>
   );
 }

@@ -85,7 +85,9 @@ describe("خريطة صفحات اللوحة", () => {
     navFor({ can: (p) => can(role, p), useCouriers, isCourier: role === "courier", moduleOn: () => modules, hasLine: (l) => lines.includes(l) });
   it("كل دور يشوف صفحاته بس", () => {
     expect(nav("owner", true, true, ["store", "market", "lounge", "gym"]).length).toBe(NAV.length);
-    expect(nav("owner").length).toBe(NAV.filter((d) => !d.module && (!d.line || d.line === "store")).length); // الوحدات المطفية والمنظومات غير المشترك فيها تختفي
+    expect(nav("owner").length).toBe(NAV.filter((d) => !d.module && (!d.line || d.line === "store")).length);
+    expect(nav("owner", true, false, ["gym"]).map((i) => i.href)).toEqual(expect.arrayContaining(["/dashboard/sales", "/dashboard/branches"]));
+    expect(nav("owner").map((i) => i.href)).not.toContain("/dashboard/sales"); // الوحدات المطفية والمنظومات غير المشترك فيها تختفي
     expect(nav("courier").map((i) => i.href)).toEqual(["/dashboard/orders"]);
     expect(nav("orders_staff").some((i) => i.href === "/dashboard/products")).toBe(false);
     expect(nav("manager").some((i) => i.href === "/dashboard/billing")).toBe(false);

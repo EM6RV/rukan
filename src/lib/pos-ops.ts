@@ -28,6 +28,7 @@ export const OP_SCHEMAS = {
   "customer.create": z.object({ clientId, at, userId: id, phone: z.string().min(5).max(20), name: z.string().trim().min(1).max(80) }),
   sale: z.object({
     clientId, at, userId: id, shiftId: id.nullish(),
+    receiptNo: z.string().regex(/^[\w-]{1,24}$/).nullish(),
     customerId: id.nullish(),
     priceLevel: z.enum(["retail", "semi", "wholesale"]).default("retail"),
     lines: z.array(saleLineSchema).min(1).max(500),

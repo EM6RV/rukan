@@ -7,6 +7,7 @@ import type { Result } from "@/server/catalog/result";
 import { deleteRole, saveRole } from "@/server/roles";
 import { addStaff, changeStaffRole, removeStaff, resetStaffPassword } from "@/server/staff-service";
 import { actionContext, type StoreContext } from "@/server/store-context";
+import { setMemberBranches, setMemberPin } from "@/server/pos/branches";
 
 async function run<T>(fn: (ctx: StoreContext) => Promise<Result<T>>): Promise<Result<T>> {
   const auth = await actionContext("staff", { write: true });
@@ -44,4 +45,18 @@ export async function deleteRoleAction(roleId: unknown) {
   const m = id.safeParse(roleId);
   if (!m.success) return bad();
   return run((c) => deleteRole(getDb(), c.scope, m.data));
+}
+
+/** PIN الكاشير (4 أرقام) لتبديل الكاشير وموافقة المشرف على الجهاز. null يشيله. */
+export async function setPinAction(memberId: unknown, pin: unknown) {
+  const p = z.object({ memberId: id, pin: z.string().regex(/^\d{4}$/, "الـ PIN لازم يكون 4 أرقام").nullable() }).safeParse({ memberId, pin });
+  if (!p.success) return { ok: false as const, error: p.error.issues[0]?.message ?? "فيه خانة غلط." };
+  return run((ctx) => setMemberPin(getDb(), ctx.store.id, p.data.memberId, p.data.pin, ctx.user.id));
+}
+
+/** الفروع المسموحة للموظف (فاضي = كل الفروع) */
+export async function setBranchesAction(memberId: unknown, branchIds: unknown) {
+  const p = z.object({ memberId: id, branchIds: z.array(id).max(100).nullable() }).safeParse({ memberId, branchIds });
+  if (!p.success) return bad();
+  return run((ctx) => setMemberBranches(getDb(), ctx.store.id, p.data.memberId, p.data.branchIds, ctx.user.id));
 }

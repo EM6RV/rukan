@@ -225,7 +225,7 @@ export async function recordSale(tx: Tx, env: PosEnv, p: OpPayload<"sale">): Pro
   const saleId = p.clientId;
   await tx.insert(t.sales, {
     id: saleId, clientId: p.clientId, line: env.device.line, branchId: branch.id, registerId: env.device.registerId, shiftId: shift?.id ?? null, deviceId: env.device.id,
-    number, customerId, cashierUserId: p.userId, priceLevel: p.priceLevel, subtotal: totals.subtotal, discount: totals.discount + redeemValue, total,
+    number, receiptNo: p.receiptNo ?? null, customerId, cashierUserId: p.userId, priceLevel: p.priceLevel, subtotal: totals.subtotal, discount: totals.discount + redeemValue, total,
     tendered: s.ok ? s.tendered : 0, change: s.ok ? s.change : 0, pointsEarned: points, note: p.note ?? null,
     soldAt: new Date(p.at), syncedAt: new Date(env.now), approvedBy, sourceType: p.sourceType ?? null, sourceId: p.sourceId ?? null,
   });

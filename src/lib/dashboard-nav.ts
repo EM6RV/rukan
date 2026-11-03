@@ -7,7 +7,7 @@ import type { ProductLine } from "./product-lines";
 export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
   | "reports" | "reviews" | "brands" | "lowstock" | "stock" | "audit" | "analytics"
-  | "market" | "lounge" | "gym" | "lines"
+  | "market" | "lounge" | "gym" | "lines" | "receipt" | "shift" | "branch" | "pos"
   | "inbox" | "warehouse" | "transfer" | "stocktake" | "purchase" | "supplier" | "wallet" | "expense" | "debt" | "pnl" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
 export type NavGroupKey = "systems" | "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
@@ -32,15 +32,21 @@ export type NavDef = {
   needsCouriers?: boolean;
   /** تبان بس لو الوحدة شغّالة */
   module?: StoreModule;
-  /** تبان بس لو النشاط مشترك في المنظومة (المتجر الأونلاين أو ماركت/بلاي/فِت) */
-  line?: ProductLine;
+  /** تبان بس لو النشاط مشترك في المنظومة (أو وحدة منهم على الأقل لو قائمة) */
+  line?: ProductLine | readonly ProductLine[];
 };
+
+/** صفحات المحرك المشترك (الكاشير/الصالة/الاستقبال): تبان لو فيه منظومة تشغيل وحدة على الأقل */
+const OPS = ["market", "lounge", "gym"] as const;
 
 export const NAV: NavDef[] = [
   { href: "/dashboard", label: "الرئيسية", icon: "home", group: null, permission: "dashboard", keywords: "ملخص مبيعات" },
   { href: "/dashboard/market", label: "رُكن ماركت", icon: "market", group: "systems", permission: "dashboard", keywords: "كاشير ماركت محل مواد غذائية", line: "market" },
   { href: "/dashboard/lounge", label: "رُكن بلاي", icon: "lounge", group: "systems", permission: "dashboard", keywords: "صالة العاب بلايستيشن اجهزة", line: "lounge" },
   { href: "/dashboard/gym", label: "رُكن فِت", icon: "gym", group: "systems", permission: "dashboard", keywords: "نادي جيم اعضاء اشتراكات", line: "gym" },
+  { href: "/dashboard/sales", label: "فواتير الكاشير", icon: "receipt", group: "systems", permission: "reports", keywords: "فاتورة كاشير مبيعات مراجعة مرتجع", line: OPS },
+  { href: "/dashboard/shifts", label: "الورديات", icon: "shift", group: "systems", permission: "reports", keywords: "وردية تقرير z خزنة درج عجز زيادة", line: OPS },
+  { href: "/dashboard/debts", label: "الديون والمحافظ", icon: "debt", group: "systems", permission: "customers", keywords: "دين كناش محفظة نقاط ولاء كشف حساب", line: OPS },
   { href: "/dashboard/orders", label: "الطلبيات", icon: "orders", group: "sales", permission: "orders", keywords: "طلب طلبية", line: "store" },
   { href: "/dashboard/inbox", label: "صندوق الرسائل", icon: "inbox", group: "sales", permission: "orders", keywords: "رسائل محادثات انستغرام فيسبوك واتساب", module: "marketplaceInbox", line: "store" },
   { href: "/dashboard/customers", label: "الزبائن", icon: "customers", group: "sales", permission: "customers", keywords: "زبون عملاء" },
@@ -73,6 +79,8 @@ export const NAV: NavDef[] = [
   { href: "/dashboard/staff", label: "الموظفين", icon: "staff", group: "team", permission: "staff", keywords: "موظف صلاحيات" },
   { href: "/dashboard/settings", label: "الإعدادات", icon: "settings", group: "settings", permission: "settings", keywords: "دفع توصيل واتساب دومين" },
   { href: "/dashboard/settings/modules", label: "الوحدات", icon: "modules", group: "settings", permission: "settings", keywords: "مخازن مشتريات حسابات" },
+  { href: "/dashboard/branches", label: "الفروع والأجهزة", icon: "branch", group: "settings", permission: "settings", keywords: "فرع كاشير جهاز تابلت تفعيل طابعة", line: OPS },
+  { href: "/dashboard/pos-settings", label: "إعدادات الكاشير", icon: "pos", group: "settings", permission: "settings", keywords: "فاتورة ورق طابعة خصم موافقة نقاط ولاء دين", line: OPS },
   { href: "/dashboard/lines", label: "منظوماتي", icon: "lines", group: "settings", permission: "billing", keywords: "منظومات اشتراكات ماركت بلاي فت متجر تجربة" },
   { href: "/dashboard/billing", label: "اشتراك المتجر", icon: "billing", group: "settings", permission: "billing", keywords: "باقة ترقية تجديد", line: "store" },
 ];
@@ -88,7 +96,8 @@ export type NavItem = Pick<NavDef, "href" | "label" | "icon" | "group" | "keywor
 /** الصفحات المسموحة للموظف وحسب إعدادات المتجر */
 export function navFor(o: { can: (p: Permission) => boolean; useCouriers: boolean; isCourier: boolean; moduleOn: (m: StoreModule) => boolean; hasLine?: (l: ProductLine) => boolean }): NavItem[] {
   const hasLine = o.hasLine ?? ((l: ProductLine) => l === "store");
-  return NAV.filter((d) => o.can(d.permission) && (!d.needsCouriers || o.useCouriers || o.isCourier) && (!d.module || o.moduleOn(d.module)) && (!d.line || hasLine(d.line)))
+  const lineOk = (l: NavDef["line"]) => !l || (typeof l === "string" ? hasLine(l) : l.some(hasLine));
+  return NAV.filter((d) => o.can(d.permission) && (!d.needsCouriers || o.useCouriers || o.isCourier) && (!d.module || o.moduleOn(d.module)) && lineOk(d.line))
     .map(({ href, label, icon, group, keywords }) => ({ href, label, icon, group, keywords }));
 }
 

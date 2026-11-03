@@ -15,14 +15,14 @@ import { forStore, t } from "./tenant";
 import { STAFF_ROLES, type StaffRole } from "@/lib/staff-roles";
 import { canUse } from "@/lib/entitlements";
 
-export type StaffMember = { id: string; userId: string; name: string; phone: string; role: MemberRole; customRoleId: string | null; createdAt: number; isBlocked: boolean };
+export type StaffMember = { id: string; userId: string; name: string; phone: string; role: MemberRole; customRoleId: string | null; createdAt: number; isBlocked: boolean; hasPin: boolean; branchIds: string[] | null };
 
 export async function listStaff(db: Db, storeId: string): Promise<StaffMember[]> {
   const rows = await db
-    .select({ id: storeMembers.id, userId: users.id, name: users.name, phone: users.phone, role: storeMembers.role, customRoleId: storeMembers.customRoleId, createdAt: storeMembers.createdAt, status: users.status })
+    .select({ id: storeMembers.id, userId: users.id, name: users.name, phone: users.phone, role: storeMembers.role, customRoleId: storeMembers.customRoleId, createdAt: storeMembers.createdAt, status: users.status, pinHash: storeMembers.pinHash, branchIds: storeMembers.branchIds })
     .from(storeMembers).innerJoin(users, eq(users.id, storeMembers.userId))
     .where(eq(storeMembers.storeId, storeId)).orderBy(asc(storeMembers.createdAt));
-  return rows.map((r) => ({ id: r.id, userId: r.userId, name: r.name, phone: r.phone, role: r.role, customRoleId: r.customRoleId, createdAt: r.createdAt.getTime(), isBlocked: r.status === "blocked" }))
+  return rows.map((r) => ({ id: r.id, userId: r.userId, name: r.name, phone: r.phone, role: r.role, customRoleId: r.customRoleId, createdAt: r.createdAt.getTime(), isBlocked: r.status === "blocked", hasPin: !!r.pinHash, branchIds: r.branchIds ?? null }))
     .sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner"));
 }
 

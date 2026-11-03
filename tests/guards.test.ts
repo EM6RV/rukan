@@ -32,7 +32,8 @@ const PUBLIC_ROUTES: Record<string, RegExp> = {
   "src/app/s/[key]/quick/[slug]/route.ts": /isStoreOpen/, // عرض سريع: نفس بيانات صفحة المنتج العامة من كاش المتجر المفتوح
   "src/app/s/[key]/suggest/route.ts": /isStoreOpen/,
   "src/app/api/pos/bootstrap/route.ts": /deviceContext\(/, // جهاز تشغيل مفعّل (توكن بصلاحية محدودة بفرعه)
-  "src/app/api/pos/sync/route.ts": /deviceContext\([\s\S]*hitRateLimit/, // جهاز مفعّل + rate limit + CSRF // اقتراحات بحث عامة: منتجات ظاهرة فقط من كاش المتجر المفتوح
+  "src/app/api/pos/sync/route.ts": /deviceContext\([\s\S]*hitRateLimit/, // جهاز مفعّل + rate limit + CSRF
+  "src/app/api/pos/sales/route.ts": /deviceContext\([\s\S]*hitRateLimit/, // جهاز مفعّل: فواتير فرعه بس // اقتراحات بحث عامة: منتجات ظاهرة فقط من كاش المتجر المفتوح
 };
 
 describe("حارس صلاحيات الـ server actions", () => {

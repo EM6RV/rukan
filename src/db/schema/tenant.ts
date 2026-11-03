@@ -1204,6 +1204,8 @@ export const sales = sqliteTable(
     shiftId: text("shift_id"),
     deviceId: text("device_id"),
     number: integer("number").notNull(),
+    /** رقم الفاتورة المطبوع من الجهاز (يطلع بدون نت، مثلاً K1A2-37). الرقم التسلسلي للفرع (number) من السيرفر */
+    receiptNo: text("receipt_no"),
     customerId: text("customer_id"),
     cashierUserId: text("cashier_user_id"),
     status: text("status", { enum: ["completed", "partially_returned", "returned"] }).notNull().default("completed"),
@@ -1229,6 +1231,7 @@ export const sales = sqliteTable(
   (t) => [
     uniqueIndex("sales_store_id_uq").on(t.storeId, t.id), uniqueIndex("sales_client_uq").on(t.storeId, t.clientId),
     uniqueIndex("sales_number_uq").on(t.storeId, t.branchId, t.number),
+    index("sales_receipt_idx").on(t.storeId, t.receiptNo),
     index("sales_sold_idx").on(t.storeId, t.soldAt), index("sales_shift_idx").on(t.storeId, t.shiftId), index("sales_customer_idx").on(t.storeId, t.customerId),
     scopedFk("sales_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
     scopedFk("sales_shift_fk", [t.storeId, t.shiftId], [posShifts.storeId, posShifts.id]),

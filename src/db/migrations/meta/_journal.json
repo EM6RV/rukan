@@ -134,6 +134,13 @@
       "when": 1793686084487,
       "tag": "0018_pos_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1793686881285,
+      "tag": "0019_sale_receipt_no",
+      "breakpoints": true
     }
   ]
 }
