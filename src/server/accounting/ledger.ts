@@ -15,6 +15,7 @@ export type EntryKind = typeof t.ledgerEntries.$inferSelect["kind"];
 export const ENTRY_LABELS: Record<EntryKind, string> = {
   courier_settlement: "تسوية مندوب", bank_transfer: "تحويل مصرفي من زبون", supplier_payment: "دفعة مورد", expense: "مصروف", customer_refund: "إرجاع فلوس لزبون",
   deposit: "إيداع", withdrawal: "سحب", transfer_in: "تحويل وارد", transfer_out: "تحويل صادر", receivable_payment: "سداد دين زبون", closing_adjustment: "تسوية إقفال", opening: "رصيد افتتاحي", reversal: "حركة عكسية",
+  pos_sale: "مبيعات الكاشير", pos_refund: "مرتجع الكاشير", cash_in: "إدخال للدرج", cash_out: "سحب من الدرج", debt_payment: "سداد دين (كاشير)", wallet_topup: "شحن محفظة زبون", shift_difference: "فرق تقفيل وردية",
 };
 const amountField = z.number({ error: "المبلغ لازم يكون رقم" }).int("المبلغ غير صحيح").min(1, "اكتب مبلغ أكبر من صفر").max(1_000_000_000_000, "المبلغ كبير بزيادة");
 

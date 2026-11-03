@@ -24,6 +24,7 @@ import { DomainAdmin } from "./domain-admin";
 import { InboxBeta } from "./inbox-beta";
 import { ResetOwnerPassword } from "./reset-password";
 import { StoreActions } from "./store-actions";
+import { STAFF_ROLE_LABELS } from "@/lib/staff-roles";
 import { LinesAdmin } from "./lines-admin";
 import { listBundles } from "@/server/admin/bundles";
 import { lineLaunch } from "@/server/lines";
@@ -31,7 +32,7 @@ import { LINE_INFO, PRODUCT_LINES } from "@/lib/product-lines";
 
 export const metadata: Metadata = { title: "تفاصيل المتجر" };
 
-const ROLE = { owner: "المالك", manager: "مدير", orders_staff: "موظف طلبيات", courier: "مندوب" } as const;
+const ROLE = STAFF_ROLE_LABELS;
 const ACTION_LABEL: Record<string, string> = {
   "subscription.payment": "تسجيل دفعة", "store.extend_trial": "تمديد التجربة", "store.suspend": "إيقاف المتجر", "store.unsuspend": "تفعيل المتجر",
   "store.change_plan": "تغيير الباقة", "line.start_trial": "بداية تجربة منظومة", "store.line_beta": "تجربة منظومة قبل الإطلاق", "staff.add": "إضافة موظف", "staff.remove": "حذف موظف", "staff.role": "تغيير صلاحية", "staff.password": "تغيير كلمة سر",

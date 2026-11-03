@@ -20,13 +20,24 @@ export const STORE_STATUS_LABELS: Record<StoreStatus, string> = {
   suspended: "موقوف",
 };
 
-export const MEMBER_ROLES = ["owner", "manager", "orders_staff", "courier"] as const;
+export const MEMBER_ROLES = [
+  "owner", "manager", "orders_staff", "courier",
+  // أدوار المنظومات (ماركت/بلاي/فِت)
+  "cashier", "shift_supervisor", "stock_keeper", "lounge_supervisor", "receptionist", "trainer", "accountant",
+] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   owner: "مالك",
   manager: "مدير",
   orders_staff: "موظف طلبيات",
   courier: "مندوب",
+  cashier: "كاشير",
+  shift_supervisor: "مشرف وردية",
+  stock_keeper: "مسؤول مخزن",
+  lounge_supervisor: "مشرف صالة",
+  receptionist: "موظف استقبال",
+  trainer: "مدرب",
+  accountant: "محاسب",
 };
 
 // القوالب الستة: نقاء، مخمل، نبض، سوق، حكاية، لمسة.
@@ -56,6 +67,11 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
 };
 /** أنواع النشاط اللي تطلع في معالج المتجر الأونلاين (الباقي يتحدد من المنظومة) */
 export const STORE_BUSINESS_TYPES = ["clothing", "perfume", "beauty", "accessories", "food", "other"] as const satisfies readonly BusinessType[];
+
+// طرق الدفع في الكاشير (الدفع المقسّم): كاش، بطاقة/خدمة دفع محلية، تحويل، على الحساب (دين)، رصيد المحفظة
+export const PAY_METHODS = ["cash", "card", "transfer", "credit", "wallet"] as const;
+export type PayMethod = (typeof PAY_METHODS)[number];
+export const PAY_METHOD_LABELS: Record<PayMethod, string> = { cash: "كاش", card: "بطاقة", transfer: "تحويل", credit: "على الحساب", wallet: "المحفظة" };
 
 export const PAYMENT_METHODS = ["cod", "bank_transfer", "gateway"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];

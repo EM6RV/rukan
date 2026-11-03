@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { blob, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createdAt, pk, updatedAt } from "./_helpers";
-import type { AddonKind, BillingCycle, BusinessType, DesignService, LibyaRegion, StoreModule, StoreStatus, StoreTemplate } from "@/lib/constants";
+import type { AddonKind, BillingCycle, BusinessType, DesignService, LibyaRegion, MemberRole, StoreModule, StoreStatus, StoreTemplate } from "@/lib/constants";
 export type { AddonKind } from "@/lib/constants";
 import type { DurationKey } from "@/lib/billing";
 import type { ProductLine } from "@/lib/product-lines";
@@ -197,8 +197,12 @@ export const storeMembers = sqliteTable(
     id: pk(),
     storeId: text("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    role: text("role", { enum: ["owner", "manager", "orders_staff", "courier"] }).notNull(),
+    role: text("role").$type<MemberRole>().notNull(),
     customRoleId: text("custom_role_id"), // دور مخصص (store_roles): صلاحياته تغلب صلاحيات role
+    /** PIN سريع (4 أرقام) لتبديل الكاشير على نفس الجهاز وموافقة المشرف: "salt:sha256" */
+    pinHash: text("pin_hash"),
+    /** الفروع المسموحة للموظف (null = كل الفروع) */
+    branchIds: text("branch_ids", { mode: "json" }).$type<string[]>(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("store_members_uq").on(t.storeId, t.userId), index("store_members_user_idx").on(t.userId)],

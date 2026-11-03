@@ -3,6 +3,8 @@ import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "driz
 import { createdAt, pk, scopedFk, updatedAt } from "./_helpers";
 import { cities, media, stores, users } from "./platform";
 import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/constants";
+import { PAY_METHODS } from "@/lib/constants";
+import type { PosConfig } from "@/lib/pos-config";
 
 const storeIdCol = () =>
   text("store_id").notNull().references(() => stores.id, { onDelete: "cascade" });
@@ -35,8 +37,11 @@ export const storeSettings = sqliteTable("store_settings", {
   abandonedRetentionDays: integer("abandoned_retention_days").notNull().default(30), // مدة الاحتفاظ بالسلات المتروكة
   /** قوالب روابط تتبع الشحنة لكل شركة: {vanex: "https://…/{n}"} — {n} = رقم الشحنة. يحددها البياع (ما نخترعش روابط). */
   shippingTrackingUrls: text("shipping_tracking_urls", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
+  /** إعدادات الكاشير (الفاتورة، الموافقات، الولاء، الدين) */
+  posConfig: text("pos_config", { mode: "json" }).$type<PosConfig>().notNull().default({}),
   updatedAt: updatedAt(),
 });
+
 
 export const storePages = sqliteTable(
   "store_pages",
@@ -330,6 +335,11 @@ export const customers = sqliteTable(
     totalSpent: integer("total_spent").notNull().default(0),
     flag: text("flag", { enum: ["none", "problematic"] }).notNull().default("none"),
     notes: text("notes"),
+    /** حد الدين (null = حسب الإعداد العام، 0 = ممنوع الدين) */
+    creditLimit: integer("credit_limit"),
+    /** مستوى السعر للزبون (جملة/نص جملة) */
+    priceLevel: text("price_level", { enum: ["retail", "semi", "wholesale"] }).notNull().default("retail"),
+    birthDate: text("birth_date"), // YYYY-MM-DD
     createdAt: createdAt(),
   },
   (t) => [
@@ -661,7 +671,8 @@ export const ledgerEntries = sqliteTable(
     accountId: text("account_id").notNull(),
     amount: integer("amount").notNull(),
     kind: text("kind", {
-      enum: ["courier_settlement", "bank_transfer", "supplier_payment", "expense", "customer_refund", "deposit", "withdrawal", "transfer_in", "transfer_out", "receivable_payment", "closing_adjustment", "opening", "reversal"],
+      enum: ["courier_settlement", "bank_transfer", "supplier_payment", "expense", "customer_refund", "deposit", "withdrawal", "transfer_in", "transfer_out", "receivable_payment", "closing_adjustment", "opening", "reversal",
+        "pos_sale", "pos_refund", "cash_in", "cash_out", "debt_payment", "wallet_topup", "shift_difference"],
     }).notNull(),
     refType: text("ref_type"),
     refId: text("ref_id"),
@@ -981,7 +992,7 @@ export const stockMovements = sqliteTable(
     storeId: storeIdCol(),
     variantId: text("variant_id").notNull(),
     delta: integer("delta").notNull(),
-    reason: text("reason", { enum: ["order", "return", "manual", "import", "cancel", "transfer", "stocktake", "purchase", "purchase_return"] }).notNull(),
+    reason: text("reason", { enum: ["order", "return", "manual", "import", "cancel", "transfer", "stocktake", "purchase", "purchase_return", "pos_sale", "pos_return"] }).notNull(),
     warehouseId: text("warehouse_id"), // المخزن المتأثر (null = الرئيسي / وحدة المخازن مطفية)
     orderId: text("order_id"),
     note: text("note"),
@@ -1051,5 +1062,330 @@ export const returnItems = sqliteTable(
   (t) => [
     scopedFk("ri_return_fk", [t.storeId, t.returnId], [returns.storeId, returns.id], "cascade"),
     scopedFk("ri_item_fk", [t.storeId, t.orderItemId], [orderItems.storeId, orderItems.id]),
+  ],
+);
+
+// =====================================================================
+// ===== منظومات رُكن: المحرك المشترك (الفروع، الكاشير، الورديات، الفواتير، دفتر الزبون، المزامنة) =====
+// =====================================================================
+
+/** الفروع: لكل فرع كاشيراته وأجهزته وترقيم فواتيره، ومربوط بمخزن لو وحدة المخازن شغالة */
+export const branches = sqliteTable(
+  "branches",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    address: text("address"),
+    phone: text("phone"),
+    warehouseId: text("warehouse_id"),
+    isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    /** رأس وذيل الفاتورة (يتعدلوا من اللوحة) */
+    receiptHeader: text("receipt_header"),
+    receiptFooter: text("receipt_footer"),
+    nextSaleNumber: integer("next_sale_number").notNull().default(1),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("branches_store_id_uq").on(t.storeId, t.id), uniqueIndex("branches_name_uq").on(t.storeId, t.name),
+    scopedFk("br_warehouse_fk", [t.storeId, t.warehouseId], [warehouses.storeId, warehouses.id]),
+  ],
+);
+
+/** نقاط البيع (الكاشيرات) في كل فرع */
+export const registers = sqliteTable(
+  "registers",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    branchId: text("branch_id").notNull(),
+    name: text("name").notNull(),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("registers_store_id_uq").on(t.storeId, t.id), uniqueIndex("registers_name_uq").on(t.storeId, t.branchId, t.name),
+    scopedFk("reg_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
+  ],
+);
+
+/** أجهزة التشغيل (كاشير/كشك/شاشة حائط/استقبال): توكن بصلاحية محدودة بدل جلسة موظف كاملة */
+export const devices = sqliteTable(
+  "devices",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    kind: text("kind", { enum: ["pos", "kiosk", "wall", "reception"] }).notNull(),
+    line: text("line", { enum: ["market", "lounge", "gym", "store"] }).notNull(),
+    name: text("name").notNull(),
+    branchId: text("branch_id").notNull(),
+    registerId: text("register_id"),
+    /** sha256 للتوكن (التوكن نفسه في كوكي الجهاز بس) */
+    tokenHash: text("token_hash").notNull().unique(),
+    lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+    createdBy: text("created_by"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("devices_store_id_uq").on(t.storeId, t.id),
+    scopedFk("dev_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
+    scopedFk("dev_register_fk", [t.storeId, t.registerId], [registers.storeId, registers.id]),
+  ],
+);
+
+/** الورديات: رصيد افتتاحي ← حركات ← تقفيل بعدّ الفئات والفرق (عجز/زيادة) وتقرير Z */
+export const posShifts = sqliteTable(
+  "pos_shifts",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    clientId: text("client_id").notNull(),
+    branchId: text("branch_id").notNull(),
+    registerId: text("register_id"),
+    deviceId: text("device_id"),
+    status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+    openedBy: text("opened_by").notNull(),
+    openedAt: integer("opened_at", { mode: "timestamp_ms" }).notNull(),
+    openingFloat: integer("opening_float").notNull().default(0),
+    closedBy: text("closed_by"),
+    closedAt: integer("closed_at", { mode: "timestamp_ms" }),
+    /** الكاش المتوقع في الدرج عند التقفيل (افتتاحي + كاش المبيعات − المرتجع ± الحركات) */
+    expectedCash: integer("expected_cash"),
+    countedCash: integer("counted_cash"),
+    /** عدّ الفئات: {"50000": 3, "20000": 1, ...} (المفتاح قيمة الفئة بالدرهم) */
+    denominations: text("denominations", { mode: "json" }).$type<Record<string, number>>(),
+    difference: integer("difference"),
+    zNumber: integer("z_number"),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("pos_shifts_store_id_uq").on(t.storeId, t.id), uniqueIndex("pos_shifts_client_uq").on(t.storeId, t.clientId),
+    index("pos_shifts_branch_idx").on(t.storeId, t.branchId, t.openedAt),
+    scopedFk("ps_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
+    scopedFk("ps_register_fk", [t.storeId, t.registerId], [registers.storeId, registers.id]),
+  ],
+);
+
+/** إدخال/سحب فلوس من الدرج مع السبب (وفتح الدرج بدون بيع) */
+export const posCashMoves = sqliteTable(
+  "pos_cash_moves",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    clientId: text("client_id").notNull(),
+    shiftId: text("shift_id").notNull(),
+    kind: text("kind", { enum: ["in", "out", "drawer"] }).notNull(),
+    amount: integer("amount").notNull().default(0), // موجب دايماً (الاتجاه من kind)
+    reason: text("reason"),
+    actorUserId: text("actor_user_id"),
+    approvedBy: text("approved_by"),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("pos_cash_moves_client_uq").on(t.storeId, t.clientId),
+    scopedFk("pcm_shift_fk", [t.storeId, t.shiftId], [posShifts.storeId, posShifts.id]),
+  ],
+);
+
+/** فاتورة البيع (للكاشير والصالة والنادي). الإجماليات تتحسب في السيرفر من السطور. */
+export const sales = sqliteTable(
+  "sales",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    clientId: text("client_id").notNull(),
+    line: text("line", { enum: ["market", "lounge", "gym", "store"] }).notNull(),
+    branchId: text("branch_id").notNull(),
+    registerId: text("register_id"),
+    shiftId: text("shift_id"),
+    deviceId: text("device_id"),
+    number: integer("number").notNull(),
+    customerId: text("customer_id"),
+    cashierUserId: text("cashier_user_id"),
+    status: text("status", { enum: ["completed", "partially_returned", "returned"] }).notNull().default("completed"),
+    priceLevel: text("price_level", { enum: ["retail", "semi", "wholesale"] }).notNull().default("retail"),
+    subtotal: integer("subtotal").notNull(),
+    discount: integer("discount").notNull().default(0), // خصم الفاتورة كاملة
+    total: integer("total").notNull(),
+    tendered: integer("tendered").notNull().default(0), // الكاش اللي عطاه الزبون
+    change: integer("change").notNull().default(0),
+    pointsEarned: integer("points_earned").notNull().default(0),
+    note: text("note"),
+    /** وقت البيع في الجهاز (المزامنة ممكن تجي بعده) */
+    soldAt: integer("sold_at", { mode: "timestamp_ms" }).notNull(),
+    syncedAt: integer("synced_at", { mode: "timestamp_ms" }).notNull(),
+    /** تحتاج مراجعة: سعر مختلف عن الحالي، مخزون نزل تحت الصفر، دين فوق الحد… */
+    needsReview: integer("needs_review", { mode: "boolean" }).notNull().default(false),
+    reviewNotes: text("review_notes", { mode: "json" }).$type<string[]>(),
+    approvedBy: text("approved_by"),
+    sourceType: text("source_type"),
+    sourceId: text("source_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("sales_store_id_uq").on(t.storeId, t.id), uniqueIndex("sales_client_uq").on(t.storeId, t.clientId),
+    uniqueIndex("sales_number_uq").on(t.storeId, t.branchId, t.number),
+    index("sales_sold_idx").on(t.storeId, t.soldAt), index("sales_shift_idx").on(t.storeId, t.shiftId), index("sales_customer_idx").on(t.storeId, t.customerId),
+    scopedFk("sales_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
+    scopedFk("sales_shift_fk", [t.storeId, t.shiftId], [posShifts.storeId, posShifts.id]),
+    scopedFk("sales_customer_fk", [t.storeId, t.customerId], [customers.storeId, customers.id]),
+  ],
+);
+
+/**
+ * سطور الفاتورة. quantity بوحدة البيع (حبة/كرتونة)، أو بالجرام للموزون (isWeighed، والسعر للكيلو).
+ * baseQty = اللي نقص من المخزون بالوحدة الأصغر (الحبة أو الجرام).
+ */
+export const saleItems = sqliteTable(
+  "sale_items",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    saleId: text("sale_id").notNull(),
+    kind: text("kind", { enum: ["product", "service", "custom"] }).notNull().default("product"),
+    variantId: text("variant_id"),
+    name: text("name").notNull(),
+    quantity: integer("quantity").notNull(),
+    isWeighed: integer("is_weighed", { mode: "boolean" }).notNull().default(false),
+    unitFactor: integer("unit_factor").notNull().default(1),
+    baseQty: integer("base_qty").notNull().default(0),
+    unitPrice: integer("unit_price").notNull(),
+    discount: integer("discount").notNull().default(0),
+    total: integer("total").notNull(),
+    unitCost: integer("unit_cost"), // تكلفة الوحدة الأصغر لحظة البيع
+    returnedQty: integer("returned_qty").notNull().default(0),
+    refId: text("ref_id"),
+  },
+  (t) => [
+    uniqueIndex("sale_items_store_id_uq").on(t.storeId, t.id),
+    index("sale_items_sale_idx").on(t.storeId, t.saleId),
+    scopedFk("si_sale_fk", [t.storeId, t.saleId], [sales.storeId, sales.id], "cascade"),
+    scopedFk("si_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
+  ],
+);
+
+/** الدفع المقسّم: مجموع الطرق = إجمالي الفاتورة (والباقي للزبون من الكاش بس) */
+export const salePayments = sqliteTable(
+  "sale_payments",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    saleId: text("sale_id").notNull(),
+    method: text("method", { enum: PAY_METHODS }).notNull(),
+    amount: integer("amount").notNull(),
+    ref: text("ref"),
+  },
+  (t) => [
+    index("sale_payments_sale_idx").on(t.storeId, t.saleId),
+    scopedFk("sp_sale_fk", [t.storeId, t.saleId], [sales.storeId, sales.id], "cascade"),
+  ],
+);
+
+/** مرتجع الكاشير برقم الفاتورة: كامل أو جزئي، المخزون يرجع والفلوس ترجع بنفس الطريقة أو تنقص من الدين */
+export const saleReturns = sqliteTable(
+  "sale_returns",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    clientId: text("client_id").notNull(),
+    saleId: text("sale_id").notNull(),
+    shiftId: text("shift_id"),
+    refundMethod: text("refund_method", { enum: PAY_METHODS }).notNull(),
+    amount: integer("amount").notNull(),
+    reason: text("reason"),
+    actorUserId: text("actor_user_id"),
+    approvedBy: text("approved_by"),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("sale_returns_store_id_uq").on(t.storeId, t.id), uniqueIndex("sale_returns_client_uq").on(t.storeId, t.clientId),
+    scopedFk("sr_sale_fk", [t.storeId, t.saleId], [sales.storeId, sales.id]),
+    scopedFk("sr_shift_fk", [t.storeId, t.shiftId], [posShifts.storeId, posShifts.id]),
+  ],
+);
+
+export const saleReturnItems = sqliteTable(
+  "sale_return_items",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    returnId: text("return_id").notNull(),
+    saleItemId: text("sale_item_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    amount: integer("amount").notNull(),
+  },
+  (t) => [
+    scopedFk("sri_return_fk", [t.storeId, t.returnId], [saleReturns.storeId, saleReturns.id], "cascade"),
+    scopedFk("sri_item_fk", [t.storeId, t.saleItemId], [saleItems.storeId, saleItems.id]),
+  ],
+);
+
+/**
+ * دفتر الزبون (إلحاق فقط، الرصيد = مجموع الحركات): debt = الدين عليه (موجب يزيد الدين)،
+ * wallet = رصيد المحفظة (موجب = شحن)، points = نقاط الولاء.
+ */
+export const customerLedger = sqliteTable(
+  "customer_ledger",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    customerId: text("customer_id").notNull(),
+    account: text("account", { enum: ["debt", "wallet", "points"] }).notNull(),
+    amount: integer("amount").notNull(),
+    kind: text("kind", { enum: ["sale", "payment", "topup", "spend", "refund", "adjust", "earn", "redeem", "opening"] }).notNull(),
+    method: text("method", { enum: PAY_METHODS }),
+    refType: text("ref_type"),
+    refId: text("ref_id"),
+    clientId: text("client_id"),
+    note: text("note"),
+    actorUserId: text("actor_user_id"),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("customer_ledger_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("customer_ledger_client_uq").on(t.storeId, t.clientId, t.account),
+    index("customer_ledger_customer_idx").on(t.storeId, t.customerId, t.account),
+    scopedFk("cl_customer_fk", [t.storeId, t.customerId], [customers.storeId, customers.id]),
+  ],
+);
+
+/** سجل المزامنة: كل عملية من الجهاز (clientId) تتطبق مرة وحدة بس، والنتيجة ترجع لو اتعاودت */
+export const syncOps = sqliteTable(
+  "sync_ops",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    clientId: text("client_id").notNull(),
+    deviceId: text("device_id"),
+    kind: text("kind").notNull(),
+    status: text("status", { enum: ["applied", "rejected"] }).notNull(),
+    result: text("result", { mode: "json" }).$type<Record<string, unknown>>(),
+    receivedAt: integer("received_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [uniqueIndex("sync_ops_client_uq").on(t.storeId, t.clientId)],
+);
+
+/** حضور وانصراف الموظفين (اختياري) */
+export const staffAttendance = sqliteTable(
+  "staff_attendance",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    clientId: text("client_id").notNull(),
+    userId: text("user_id").notNull(),
+    branchId: text("branch_id"),
+    inAt: integer("in_at", { mode: "timestamp_ms" }).notNull(),
+    outAt: integer("out_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    uniqueIndex("staff_attendance_client_uq").on(t.storeId, t.clientId),
+    index("staff_attendance_user_idx").on(t.storeId, t.userId, t.inAt),
+    scopedFk("sa_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
   ],
 );

@@ -30,7 +30,9 @@ const PUBLIC_ROUTES: Record<string, RegExp> = {
   "src/app/s/[key]/robots.txt/route.ts": /./, "src/app/s/-/sitemap.xml/route.ts": /./, "src/app/s/[key]/sitemap.xml/route.ts": /./,
   "src/app/s/[key]/hit/route.ts": /hitRateLimit/, // عدّاد زيارات عام: rate limit، بدون بيانات شخصية
   "src/app/s/[key]/quick/[slug]/route.ts": /isStoreOpen/, // عرض سريع: نفس بيانات صفحة المنتج العامة من كاش المتجر المفتوح
-  "src/app/s/[key]/suggest/route.ts": /isStoreOpen/, // اقتراحات بحث عامة: منتجات ظاهرة فقط من كاش المتجر المفتوح
+  "src/app/s/[key]/suggest/route.ts": /isStoreOpen/,
+  "src/app/api/pos/bootstrap/route.ts": /deviceContext\(/, // جهاز تشغيل مفعّل (توكن بصلاحية محدودة بفرعه)
+  "src/app/api/pos/sync/route.ts": /deviceContext\([\s\S]*hitRateLimit/, // جهاز مفعّل + rate limit + CSRF // اقتراحات بحث عامة: منتجات ظاهرة فقط من كاش المتجر المفتوح
 };
 
 describe("حارس صلاحيات الـ server actions", () => {
