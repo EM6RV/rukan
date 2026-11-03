@@ -6,7 +6,9 @@ import { LINE_PLANS } from "@/lib/plan-catalog";
 import {
   addMeasurement, bookClass, cancelClassBooking, cancelMembership, checkin, commissionReport, eraseMemberData, freezeMembership, listMembers, memberDetail, payInstallment, saveClass, saveMember, savePlan,
   saveTrainer, scheduleOrCompletePt, sellPtPack, subscribe, transferMembership, unfreezeMembership, upgradeMembership, upcomingClasses,
+  setPortalPassword,
 } from "@/server/gym/service";
+import { portalLogin, portalMember, portalLogout, portalView, portalCancel } from "@/server/gym/portal";
 import { createStoreForUser } from "@/server/store-service";
 import { forStore, t, type StoreScope } from "@/server/tenant";
 import { makeTestDb } from "./helpers/db";
@@ -151,5 +153,24 @@ describe("الحصص والمدربين", () => {
     const rep = await commissionReport(a.scope, { from: Date.now() - DAY, to: Date.now() + DAY });
     expect(rep.find((r) => r.trainerId === tr.id)).toMatchObject({ sessions: 1, commission: 4_000 });
     expect(await commissionReport(b.scope, { from: 0, to: Date.now() })).toEqual([]);
+  });
+
+  it("صفحة العضو: دخول بكلمة سر، جلسة، وعزل بين الأعضاء والمتاجر", async () => {
+    const m = (await listMembers(a.scope, { q: "0911112222" }))[0]!;
+    const other = (await listMembers(a.scope, { limit: 5 })).find((x) => x.id !== m.id)!;
+    expect((await setPortalPassword(a.scope, m.id, "123")).ok).toBe(false);
+    expect((await setPortalPassword(a.scope, m.id, "secret-pw")).ok).toBe(true);
+    const bad = await portalLogin(db, "fit-a", "0911112222", "wrong", "1.1.1.1");
+    expect(bad.ok).toBe(false);
+    const good = await portalLogin(db, "fit-a", "0911112222", "secret-pw", "1.1.1.1");
+    if (!good.ok) throw new Error(good.error);
+    expect((await portalMember(a.scope, good.data.cookie))?.id).toBe(m.id);
+    expect(await portalMember(b.scope, good.data.cookie)).toBeNull(); // متجر ثاني
+    expect(await portalMember(a.scope, `${other.id}.${good.data.cookie.split(".")[1]}`)).toBeNull(); // عضو ثاني بنفس التوكن
+    const v = await portalView(a.scope, m.id);
+    expect(v?.name).toBeTruthy();
+    expect((await portalCancel(a.scope, other.id, "nope")).ok).toBe(false);
+    await portalLogout(a.scope, good.data.cookie);
+    expect(await portalMember(a.scope, good.data.cookie)).toBeNull();
   });
 });
