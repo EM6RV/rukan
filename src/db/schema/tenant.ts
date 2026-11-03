@@ -1842,3 +1842,287 @@ export const tournamentMatches = sqliteTable(
     scopedFk("tm_tournament_fk", [t.storeId, t.tournamentId], [tournaments.storeId, tournaments.id], "cascade"),
   ],
 );
+
+// =====================================================================
+// ===== رُكن فِت: الأعضاء والاشتراكات والدخول والحصص والمدربين والتقدم =====
+// =====================================================================
+
+/** أنواع الاشتراكات: بالمدة (أيام) أو بعدد الحصص، بقسم ووقت مسموح، وحد التجميد والعائلي */
+export const gymPlans = sqliteTable(
+  "gym_plans",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: ["duration", "visits", "day"] }).notNull().default("duration"),
+    days: integer("days").notNull().default(30),
+    visits: integer("visits"),
+    price: integer("price").notNull(),
+    joinFee: integer("join_fee").notNull().default(0),
+    section: text("section", { enum: ["men", "women", "mixed"] }).notNull().default("mixed"),
+    /** وقت مسموح (فاضي = طول اليوم) */
+    fromMinute: integer("from_minute"),
+    toMinute: integer("to_minute"),
+    maxFreezeDays: integer("max_freeze_days").notNull().default(0),
+    /** عائلي: عدد الأعضاء التابعين مع العضو الرئيسي (0 = فردي) */
+    familySize: integer("family_size").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("gym_plans_store_id_uq").on(t.storeId, t.id)],
+);
+
+export const gymMembers = sqliteTable(
+  "gym_members",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    customerId: text("customer_id"),
+    parentMemberId: text("parent_member_id"),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    section: text("section", { enum: ["men", "women", "mixed"] }).notNull().default("men"),
+    birthDate: text("birth_date"),
+    heightCm: integer("height_cm"),
+    weightKg: integer("weight_kg"),
+    emergencyName: text("emergency_name"),
+    emergencyPhone: text("emergency_phone"),
+    /** بيانات حساسة: ملاحظات صحية كتبها العضو، وصورته (media خاصة) */
+    healthNotes: text("health_notes"),
+    photoMediaId: text("photo_media_id"),
+    termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp_ms" }),
+    /** رمز بطاقة الـ QR (عشوائي، مش رقم الهاتف) */
+    qrToken: text("qr_token").notNull(),
+    /** كلمة سر الصفحة الشخصية (hash) */
+    portalHash: text("portal_hash"),
+    /** جلسات الصفحة الشخصية (hash التوكن + الانتهاء)، حد أقصى 3 أجهزة */
+    portalSessions: text("portal_sessions", { mode: "json" }).$type<{ h: string; exp: number }[]>().notNull().default([]),
+    photosConsent: integer("photos_consent", { mode: "boolean" }).notNull().default(false),
+    status: text("status", { enum: ["active", "archived"] }).notNull().default("active"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("gym_members_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("gym_members_phone_uq").on(t.storeId, t.phone),
+    uniqueIndex("gym_members_qr_uq").on(t.qrToken),
+    scopedFk("gm_customer_fk", [t.storeId, t.customerId], [customers.storeId, customers.id]),
+  ],
+);
+
+/** اشتراك عضو: تاريخ البداية والانتهاء، الحصص الباقية، التجميد، والإضافات (مدرب/خزانة/منشفة) */
+export const gymMemberships = sqliteTable(
+  "gym_memberships",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    memberId: text("member_id").notNull(),
+    planId: text("plan_id").notNull(),
+    planName: text("plan_name").notNull(),
+    startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull(),
+    endsAt: integer("ends_at", { mode: "timestamp_ms" }).notNull(),
+    visitsLeft: integer("visits_left"),
+    frozenDays: integer("frozen_days").notNull().default(0),
+    frozenSince: integer("frozen_since", { mode: "timestamp_ms" }),
+    status: text("status", { enum: ["active", "frozen", "cancelled", "replaced"] }).notNull().default("active"),
+    price: integer("price").notNull(),
+    section: text("section", { enum: ["men", "women", "mixed"] }).notNull().default("mixed"),
+    fromMinute: integer("from_minute"),
+    toMinute: integer("to_minute"),
+    maxFreezeDays: integer("max_freeze_days").notNull().default(0),
+    addons: text("addons", { mode: "json" }).$type<{ name: string; price: number }[]>().notNull().default([]),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("gym_memberships_store_id_uq").on(t.storeId, t.id),
+    index("gym_memberships_member_idx").on(t.storeId, t.memberId, t.endsAt),
+    scopedFk("gms_member_fk", [t.storeId, t.memberId], [gymMembers.storeId, gymMembers.id], "cascade"),
+    scopedFk("gms_plan_fk", [t.storeId, t.planId], [gymPlans.storeId, gymPlans.id]),
+  ],
+);
+
+/** الأقساط والدفعات: كل قسط بتاريخ استحقاق، والدفعة تتسجل بطريقتها وتتربط بالدفتر المحاسبي */
+export const gymInstallments = sqliteTable(
+  "gym_installments",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    membershipId: text("membership_id").notNull(),
+    memberId: text("member_id").notNull(),
+    dueAt: integer("due_at", { mode: "timestamp_ms" }).notNull(),
+    amount: integer("amount").notNull(),
+    paidAt: integer("paid_at", { mode: "timestamp_ms" }),
+    method: text("method", { enum: PAY_METHODS }),
+    note: text("note"),
+  },
+  (t) => [
+    index("gym_installments_due_idx").on(t.storeId, t.dueAt),
+    scopedFk("gi_membership_fk", [t.storeId, t.membershipId], [gymMemberships.storeId, gymMemberships.id], "cascade"),
+    scopedFk("gi_member_fk", [t.storeId, t.memberId], [gymMembers.storeId, gymMembers.id], "cascade"),
+  ],
+);
+
+export const gymCheckins = sqliteTable(
+  "gym_checkins",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    memberId: text("member_id"),
+    membershipId: text("membership_id"),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    outAt: integer("out_at", { mode: "timestamp_ms" }),
+    result: text("result", { enum: ["ok", "denied"] }).notNull(),
+    reason: text("reason"),
+    via: text("via", { enum: ["qr", "phone", "kiosk", "manual"] }).notNull().default("manual"),
+    deviceId: text("device_id"),
+  },
+  (t) => [
+    index("gym_checkins_at_idx").on(t.storeId, t.at),
+    index("gym_checkins_member_idx").on(t.storeId, t.memberId, t.at),
+    scopedFk("gc_member_fk", [t.storeId, t.memberId], [gymMembers.storeId, gymMembers.id], "cascade"),
+  ],
+);
+
+export const gymTrainers = sqliteTable(
+  "gym_trainers",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    phone: text("phone"),
+    specialty: text("specialty"),
+    bio: text("bio"),
+    photoMediaId: text("photo_media_id"),
+    hours: text("hours"),
+    /** عمولة الحصة الخاصة: نسبة من سعر الحصة أو مبلغ ثابت */
+    commissionKind: text("commission_kind", { enum: ["percent", "fixed"] }).notNull().default("percent"),
+    commissionValue: integer("commission_value").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("gym_trainers_store_id_uq").on(t.storeId, t.id)],
+);
+
+/** جدول الحصص الأسبوعي (weekday: 0 = الأحد) */
+export const gymClasses = sqliteTable(
+  "gym_classes",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    trainerId: text("trainer_id"),
+    room: text("room"),
+    weekday: integer("weekday").notNull(),
+    startMinute: integer("start_minute").notNull(),
+    durationMin: integer("duration_min").notNull().default(60),
+    capacity: integer("capacity").notNull().default(15),
+    section: text("section", { enum: ["men", "women", "mixed"] }).notNull().default("mixed"),
+    cancelBeforeMin: integer("cancel_before_min").notNull().default(120),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  },
+  (t) => [
+    uniqueIndex("gym_classes_store_id_uq").on(t.storeId, t.id),
+    scopedFk("gcl_trainer_fk", [t.storeId, t.trainerId], [gymTrainers.storeId, gymTrainers.id]),
+  ],
+);
+
+export const gymClassBookings = sqliteTable(
+  "gym_class_bookings",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    classId: text("class_id").notNull(),
+    memberId: text("member_id").notNull(),
+    /** يوم الحصة (yyyy-mm-dd بتوقيت ليبيا) */
+    day: text("day").notNull(),
+    status: text("status", { enum: ["booked", "waitlist", "attended", "no_show", "cancelled"] }).notNull().default("booked"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("gym_class_bookings_uq").on(t.storeId, t.classId, t.memberId, t.day),
+    scopedFk("gcb_class_fk", [t.storeId, t.classId], [gymClasses.storeId, gymClasses.id], "cascade"),
+    scopedFk("gcb_member_fk", [t.storeId, t.memberId], [gymMembers.storeId, gymMembers.id], "cascade"),
+  ],
+);
+
+/** باقة حصص خاصة (PT): عدد حصص لعضو مع مدرب، والعمولة تتحسب لكل حصة تتم */
+export const gymPtPacks = sqliteTable(
+  "gym_pt_packs",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    memberId: text("member_id").notNull(),
+    trainerId: text("trainer_id").notNull(),
+    sessions: integer("sessions").notNull(),
+    price: integer("price").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("gym_pt_packs_store_id_uq").on(t.storeId, t.id),
+    scopedFk("gpp_member_fk", [t.storeId, t.memberId], [gymMembers.storeId, gymMembers.id], "cascade"),
+    scopedFk("gpp_trainer_fk", [t.storeId, t.trainerId], [gymTrainers.storeId, gymTrainers.id]),
+  ],
+);
+
+export const gymPtSessions = sqliteTable(
+  "gym_pt_sessions",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    packId: text("pack_id").notNull(),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    status: text("status", { enum: ["scheduled", "done", "no_show", "cancelled"] }).notNull().default("scheduled"),
+    /** عمولة المدرب لحظة إتمام الحصة (ثابتة بعد كده) */
+    commission: integer("commission").notNull().default(0),
+  },
+  (t) => [index("gym_pt_sessions_at_idx").on(t.storeId, t.at), scopedFk("gps_pack_fk", [t.storeId, t.packId], [gymPtPacks.storeId, gymPtPacks.id], "cascade")],
+);
+
+export const gymMeasurements = sqliteTable(
+  "gym_measurements",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    memberId: text("member_id").notNull(),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    /** الوزن بالجرام، الدهون % × 10، والمحيطات بالمليمتر */
+    weightG: integer("weight_g"),
+    fatPct10: integer("fat_pct10"),
+    muscleG: integer("muscle_g"),
+    chestMm: integer("chest_mm"), waistMm: integer("waist_mm"), hipsMm: integer("hips_mm"), armMm: integer("arm_mm"), thighMm: integer("thigh_mm"),
+    source: text("source", { enum: ["manual", "inbody"] }).notNull().default("manual"),
+    actorUserId: text("actor_user_id"),
+  },
+  (t) => [index("gym_measurements_idx").on(t.storeId, t.memberId, t.at), scopedFk("gme_member_fk", [t.storeId, t.memberId], [gymMembers.storeId, gymMembers.id], "cascade")],
+);
+
+export const gymPrograms = sqliteTable(
+  "gym_programs",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    memberId: text("member_id").notNull(),
+    trainerId: text("trainer_id"),
+    kind: text("kind", { enum: ["workout", "nutrition"] }).notNull(),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("gym_programs_idx").on(t.storeId, t.memberId), scopedFk("gpr_member_fk", [t.storeId, t.memberId], [gymMembers.storeId, gymMembers.id], "cascade")],
+);
+
+/** رسائل واتساب اللي اتبعتت (علشان ما نكررش «اشتراكك يخلص» لنفس العضو) */
+export const gymMessageLog = sqliteTable(
+  "gym_message_log",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    memberId: text("member_id").notNull(),
+    kind: text("kind").notNull(),
+    refId: text("ref_id").notNull().default(""),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [uniqueIndex("gym_message_log_uq").on(t.storeId, t.memberId, t.kind, t.refId), scopedFk("gml_member_fk", [t.storeId, t.memberId], [gymMembers.storeId, gymMembers.id], "cascade")],
+);

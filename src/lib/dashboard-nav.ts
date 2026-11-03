@@ -8,15 +8,16 @@ export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
   | "reports" | "reviews" | "brands" | "lowstock" | "stock" | "audit" | "analytics"
   | "market" | "lounge" | "gym" | "lines" | "receipt" | "shift" | "branch" | "pos"
-  | "stations" | "pricing" | "booking" | "tournament" | "tv" | "lreports"
+  | "reception" | "plans" | "classes" | "trainers" | "gmsg" | "greports" | "stations" | "pricing" | "booking" | "tournament" | "tv" | "lreports"
   | "barcode" | "expiry" | "promo" | "reorder" | "prep" | "waste" | "mreports"
   | "inbox" | "warehouse" | "transfer" | "stocktake" | "purchase" | "supplier" | "wallet" | "expense" | "debt" | "pnl" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
-export type NavGroupKey = "systems" | "market" | "lounge" | "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
+export type NavGroupKey = "systems" | "market" | "lounge" | "gym" | "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
 export const NAV_GROUPS: { key: NavGroupKey; title: string }[] = [
   { key: "systems", title: "المنظومات" },
   { key: "market", title: "الماركت" },
   { key: "lounge", title: "الصالة" },
+  { key: "gym", title: "النادي" },
   { key: "sales", title: "المبيعات" },
   { key: "catalog", title: "الكتالوج" },
   { key: "inventory", title: "المخزون" },
@@ -66,6 +67,13 @@ export const NAV: NavDef[] = [
   { href: "/dashboard/lounge/tournaments", label: "البطولات", icon: "tournament", group: "lounge", permission: "marketing", keywords: "بطولة قرعة ترتيب", line: "lounge" },
   { href: "/dashboard/lounge/tv", label: "شاشة الحائط", icon: "tv", group: "lounge", permission: "settings", keywords: "تلفزيون شاشة عرض", line: "lounge" },
   { href: "/dashboard/lounge/reports", label: "تقارير الصالة", icon: "lreports", group: "lounge", permission: "reports", keywords: "تقرير اشغال ايراد ذروة", line: "lounge" },
+  { href: "/dashboard/gym/reception", label: "الاستقبال", icon: "reception", group: "gym", permission: "pos", keywords: "دخول عضو qr باركود كشك", line: "gym" },
+  { href: "/dashboard/gym/members", label: "الأعضاء", icon: "customers", group: "gym", permission: "customers", keywords: "عضو اشتراك تجديد تجميد قسط", line: "gym" },
+  { href: "/dashboard/gym/plans", label: "الاشتراكات والإعدادات", icon: "plans", group: "gym", permission: "settings", keywords: "نوع اشتراك سعر نساء مهلة", line: "gym" },
+  { href: "/dashboard/gym/classes", label: "الحصص", icon: "classes", group: "gym", permission: "settings", keywords: "حصة جدول حجز انتظار", line: "gym" },
+  { href: "/dashboard/gym/trainers", label: "المدربين", icon: "trainers", group: "gym", permission: "settings", keywords: "مدرب pt عمولة", line: "gym" },
+  { href: "/dashboard/gym/messages", label: "رسائل اليوم", icon: "gmsg", group: "gym", permission: "customers", keywords: "واتساب رسالة تذكير", line: "gym" },
+  { href: "/dashboard/gym/reports", label: "تقارير النادي", icon: "greports", group: "gym", permission: "reports", keywords: "تقرير عضويات تجديد حضور", line: "gym" },
   { href: "/dashboard/orders", label: "الطلبيات", icon: "orders", group: "sales", permission: "orders", keywords: "طلب طلبية", line: "store" },
   { href: "/dashboard/inbox", label: "صندوق الرسائل", icon: "inbox", group: "sales", permission: "orders", keywords: "رسائل محادثات انستغرام فيسبوك واتساب", module: "marketplaceInbox", line: "store" },
   { href: "/dashboard/customers", label: "الزبائن", icon: "customers", group: "sales", permission: "customers", keywords: "زبون عملاء" },
