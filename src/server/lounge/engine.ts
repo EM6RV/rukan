@@ -103,7 +103,9 @@ export async function afterLoungeSale(tx: Tx, env: PosEnv, o: {
         if (bal.minutes < minutesLeft) o.review.push(`دقايق الباقة المصروفة (${minutesLeft}) أكثر من رصيد الزبون (${bal.minutes}).`);
       }
     }
-    for (const s of sessions) {
+    // بنفس ترتيب السطور في الفاتورة (دقايق الباقة تتوزع بنفس ترتيب الجهاز)
+    const ordered = o.lines.map((l) => sessions.find((x) => x.id === l.refId)).filter((x, i, arr): x is (typeof sessions)[number] => !!x && arr.indexOf(x) === i);
+    for (const s of ordered) {
       const line = o.lines.find((l) => l.refId === s.id);
       const st = sessionState(s.events);
       if (st.status === "running" || st.status === "paused") o.review.push(`جلسة «${line?.name ?? s.id}» اتدفعت قبل ما تتقفل.`);

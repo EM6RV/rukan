@@ -386,3 +386,20 @@ export async function getTournament(scope: StoreScope, id: string) {
     champion: champion ? name.get(champion) ?? null : null,
   };
 }
+
+// ===== إعدادات الحساب =====
+
+const rulesSchema = z.object({
+  roundTo: z.union([z.literal(0), z.literal(5), z.literal(10), z.literal(15)]),
+  minMinutes: z.number().int().min(0).max(240),
+  startFee: money,
+  bookingGrace: z.number().int().min(0).max(120),
+});
+
+export async function saveLoungeRules(scope: StoreScope, input: unknown): Promise<Result> {
+  const p = rulesSchema.safeParse(input);
+  if (!p.success) return fail(firstError(p.error));
+  const [cur] = await scope.from(t.storeSettings).limit(1);
+  await scope.update(t.storeSettings, { posConfig: { ...(cur?.posConfig ?? {}), lounge: p.data } });
+  return ok(undefined);
+}

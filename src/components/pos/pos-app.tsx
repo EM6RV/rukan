@@ -15,6 +15,7 @@ import type { PosProduct } from "@/server/pos/bootstrap";
 import { toWhatsappNumber } from "@/lib/phone";
 import { waLink } from "@/lib/whatsapp";
 import { connectPrinter, connectedPrinter, openDrawer, printerSupport, reconnectPrinter } from "./escpos";
+import { LoungeFloor } from "./lounge-floor";
 import { fmtKg, LevelDialog, UnitButtons, WeighDialog } from "./market-dialogs";
 import { ApproveDialog, CashDialog, CloseShiftDialog, CustomerDialog, DiscountDialog, PayDialog, PinPad, ReturnDialog } from "./pos-dialogs";
 import { printReceipt, saleRows, zRows, type ReceiptShop } from "./receipt";
@@ -36,6 +37,7 @@ export function PosApp() {
   const [pinError, setPinError] = useState<string | null>(null);
   const [float, setFloat] = useState("");
   const [printer, setPrinter] = useState(false);
+  const [view, setView] = useState<"floor" | "bar">("floor");
   const search = useRef<HTMLInputElement>(null);
   const { boot } = pos;
   const paper = (boot?.config.paperWidth ?? 58) as 58 | 80;
@@ -162,7 +164,14 @@ export function PosApp() {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_26rem]">
         {/* المنتجات */}
+        {boot.device.line === "lounge" && view === "floor" ? (
+          <section className="flex min-h-0 min-w-0 flex-col gap-2 p-3" aria-label="الصالة">
+            <LoungeTabs view={view} setView={setView} />
+            <LoungeFloor pos={pos} onCheckout={() => setView("floor")} onApproval={withApproval} />
+          </section>
+        ) : (
         <section className="flex min-h-0 min-w-0 flex-col gap-2 p-3" aria-label="المنتجات">
+          {boot.device.line === "lounge" && <LoungeTabs view={view} setView={setView} />}
           <form className="relative" onSubmit={(e) => {
             e.preventDefault();
             const code = q.trim();
@@ -203,6 +212,7 @@ export function PosApp() {
             <li><button type="button" onClick={() => setDialog({ kind: "custom" })} className="flex min-h-24 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line p-3 text-muted hover:border-gold"><Plus className="size-5" /> صنف بسعر</button></li>
           </ul>
         </section>
+        )}
 
         {/* السلة */}
         <section className="flex min-h-0 flex-col border-line bg-surface lg:border-s" aria-label="الفاتورة">
@@ -326,6 +336,15 @@ export function PosApp() {
 
 function Center({ children }: { children: React.ReactNode }) {
   return <div className="pos-app flex min-h-dvh items-center justify-center bg-bg p-6 text-fg">{children}<div id="pos-print" aria-hidden /></div>;
+}
+
+function LoungeTabs({ view, setView }: { view: "floor" | "bar"; setView: (v: "floor" | "bar") => void }) {
+  return (
+    <div className="flex gap-2" role="tablist" aria-label="الصالة والبار">
+      <Chip on={view === "floor"} onClick={() => setView("floor")}>🎮 الصالة</Chip>
+      <Chip on={view === "bar"} onClick={() => setView("bar")}>🥤 البار</Chip>
+    </div>
+  );
 }
 
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {

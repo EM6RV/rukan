@@ -8,6 +8,7 @@ import type { PayMethod } from "@/lib/constants";
 import { levelPrice, unitPrice, type PriceLevel } from "@/lib/market-pricing";
 import { checkPin } from "@/lib/pin";
 import { applyPromotions } from "@/lib/promotions";
+import { DEFAULT_LOUNGE_RULES, minutesCover, sessionCharge, sessionState, type SessionEventType, type StationRef } from "@/lib/lounge-pricing";
 import { computeTotals, countCash, discountPercentOf, pointsEarned, settle, type InvoiceDiscount, type PaymentInput } from "@/lib/pos-engine";
 import type { PosOp } from "@/lib/pos-ops";
 import type { PosBootstrap, PosProduct, PosUnit } from "@/server/pos/bootstrap";
@@ -20,7 +21,9 @@ export type Staff = Boot["staff"][number];
 
 /** سطر السلة. الموزون: الكمية بالجرام والسعر للكيلو. الوحدة: الكمية بالكرتونة والسعر للكرتونة */
 export type CartLine = {
-  key: string; variantId: string | null; name: string; quantity: number; unitPrice: number; discount: number; kind: "product" | "custom";
+  key: string; variantId: string | null; name: string; quantity: number; unitPrice: number; discount: number; kind: "product" | "custom" | "service";
+  /** الخدمة: جلسة الصالة أو باقة الساعات */
+  refId?: string | null;
   isWeighed?: boolean; unitId?: string | null; unitFactor?: number;
 };
 /** السطر بعد العروض (محسوب، ما يتخزنش) */
@@ -29,6 +32,9 @@ export type Cart = {
   id: string; lines: CartLine[]; customerId: string | null; invoiceDiscount: InvoiceDiscount; approvedBy: string | null; printed: boolean; createdAt: number;
   /** مستوى السعر اللي اختاره الكاشير يدوياً (null = مستوى الزبون) */
   priceLevel?: PriceLevel | null;
+  /** فاتورة جلسات الصالة: الجلسات ودقايق الباقة المصروفة */
+  sessionIds?: string[];
+  minutesUsed?: number;
 };
 export type LocalSale = {
   id: string; receiptNo: string; at: number; shiftId: string | null; cashierId: string; customerId: string | null;
@@ -312,9 +318,10 @@ export function usePos() {
         clientId: id, at, userId: cashierId, shiftId: shift?.id ?? null, receiptNo, customerId: cart.customerId, priceLevel: level,
         lines: priced.map((l) => ({
           kind: l.kind, variantId: l.variantId, name: l.name, quantity: l.quantity, unitPrice: l.unitPrice, discount: l.discount, isWeighed: !!l.isWeighed, unitFactor: l.unitFactor ?? 1,
-          unitId: l.unitId ?? null, promoDiscount: l.promoDiscount, promotionId: l.promotionId,
+          unitId: l.unitId ?? null, promoDiscount: l.promoDiscount, promotionId: l.promotionId, refId: l.refId ?? null,
         })),
         invoiceDiscount: cart.invoiceDiscount, redeemPoints, payments, total, approvedBy: cart.approvedBy,
+        ...(cart.sessionIds?.length ? { sourceType: "lounge_session", sourceId: cart.sessionIds[0], minutesUsed: cart.minutesUsed ?? 0 } : {}),
       },
     });
     const sale: LocalSale = {
@@ -332,7 +339,13 @@ export function usePos() {
         const q = cart.lines.filter((l) => l.variantId === p.variantId).reduce((a, l) => a + baseOf(l), 0);
         return q ? { ...p, stock: p.stock - q } : p;
       }),
-      customers: bt.customers.map((c) => (c.id === cart.customerId ? { ...c, debt: c.debt + credit, wallet: c.wallet - wallet, points: c.points - redeemPoints + points } : c)),
+      customers: bt.customers.map((c) => {
+        if (c.id !== cart.customerId) return c;
+        const packMinutes = cart.lines.reduce((a, l) => a + (l.kind === "service" && l.refId ? (bt.lounge?.packs.find((pk) => pk.id === l.refId)?.minutes ?? 0) * l.quantity : 0), 0);
+        return { ...c, debt: c.debt + credit, wallet: c.wallet - wallet, points: c.points - redeemPoints + points, minutes: (c.minutes ?? 0) - (cart.minutesUsed ?? 0) + packMinutes };
+      }),
+      // جلسات الصالة المدفوعة تطلع من الشاشة
+      lounge: bt.lounge && cart.sessionIds?.length ? { ...bt.lounge, sessions: bt.lounge.sessions.filter((x) => !cart.sessionIds!.includes(x.id)) } : bt.lounge,
     }));
     setCart(emptyCart());
     return sale;
@@ -430,6 +443,68 @@ export function usePos() {
     return null;
   }, [cashierId, logShift, op, patchBoot, sales, shift]);
 
+  // ===== الصالة (رُكن بلاي) =====
+  /** حدث جلسة: يتسجل محلياً فوراً ويتزامن (البداية: معرّف الحدث = معرّف الجلسة) */
+  const loungeEvent = useCallback(async (sessionId: string, type: SessionEventType, data?: Record<string, unknown>, approvedBy: string | null = null) => {
+    if (!cashierId) return "اختار الكاشير أول.";
+    const e = { id: type === "start" ? sessionId : newId(), at: Date.now(), type, data };
+    await patchBoot((b) => {
+      if (!b.lounge) return b;
+      const exists = b.lounge.sessions.some((x) => x.id === sessionId);
+      const sessions = exists ? b.lounge.sessions.map((x) => (x.id === sessionId ? { ...x, events: [...x.events, e] } : x))
+        : [...b.lounge.sessions, { id: sessionId, events: [e], customerId: typeof data?.customerId === "string" ? data.customerId : null }];
+      return { ...b, lounge: { ...b.lounge, sessions } };
+    });
+    await op({ kind: "lounge.event", payload: { clientId: e.id, at: e.at, userId: cashierId, sessionId, type, data, approvedBy } });
+    return null;
+  }, [cashierId, op, patchBoot]);
+
+  const startSession = useCallback((stationId: string, o: { controllers: number; mode: "hour" | "match"; limitKind: "open" | "time" | "amount"; limitValue: number | null; customerId: string | null; bookingId?: string | null }) =>
+    loungeEvent(newId(), "start", { stationId, ...o }), [loungeEvent]);
+
+  /** أدوات حساب الصالة من بيانات الجهاز */
+  const loungeCalc = useMemo(() => {
+    const l = boot?.lounge;
+    const stations = new Map<string, StationRef>((l?.stations ?? []).map((x) => [x.id, { id: x.id, kind: x.kind, room: x.room }]));
+    const rules = boot?.config.lounge ?? { ...DEFAULT_LOUNGE_RULES, bookingGrace: 15 };
+    return { stations, rates: l?.rates ?? [], rules };
+  }, [boot]);
+
+  /** يحول جلسة أو أكثر (دمج) لفاتورة في السلة: الوقت كخدمة + أصناف البار، ودقايق الباقة لو مطلوبة */
+  const checkoutSessions = useCallback(async (ids: string[], useMinutes: boolean) => {
+    const b = bootRef.current;
+    if (!b?.lounge || !ids.length) return "ما فيش جلسات.";
+    for (const id of ids) {
+      const sess = b.lounge.sessions.find((x) => x.id === id);
+      const st = sess ? sessionState(sess.events) : null;
+      if (st && (st.status === "running" || st.status === "paused")) await loungeEvent(id, "end");
+    }
+    const after = bootRef.current!.lounge!;
+    const chosen = ids.map((id) => after.sessions.find((x) => x.id === id)).filter((x): x is NonNullable<typeof x> => !!x);
+    const customerId = chosen.find((x) => x.customerId)?.customerId ?? null;
+    let minutesLeft = useMinutes && customerId ? bootRef.current!.customers.find((c) => c.id === customerId)?.minutes ?? 0 : 0;
+    let minutesUsed = 0;
+    const lines: CartLine[] = [];
+    for (const sess of chosen) {
+      const st = sessionState(sess.events);
+      const c = sessionCharge(st, loungeCalc.stations, loungeCalc.rates, loungeCalc.rules, st.endedAt ?? Date.now());
+      const cover = minutesCover(c, minutesLeft);
+      minutesLeft -= cover.used; minutesUsed += cover.used;
+      const stName = after.stations.find((x) => x.id === st.stationId)?.name ?? "جهاز";
+      const what = st.mode === "match" ? `${c.matches} ماتش` : `${Math.floor(c.billedMinutes / 60)}:${String(c.billedMinutes % 60).padStart(2, "0")} ساعة`;
+      lines.push({ key: newId(), variantId: null, name: `${stName} · ${what}${cover.used ? ` (${cover.used} د من الباقة)` : ""}`, quantity: 1, unitPrice: c.total - cover.covered, discount: 0, kind: "service", refId: sess.id });
+      for (const it of st.items) lines.push({ key: newId(), variantId: it.variantId, name: it.name, quantity: it.quantity, unitPrice: it.unitPrice, discount: 0, kind: it.variantId ? "product" : "custom", unitFactor: 1 });
+    }
+    if (cart.lines.length && !cart.sessionIds?.length) { await put("held", cart); setHeld((h) => [...h, cart]); }
+    setCart({ ...emptyCart(), lines, customerId, sessionIds: chosen.map((x) => x.id), minutesUsed });
+    return null;
+  }, [cart, loungeCalc, loungeEvent]);
+
+  /** بيع باقة ساعات (تتشحن في رصيد دقايق الزبون) */
+  const addPack = useCallback((pack: { id: string; name: string; price: number }) => {
+    setCart((c) => ({ ...c, lines: [...c.lines, { key: newId(), variantId: null, name: `باقة ${pack.name}`, quantity: 1, unitPrice: pack.price, discount: 0, kind: "service", refId: pack.id }] }));
+  }, []);
+
   const audit = useCallback(async (action: string, approvedBy: string | null, meta: Record<string, unknown> = {}) => {
     if (!cashierId) return;
     await op({ kind: "audit", payload: { clientId: newId(), at: Date.now(), userId: cashierId, action, approvedBy, meta } });
@@ -453,7 +528,7 @@ export function usePos() {
 
   return {
     boot, status, online, queue, blocked, lastMessage, setLastMessage, cashier, cashierId, shift, shiftSummary, cart, customer, totals, held, sales, needsApproval,
-    features, level, priced, unitsOf, byVariant, showOnDisplay,
+    features, level, priced, unitsOf, byVariant, showOnDisplay, loungeEvent, startSession, loungeCalc, checkoutSessions, addPack,
     sync, pull, unlock, lock, approve, addProduct, addWeighed, addCustom, updateLine, removeLine, setCustomer, setPriceLevel, setInvoiceDiscount, setApprovedBy, markPrinted, clearCart,
     scan, hold, resume, pay, openShift, cashMove, closeShift, createCustomer, customerMoney, findSale, returnSale, audit,
   };
