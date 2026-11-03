@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { PAY_METHOD_LABELS, type PayMethod } from "@/lib/constants";
 import { formatMoney, inputToDirham } from "@/lib/money";
 import { normalizeLibyanPhone } from "@/lib/phone";
-import { DENOMINATIONS, countCash, settle, type PaymentInput } from "@/lib/pos-engine";
+import { DENOMINATIONS, countCash, lineGross, settle, type PaymentInput } from "@/lib/pos-engine";
 import type { Customer, LocalSale, PosApi, Staff } from "./use-pos";
 
 const m = (n: number) => formatMoney(n);
@@ -207,7 +207,7 @@ export function DiscountDialog({ pos, lineKey, onClose, onNeedApproval }: { pos:
       footer={<><Button variant="ghost" onClick={onClose}>رجوع</Button><Button onClick={() => {
         const n = kind === "percent" ? Math.min(100, Number(value) || 0) : inputToDirham(value) ?? 0;
         if (line) {
-          const gross = line.unitPrice * line.quantity;
+          const gross = lineGross(line);
           pos.updateLine(line.key, { discount: Math.min(gross, kind === "percent" ? Math.round((gross * n) / 100) : n) });
         } else pos.setInvoiceDiscount(n > 0 ? { kind, value: n } : null);
         onClose();

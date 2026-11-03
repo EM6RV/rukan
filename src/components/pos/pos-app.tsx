@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Banknote, Cloud, CloudOff, Lock, Menu, Minus, PauseCircle, Percent, Plus, Printer, RotateCcw, Search, Trash2, User, X } from "lucide-react";
+import { Banknote, Camera, Cloud, CloudOff, Lock, Menu, Minus, Monitor, PauseCircle, Pencil, Percent, Plus, Printer, RotateCcw, Search, Tag, Trash2, User, X, Zap } from "lucide-react";
+import { CameraScanner } from "@/components/scan/camera-scanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 import { formatMoney, inputToDirham } from "@/lib/money";
+import { levelPrice, PRICE_LEVEL_LABELS, type PriceLevel } from "@/lib/market-pricing";
 import { receiptMessage } from "@/lib/pos-engine";
+import type { PosProduct } from "@/server/pos/bootstrap";
 import { toWhatsappNumber } from "@/lib/phone";
 import { waLink } from "@/lib/whatsapp";
 import { connectPrinter, connectedPrinter, openDrawer, printerSupport, reconnectPrinter } from "./escpos";
+import { fmtKg, LevelDialog, UnitButtons, WeighDialog } from "./market-dialogs";
 import { ApproveDialog, CashDialog, CloseShiftDialog, CustomerDialog, DiscountDialog, PayDialog, PinPad, ReturnDialog } from "./pos-dialogs";
 import { printReceipt, saleRows, zRows, type ReceiptShop } from "./receipt";
 import { usePos, type LocalSale } from "./use-pos";
@@ -19,7 +23,8 @@ const m = (n: number) => formatMoney(n);
 type Dialog =
   | { kind: "pay" } | { kind: "customer" } | { kind: "discount"; lineKey: string | null } | { kind: "cash" } | { kind: "close" }
   | { kind: "return" } | { kind: "held" } | { kind: "menu" } | { kind: "custom" } | { kind: "done"; sale: LocalSale }
-  | { kind: "approve"; reason: string; then: (by: string) => void } | null;
+  | { kind: "approve"; reason: string; then: (by: string) => void }
+  | { kind: "weigh"; product: PosProduct; lineKey?: string; grams?: number } | { kind: "level" } | { kind: "camera" } | null;
 
 export function PosApp() {
   const pos = usePos();
@@ -38,12 +43,30 @@ export function PosApp() {
   useEffect(() => { void reconnectPrinter().then((c) => setPrinter(!!c)); }, []);
   useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {}); }, []);
 
+  const quick = useMemo(() => (boot?.products ?? []).filter((p) => p.quick !== null && p.quick !== undefined).sort((a, b) => a.quick! - b.quick!), [boot]);
   const results = useMemo(() => {
     const all = boot?.products ?? [];
     const needle = q.trim().toLowerCase();
-    const list = needle ? all.filter((p) => p.name.toLowerCase().includes(needle) || p.sku?.toLowerCase() === needle) : cat ? all.filter((p) => p.categoryIds.includes(cat)) : all;
+    const list = needle ? all.filter((p) => p.name.toLowerCase().includes(needle) || p.sku?.toLowerCase() === needle || p.plu === needle)
+      : cat === "quick" ? quick : cat ? all.filter((p) => p.categoryIds.includes(cat)) : all;
     return list.slice(0, 60);
-  }, [boot, q, cat]);
+  }, [boot, q, cat, quick]);
+
+  /** ضغط على صنف: الموزون يطلب الوزن، والباقي يدخل حبة */
+  const tap = (p: PosProduct) => (p.soldBy === "weight" ? setDialog({ kind: "weigh", product: p }) : pos.addProduct(p));
+  /** نتيجة المسح (قارئ أو كاميرا) */
+  const onScan = (code: string) => {
+    const r = pos.scan(code);
+    if (r && "weigh" in r) { setDialog({ kind: "weigh", product: r.weigh }); return true; }
+    if (!r) pos.setLastMessage(`الباركود ${code} مش مسجّل على أي صنف.`);
+    return !!r;
+  };
+  const pickLevel = (l: PriceLevel | null) => {
+    setDialog(null);
+    if (l === null) return pos.setPriceLevel(null);
+    if (pos.cashier?.canApprove) return pos.setPriceLevel(l, pos.cashier.userId);
+    withApproval(`سعر ${PRICE_LEVEL_LABELS[l]}`, (by) => pos.setPriceLevel(l, by));
+  };
 
   // الاختصارات: F2 بحث، F4 دفع، F8 تعليق، Esc إلغاء
   useEffect(() => {
@@ -60,7 +83,7 @@ export function PosApp() {
 
   // الموافقة بعد ما يتطبق الخصم
   const checkApproval = () => {
-    if (pos.needsApproval) setDialog({ kind: "approve", reason: `الخصم فوق ${boot?.config.maxDiscountPercent ?? 10}%`, then: (by) => { pos.setApprovedBy(by); setDialog(null); } });
+    if (pos.needsApproval) setDialog({ kind: "approve", reason: pos.level !== "retail" ? `سعر ${PRICE_LEVEL_LABELS[pos.level]} أو خصم فوق ${boot?.config.maxDiscountPercent ?? 10}%` : `الخصم فوق ${boot?.config.maxDiscountPercent ?? 10}%`, then: (by) => { pos.setApprovedBy(by); setDialog(null); } });
   };
   const withApproval = (reason: string, fn: (by: string) => void) => setDialog({ kind: "approve", reason, then: (by) => { setDialog(null); fn(by); } });
 
@@ -141,24 +164,36 @@ export function PosApp() {
         <section className="flex min-h-0 flex-col gap-2 p-3" aria-label="المنتجات">
           <form className="relative" onSubmit={(e) => {
             e.preventDefault();
-            if (!q.trim()) return;
-            if (pos.scan(q)) { setQ(""); return; }
-            if (results[0]) { pos.addProduct(results[0]); setQ(""); }
+            const code = q.trim();
+            if (!code) return;
+            const r = pos.scan(code);
+            if (r && "weigh" in r) { setDialog({ kind: "weigh", product: r.weigh }); setQ(""); return; }
+            if (r) { setQ(""); return; }
+            if (results[0]) { tap(results[0]); setQ(""); }
           }}>
             <Search className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-muted" aria-hidden />
             <input ref={search} autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث بالاسم أو امسح الباركود (F2)" aria-label="بحث أو باركود"
-              className="h-12 w-full rounded-xl border border-line bg-surface ps-11 pe-3 text-lg outline-none focus:border-gold focus:ring-2 focus:ring-gold/30" />
+              className={cn("h-12 w-full rounded-xl border border-line bg-surface ps-11 text-lg outline-none focus:border-gold focus:ring-2 focus:ring-gold/30", pos.features.cameraScan ? "pe-14" : "pe-3")} />
+            {pos.features.cameraScan && (
+              <button type="button" onClick={() => setDialog({ kind: "camera" })} aria-label="امسح بالكاميرا" className="absolute end-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-lg hover:bg-surface-2"><Camera className="size-5" /></button>
+            )}
           </form>
           <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="الأقسام">
+            {quick.length > 0 && <Chip on={cat === "quick"} onClick={() => setCat("quick")}><Zap className="inline size-4" aria-hidden /> سريع</Chip>}
             <Chip on={!cat} onClick={() => setCat(null)}>الكل</Chip>
             {boot.categories.map((c) => <Chip key={c.id} on={cat === c.id} onClick={() => setCat(c.id)}>{c.name}</Chip>)}
           </div>
           <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 xl:grid-cols-4">
             {results.map((p) => (
               <li key={p.variantId}>
-                <button type="button" onClick={() => pos.addProduct(p)} className="flex h-full min-h-24 w-full flex-col justify-between rounded-xl border border-line bg-surface p-3 text-start transition-transform hover:border-gold active:scale-[0.97]">
+                <button type="button" onClick={() => tap(p)} style={cat === "quick" && p.quickColor ? { borderColor: p.quickColor, borderInlineStartWidth: 6 } : undefined}
+                  className="flex h-full min-h-24 w-full flex-col justify-between rounded-xl border border-line bg-surface p-3 text-start transition-transform hover:border-gold active:scale-[0.97]">
                   <span className="line-clamp-2 font-medium">{p.name}</span>
-                  <span className="flex items-end justify-between gap-2"><b className="tabular-nums">{m(p.price)}</b><span className={cn("text-xs", p.stock <= 0 ? "text-danger-fg" : "text-muted")}>{p.stock}</span></span>
+                  <span className="flex items-end justify-between gap-2">
+                    <b className="tabular-nums">{m(p.soldBy === "weight" ? levelPrice({ retail: p.price, semi: p.semi, wholesale: p.wholesale }, pos.level) : p.price)}{p.soldBy === "weight" && <span className="text-xs font-normal text-muted"> /كغ</span>}</b>
+                    <span className={cn("text-xs", p.stock <= 0 ? "text-danger-fg" : "text-muted")}>{p.soldBy === "weight" ? fmtKg(p.stock) : p.stock}</span>
+                  </span>
+                  <UnitButtons product={p} units={pos.unitsOf(p.productId)} level={pos.level} onPick={(u) => pos.addProduct(p, 1, u)} />
                 </button>
               </li>
             ))}
@@ -173,6 +208,11 @@ export function PosApp() {
               <User className="size-4 shrink-0" aria-hidden />
               {pos.customer ? <span className="truncate"><b>{pos.customer.name}</b> · دين {m(pos.customer.debt)}{pos.customer.points ? ` · ${pos.customer.points} نقطة` : ""}</span> : <span className="text-muted">زبون (اختياري)</span>}
             </button>
+            {pos.features.wholesale && (
+              <button type="button" onClick={() => setDialog({ kind: "level" })} className={cn("flex min-h-11 items-center gap-1 rounded-lg border px-2.5 text-sm font-medium", pos.level === "retail" ? "border-line hover:bg-surface-2" : "border-gold bg-gold/15")} aria-label={`مستوى السعر: ${PRICE_LEVEL_LABELS[pos.level]}`}>
+                <Tag className="size-4" aria-hidden /> {PRICE_LEVEL_LABELS[pos.level]}
+              </button>
+            )}
             <button type="button" onClick={() => setDialog({ kind: "held" })} className="relative flex size-11 items-center justify-center rounded-lg border border-line hover:bg-surface-2" aria-label={`الفواتير المعلّقة (${pos.held.length})`}>
               <PauseCircle className="size-5" />{pos.held.length > 0 && <span className="absolute -end-1 -top-1 rounded-full bg-gold px-1.5 text-xs font-bold text-navy">{pos.held.length}</span>}
             </button>
@@ -183,13 +223,20 @@ export function PosApp() {
               <li key={l.key} className="flex items-center gap-2 p-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{l.name}</p>
-                  <p className="text-xs text-muted tabular-nums">{m(l.unitPrice)}{l.discount ? ` · خصم ${m(l.discount)}` : ""}</p>
+                  <p className="text-xs text-muted tabular-nums">{m(l.unitPrice)}{l.isWeighed ? " /كغ" : ""}{l.discount ? ` · خصم ${m(l.discount)}` : ""}</p>
+                  {(pos.priced[i]?.promoDiscount ?? 0) > 0 && <p className="text-xs font-medium text-success-fg">عرض: − {m(pos.priced[i]!.promoDiscount)}</p>}
                 </div>
+                {l.isWeighed ? (
+                  <button type="button" onClick={() => { const p = l.variantId ? pos.byVariant.get(l.variantId) : undefined; if (p) setDialog({ kind: "weigh", product: p, lineKey: l.key, grams: l.quantity }); }} className="flex min-h-10 items-center gap-1 rounded-md px-2 font-semibold tabular-nums hover:bg-surface-2" aria-label={`تعديل وزن ${l.name}`}>
+                    {fmtKg(l.quantity)} <Pencil className="size-3.5 text-muted" aria-hidden />
+                  </button>
+                ) : (
                 <div className="flex items-center" role="group" aria-label={`كمية ${l.name}`}>
                   <button type="button" aria-label="نقص" onClick={() => pos.updateLine(l.key, { quantity: l.quantity - 1 })} className="flex size-10 items-center justify-center rounded-md hover:bg-surface-2"><Minus className="size-4" /></button>
                   <span className="w-8 text-center font-semibold tabular-nums">{l.quantity}</span>
                   <button type="button" aria-label="زيد" onClick={() => pos.updateLine(l.key, { quantity: l.quantity + 1 })} className="flex size-10 items-center justify-center rounded-md hover:bg-surface-2"><Plus className="size-4" /></button>
                 </div>
+                )}
                 <b className="w-20 text-end tabular-nums">{m(pos.totals.lines[i] ?? 0)}</b>
                 <button type="button" aria-label={`خصم على ${l.name}`} onClick={() => setDialog({ kind: "discount", lineKey: l.key })} className="flex size-9 items-center justify-center rounded-md text-muted hover:bg-surface-2"><Percent className="size-4" /></button>
                 <button type="button" aria-label={`حذف ${l.name}`} onClick={() => {
@@ -202,10 +249,11 @@ export function PosApp() {
           <div className="space-y-2 border-t border-line p-3">
             <dl className="space-y-1 text-sm">
               <div className="flex justify-between"><dt className="text-muted">المجموع</dt><dd className="tabular-nums">{m(pos.totals.subtotal)}</dd></div>
+              {pos.totals.promoDiscounts > 0 && <div className="flex justify-between text-success-fg"><dt>وفّرت من العروض</dt><dd className="tabular-nums">{m(pos.totals.promoDiscounts)}</dd></div>}
               {pos.totals.discount > 0 && <div className="flex justify-between"><dt className="text-muted">خصم الفاتورة</dt><dd className="tabular-nums">− {m(pos.totals.discount)}</dd></div>}
               <div className="flex items-baseline justify-between"><dt className="font-semibold">الإجمالي</dt><dd className="font-heading text-3xl font-bold tabular-nums">{m(pos.totals.total)}</dd></div>
             </dl>
-            {pos.needsApproval && <button type="button" onClick={checkApproval} className="w-full rounded-md bg-gold/20 px-3 py-2 text-sm font-medium">الخصم يحتاج موافقة مشرف — اضغط هنا</button>}
+            {pos.needsApproval && <button type="button" onClick={checkApproval} className="w-full rounded-md bg-gold/20 px-3 py-2 text-sm font-medium">{pos.level !== "retail" ? "سعر الجملة أو الخصم يحتاج موافقة مشرف" : "الخصم يحتاج موافقة مشرف"} — اضغط هنا</button>}
             <div className="grid grid-cols-4 gap-2">
               <Button variant="outline" onClick={() => setDialog({ kind: "discount", lineKey: null })} disabled={!lines.length}>خصم</Button>
               <Button variant="outline" onClick={() => void pos.hold()} disabled={!lines.length}>تعليق F8</Button>
@@ -218,7 +266,16 @@ export function PosApp() {
       </div>
 
       {/* النوافذ */}
-      {dialog?.kind === "pay" && <PayDialog pos={pos} onClose={() => setDialog(null)} onPaid={(sale) => { setDialog({ kind: "done", sale }); void printSale(sale); }} />}
+      {dialog?.kind === "pay" && <PayDialog pos={pos} onClose={() => setDialog(null)} onPaid={(sale) => {
+        setDialog({ kind: "done", sale }); void printSale(sale);
+        pos.showOnDisplay({ kind: "paid", shop: shop.name, total: sale.total, tendered: sale.tendered, change: sale.change, message: shop.footer ?? null });
+      }} />}
+      {dialog?.kind === "weigh" && (
+        <WeighDialog product={dialog.product} hardware={pos.features.hardware} initialGrams={dialog.grams} pricePerKg={levelPrice({ retail: dialog.product.price, semi: dialog.product.semi, wholesale: dialog.product.wholesale }, pos.level)}
+          onClose={() => setDialog(null)} onAdd={(g) => { if (dialog.lineKey) pos.updateLine(dialog.lineKey, { quantity: g }); else pos.addWeighed(dialog.product, g); setDialog(null); search.current?.focus(); }} />
+      )}
+      {dialog?.kind === "level" && <LevelDialog pos={pos} onPick={pickLevel} onClose={() => setDialog(null)} />}
+      <CameraScanner open={dialog?.kind === "camera"} onClose={() => setDialog(null)} onCode={(code) => { onScan(code); }} />
       {dialog?.kind === "customer" && <CustomerDialog pos={pos} onClose={() => setDialog(null)} />}
       {dialog?.kind === "discount" && <DiscountDialog pos={pos} lineKey={dialog.lineKey} onClose={() => setDialog(null)} onNeedApproval={checkApproval} />}
       {dialog?.kind === "approve" && <ApproveDialog pos={pos} reason={dialog.reason} onApproved={dialog.then} onClose={() => setDialog(null)} />}
@@ -243,6 +300,7 @@ export function PosApp() {
             <Button variant="outline" onClick={() => setDialog({ kind: "cash" })}><Banknote className="size-4" /> الدرج</Button>
             <Button variant="outline" onClick={() => { const last = pos.sales[0]; if (last) void printSale(last, "نسخة"); }} disabled={!pos.sales.length}><Printer className="size-4" /> إعادة آخر فاتورة</Button>
             <Button variant="outline" onClick={() => void pos.sync()}><Cloud className="size-4" /> مزامنة الحين</Button>
+            <Button variant="outline" onClick={() => { window.open("/pos/display", "rukn-display", "popup,width=900,height=640"); setDialog(null); }}><Monitor className="size-4" /> شاشة الزبون</Button>
             {(printerSupport().serial || printerSupport().usb) && (
               <Button variant="outline" onClick={async () => { try { await connectPrinter(printerSupport().serial ? "serial" : "usb"); setPrinter(true); } catch { /* المستخدم لغى */ } }}>
                 <Printer className="size-4" /> {printer ? "الطابعة مربوطة ✓" : "اربط الطابعة"}

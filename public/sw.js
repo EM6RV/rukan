@@ -1,6 +1,6 @@
 /* Service worker لرُكن: إشعارات الطلبيات (Web Push) + تشغيل الكاشير بدون نت.
    التخزين للكاشير بس (/pos وملفاته الثابتة وصور المنتجات). بيانات البيع تتخزن في IndexedDB داخل التطبيق، مش هنا. */
-const POS_CACHE = "rukn-pos-v1";
+const POS_CACHE = "rukn-pos-v2";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil((async () => {
@@ -22,10 +22,10 @@ self.addEventListener("fetch", (event) => {
       const cache = await caches.open(POS_CACHE);
       try {
         const res = await fetch(req);
-        if (res.ok) cache.put("/pos", res.clone());
+        if (res.ok) cache.put(url.pathname, res.clone()); // الكاشير وشاشة الزبون كل وحدة بمفتاحها
         return res;
       } catch {
-        return (await cache.match("/pos")) || Response.error();
+        return (await cache.match(url.pathname)) || Response.error();
       }
     })());
     return;

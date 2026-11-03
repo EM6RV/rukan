@@ -2,6 +2,8 @@
 // أغلب الطابعات ما تدعمش العربي كنص، فنرسم الفاتورة على canvas (الحروف العربية تتشكل صح) ونبعتها صورة نقطية.
 // لو المتصفح ما يدعمش (سفاري/آيفون) نستعمل الطباعة العادية (window.print) بـ CSS @page.
 
+import { isScalePort } from "./scale";
+
 type SerialPortLike = { open(o: { baudRate: number }): Promise<void>; writable: WritableStream<Uint8Array> | null; close(): Promise<void> };
 type UsbDeviceLike = {
   open(): Promise<void>; selectConfiguration(n: number): Promise<void>; claimInterface(n: number): Promise<void>;
@@ -56,7 +58,7 @@ export async function connectPrinter(kind: "serial" | "usb"): Promise<PrinterCon
 export async function reconnectPrinter(): Promise<PrinterConn | null> {
   const n = navigator as Nav;
   try {
-    const port = (await n.serial?.getPorts())?.[0];
+    const port = (await n.serial?.getPorts())?.find((p) => !isScalePort(p as never));
     if (port) return (conn = await fromSerial(port));
     const dev = (await n.usb?.getDevices())?.[0];
     if (dev) return (conn = await fromUsb(dev));

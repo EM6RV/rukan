@@ -3,11 +3,14 @@
 // منطق الكاشير: البيانات المحلية (IndexedDB)، السلة، الدفع، الوردية، الدين والمحفظة، والمزامنة.
 // كل عملية تتسجل محلياً أول وتنعكس فوراً (المخزون والأرصدة)، والسيرفر يعتمدها لما يرجع النت.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseScaleBarcode, samePlu } from "@/lib/barcode";
 import type { PayMethod } from "@/lib/constants";
+import { levelPrice, unitPrice, type PriceLevel } from "@/lib/market-pricing";
 import { checkPin } from "@/lib/pin";
+import { applyPromotions } from "@/lib/promotions";
 import { computeTotals, countCash, discountPercentOf, pointsEarned, settle, type InvoiceDiscount, type PaymentInput } from "@/lib/pos-engine";
 import type { PosOp } from "@/lib/pos-ops";
-import type { PosBootstrap, PosProduct } from "@/server/pos/bootstrap";
+import type { PosBootstrap, PosProduct, PosUnit } from "@/server/pos/bootstrap";
 import { getAll, kvGet, kvSet, put, del, trimSales } from "./local-db";
 import { enqueue, flush, newId, pending, type OutboxItem } from "./outbox";
 
@@ -15,8 +18,18 @@ export type Boot = PosBootstrap;
 export type Customer = Boot["customers"][number];
 export type Staff = Boot["staff"][number];
 
-export type CartLine = { key: string; variantId: string | null; name: string; quantity: number; unitPrice: number; discount: number; kind: "product" | "custom" };
-export type Cart = { id: string; lines: CartLine[]; customerId: string | null; invoiceDiscount: InvoiceDiscount; approvedBy: string | null; printed: boolean; createdAt: number };
+/** سطر السلة. الموزون: الكمية بالجرام والسعر للكيلو. الوحدة: الكمية بالكرتونة والسعر للكرتونة */
+export type CartLine = {
+  key: string; variantId: string | null; name: string; quantity: number; unitPrice: number; discount: number; kind: "product" | "custom";
+  isWeighed?: boolean; unitId?: string | null; unitFactor?: number;
+};
+/** السطر بعد العروض (محسوب، ما يتخزنش) */
+export type PricedLine = CartLine & { promoDiscount: number; promotionId: string | null };
+export type Cart = {
+  id: string; lines: CartLine[]; customerId: string | null; invoiceDiscount: InvoiceDiscount; approvedBy: string | null; printed: boolean; createdAt: number;
+  /** مستوى السعر اللي اختاره الكاشير يدوياً (null = مستوى الزبون) */
+  priceLevel?: PriceLevel | null;
+};
 export type LocalSale = {
   id: string; receiptNo: string; at: number; shiftId: string | null; cashierId: string; customerId: string | null;
   lines: (CartLine & { total: number })[]; subtotal: number; discount: number; total: number;
@@ -111,8 +124,25 @@ export function usePos() {
 
   const cashier = useMemo(() => boot?.staff.find((s) => s.userId === cashierId) ?? null, [boot, cashierId]);
   const customer = useMemo(() => (cart.customerId ? boot?.customers.find((c) => c.id === cart.customerId) ?? null : null), [boot, cart.customerId]);
-  const totals = useMemo(() => computeTotals(cart.lines.map((l) => ({ quantity: l.quantity, unitPrice: l.unitPrice, discount: l.discount })), cart.invoiceDiscount), [cart]);
+  const features = boot?.features ?? { wholesale: false, promotions: false, cameraScan: false, hardware: false, batches: false };
+  /** مستوى السعر الفعلي: اليدوي، وإلا مستوى الزبون (لو الجملة ضمن الباقة) */
+  const level: PriceLevel = features.wholesale ? (cart.priceLevel ?? (customer?.priceLevel as PriceLevel | undefined) ?? "retail") : "retail";
+  // ساعة العروض بالوقت (تتحدث كل نص دقيقة)
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => { const id = setInterval(() => setClock(Date.now()), 30_000); return () => clearInterval(id); }, []);
+  /** العروض التلقائية (التجزئة بس) */
+  const promotions = boot?.promotions;
+  const priceLines = useCallback((lines: CartLine[], at: number): PricedLine[] => {
+    const promos = level === "retail" && features.promotions ? promotions ?? [] : [];
+    const r = applyPromotions(lines.map((l) => ({ variantId: l.kind === "product" ? l.variantId : null, quantity: l.quantity, unitFactor: l.unitFactor ?? 1, isWeighed: !!l.isWeighed, unitPrice: l.unitPrice })), promos, at);
+    return lines.map((l, i) => ({ ...l, promoDiscount: r.discounts[i]!, promotionId: r.promotionIds[i]! }));
+  }, [level, features.promotions, promotions]);
+  const priced = useMemo(() => priceLines(cart.lines, clock), [priceLines, cart.lines, clock]);
+  const totals = useMemo(() => computeTotals(priced, cart.invoiceDiscount), [priced, cart.invoiceDiscount]);
   const bySku = useMemo(() => new Map((boot?.products ?? []).filter((p) => p.sku).map((p) => [p.sku!.toLowerCase(), p])), [boot]);
+  const byVariant = useMemo(() => new Map((boot?.products ?? []).map((p) => [p.variantId, p])), [boot]);
+  const byCode = useMemo(() => new Map((boot?.barcodes ?? []).map((b) => [b.code.toLowerCase(), b])), [boot]);
+  const unitsOf = useCallback((productId: string): PosUnit[] => (boot?.units ?? []).filter((u) => u.productId === productId).sort((a, b) => a.factor - b.factor), [boot]);
 
   const op = useCallback(async (o: PosOp) => { await enqueue(o); await refreshQueue(); void sync(); }, [refreshQueue, sync]);
 
@@ -140,26 +170,85 @@ export function usePos() {
   }, []);
 
   // ===== السلة =====
-  const addProduct = useCallback((p: PosProduct, qty = 1) => {
-    setCart((c) => {
-      const i = c.lines.findIndex((l) => l.variantId === p.variantId && l.unitPrice === p.price && l.discount === 0);
-      if (i >= 0) { const lines = [...c.lines]; lines[i] = { ...lines[i]!, quantity: lines[i]!.quantity + qty }; return { ...c, lines }; }
-      return { ...c, lines: [...c.lines, { key: newId(), variantId: p.variantId, name: p.name, quantity: qty, unitPrice: p.price, discount: 0, kind: "product" }] };
-    });
+  /** سعر الصنف (أو وحدته) في مستوى معين */
+  const priceOf = useCallback((p: PosProduct, unit: PosUnit | null, lv: PriceLevel) => {
+    const prices = { retail: p.price, semi: p.semi, wholesale: p.wholesale };
+    return p.soldBy === "weight" ? levelPrice(prices, lv) : unitPrice(prices, unit, lv);
   }, []);
+  const addProduct = useCallback((p: PosProduct, qty = 1, unit: PosUnit | null = null) => {
+    if (p.soldBy === "weight") return; // الموزون يدخل بالوزن (addWeighed)
+    const price = priceOf(p, unit, level);
+    setCart((c) => {
+      const i = c.lines.findIndex((l) => l.variantId === p.variantId && (l.unitId ?? null) === (unit?.id ?? null) && !l.isWeighed && l.unitPrice === price && l.discount === 0);
+      if (i >= 0) { const lines = [...c.lines]; lines[i] = { ...lines[i]!, quantity: lines[i]!.quantity + qty }; return { ...c, lines }; }
+      const name = unit ? `${p.name} (${unit.name} ${unit.factor})` : p.name;
+      return { ...c, lines: [...c.lines, { key: newId(), variantId: p.variantId, name, quantity: qty, unitPrice: price, discount: 0, kind: "product", unitId: unit?.id ?? null, unitFactor: unit?.factor ?? 1 }] };
+    });
+  }, [level, priceOf]);
+  /** صنف موزون بالجرام (من الميزان أو مكتوب) */
+  const addWeighed = useCallback((p: PosProduct, grams: number) => {
+    if (!Number.isInteger(grams) || grams <= 0) return;
+    const price = priceOf(p, null, level);
+    setCart((c) => ({ ...c, lines: [...c.lines, { key: newId(), variantId: p.variantId, name: p.name, quantity: grams, unitPrice: price, discount: 0, kind: "product", isWeighed: true, unitFactor: 1 }] }));
+  }, [level, priceOf]);
+  /** إعادة تسعير السلة لمستوى جديد (زبون جملة أو تبديل يدوي) */
+  const repriceTo = useCallback((lv: PriceLevel) => {
+    setCart((c) => ({
+      ...c,
+      lines: c.lines.map((l) => {
+        if (l.kind !== "product" || !l.variantId) return l;
+        const p = byVariant.get(l.variantId);
+        if (!p) return l;
+        const unit = l.unitId ? (bootRef.current?.units ?? []).find((u) => u.id === l.unitId) ?? null : null;
+        return { ...l, unitPrice: priceOf(p, unit, lv) };
+      }),
+    }));
+  }, [byVariant, priceOf]);
   const addCustom = useCallback((name: string, price: number) => setCart((c) => ({ ...c, lines: [...c.lines, { key: newId(), variantId: null, name, quantity: 1, unitPrice: price, discount: 0, kind: "custom" }] })), []);
   const updateLine = useCallback((key: string, patch: Partial<CartLine>) => setCart((c) => ({ ...c, lines: c.lines.map((l) => (l.key === key ? { ...l, ...patch } : l)).filter((l) => l.quantity > 0) })), []);
   const removeLine = useCallback((key: string) => setCart((c) => ({ ...c, lines: c.lines.filter((l) => l.key !== key) })), []);
-  const setCustomer = useCallback((customerId: string | null) => setCart((c) => ({ ...c, customerId })), []);
+  const setCustomer = useCallback((customerId: string | null) => {
+    const cust = customerId ? bootRef.current?.customers.find((x) => x.id === customerId) : null;
+    setCart((c) => ({ ...c, customerId }));
+    if (features.wholesale && !cart.priceLevel) repriceTo((cust?.priceLevel as PriceLevel | undefined) ?? "retail");
+  }, [features.wholesale, cart.priceLevel, repriceTo]);
+  /** تبديل مستوى السعر يدوياً (يحتاج موافقة مشرف لو مش مستوى الزبون) */
+  const setPriceLevel = useCallback((lv: PriceLevel | null, approvedBy: string | null = null) => {
+    setCart((c) => ({ ...c, priceLevel: lv, approvedBy: approvedBy ?? c.approvedBy }));
+    repriceTo(lv ?? (customer?.priceLevel as PriceLevel | undefined) ?? "retail");
+  }, [customer, repriceTo]);
   const setInvoiceDiscount = useCallback((d: InvoiceDiscount, approvedBy: string | null = null) => setCart((c) => ({ ...c, invoiceDiscount: d, approvedBy: approvedBy ?? c.approvedBy })), []);
   const setApprovedBy = useCallback((approvedBy: string | null) => setCart((c) => ({ ...c, approvedBy })), []);
   const markPrinted = useCallback(() => setCart((c) => ({ ...c, printed: true })), []);
   const clearCart = useCallback(() => setCart(emptyCart()), []);
-  const scan = useCallback((code: string) => {
-    const p = bySku.get(code.trim().toLowerCase());
-    if (p) addProduct(p);
-    return p ?? null;
-  }, [bySku, addProduct]);
+  /**
+   * المسح: باركود المنتج أو الوحدة (كرتونة)، ثم الـ SKU، ثم باركود الميزان (الوزن أو السعر).
+   * يرجع الصنف، أو {weigh} لو موزون محتاج وزن، أو null.
+   */
+  const scan = useCallback((raw: string): PosProduct | { weigh: PosProduct } | null => {
+    const code = raw.trim();
+    const hit = byCode.get(code.toLowerCase());
+    if (hit) {
+      const p = byVariant.get(hit.variantId);
+      if (p) {
+        if (p.soldBy === "weight") return { weigh: p };
+        addProduct(p, 1, hit.unitId ? (bootRef.current?.units ?? []).find((u) => u.id === hit.unitId) ?? null : null);
+        return p;
+      }
+    }
+    const p = bySku.get(code.toLowerCase());
+    if (p) { if (p.soldBy === "weight") return { weigh: p }; addProduct(p); return p; }
+    const s = parseScaleBarcode(code, bootRef.current?.config.scale ?? undefined);
+    if (s) {
+      const w = (bootRef.current?.products ?? []).find((x) => x.soldBy === "weight" && samePlu(x.plu, s.plu));
+      if (w) {
+        const perKg = priceOf(w, null, level);
+        const grams = s.grams ?? (perKg > 0 && s.price ? Math.round((s.price * 1000) / perKg) : 0);
+        if (grams > 0) { addWeighed(w, grams); return w; }
+      }
+    }
+    return null;
+  }, [byCode, byVariant, bySku, addProduct, addWeighed, priceOf, level]);
 
   const hold = useCallback(async () => {
     if (!cart.lines.length) return;
@@ -177,9 +266,12 @@ export function usePos() {
   }, [held, cart]);
 
   const needsApproval = useMemo(() => {
-    const pct = discountPercentOf(cart.lines, totals);
-    return pct > (boot?.config.maxDiscountPercent ?? 10) + 0.001 && !cart.approvedBy && !cashier?.canApprove;
-  }, [cart, totals, boot, cashier]);
+    if (cart.approvedBy || cashier?.canApprove) return false;
+    const pct = discountPercentOf(priced, totals);
+    if (pct > (boot?.config.maxDiscountPercent ?? 10) + 0.001) return true;
+    // سعر جملة يدوي لزبون مش جملة
+    return level !== "retail" && level !== (customer?.priceLevel ?? "retail");
+  }, [cart.approvedBy, priced, totals, boot, cashier, level, customer]);
 
   // ===== الدفع =====
   const nextReceiptNo = useCallback(async () => {
@@ -193,7 +285,7 @@ export function usePos() {
     const b = bootRef.current;
     if (!b || !cashierId) return "اختار الكاشير أول.";
     if (!cart.lines.length) return "السلة فاضية.";
-    if (needsApproval) return "الخصم يحتاج موافقة مشرف.";
+    if (needsApproval) return "الخصم أو سعر الجملة يحتاج موافقة مشرف.";
     const redeemValue = redeemPoints > 0 ? Math.min(totals.total, redeemPoints * (b.config.pointValue ?? 100)) : 0;
     const total = totals.total - redeemValue;
     const s = settle(total, payments);
@@ -207,21 +299,27 @@ export function usePos() {
       if (wallet > customer.wallet) return "رصيد المحفظة ما يكفيش.";
       if (redeemPoints > customer.points) return "نقاط الزبون ما تكفيش.";
     }
+    const at = Date.now();
+    // العرض بالوقت ممكن يكون بدا أو خلص من آخر تحديث للشاشة
+    if (computeTotals(priceLines(cart.lines, at), cart.invoiceDiscount).total !== totals.total) { setClock(at); return "الأسعار تغيّرت (عرض بالوقت بدا أو خلص). راجع الإجمالي وادفع مرة ثانية."; }
     const id = newId();
     const receiptNo = await nextReceiptNo();
-    const at = Date.now();
+    const baseOf = (l: CartLine) => (l.isWeighed ? l.quantity : l.quantity * (l.unitFactor ?? 1));
     const points = customer ? pointsEarned(total, b.config.loyaltyPercent ?? 0, b.config.pointValue ?? 100) : 0;
     await op({
       kind: "sale",
       payload: {
-        clientId: id, at, userId: cashierId, shiftId: shift?.id ?? null, receiptNo, customerId: cart.customerId, priceLevel: "retail",
-        lines: cart.lines.map((l) => ({ kind: l.kind, variantId: l.variantId, name: l.name, quantity: l.quantity, unitPrice: l.unitPrice, discount: l.discount, isWeighed: false, unitFactor: 1 })),
+        clientId: id, at, userId: cashierId, shiftId: shift?.id ?? null, receiptNo, customerId: cart.customerId, priceLevel: level,
+        lines: priced.map((l) => ({
+          kind: l.kind, variantId: l.variantId, name: l.name, quantity: l.quantity, unitPrice: l.unitPrice, discount: l.discount, isWeighed: !!l.isWeighed, unitFactor: l.unitFactor ?? 1,
+          unitId: l.unitId ?? null, promoDiscount: l.promoDiscount, promotionId: l.promotionId,
+        })),
         invoiceDiscount: cart.invoiceDiscount, redeemPoints, payments, total, approvedBy: cart.approvedBy,
       },
     });
     const sale: LocalSale = {
       id, receiptNo, at, shiftId: shift?.id ?? null, cashierId, customerId: cart.customerId,
-      lines: cart.lines.map((l, i) => ({ ...l, total: totals.lines[i]! })), subtotal: totals.subtotal, discount: totals.discount + redeemValue, total,
+      lines: priced.map((l, i) => ({ ...l, discount: l.discount + l.promoDiscount, total: totals.lines[i]! })), subtotal: totals.subtotal, discount: totals.discount + redeemValue, total,
       payments: s.applied.map((p) => ({ method: p.method, amount: p.amount })), tendered: s.tendered, change: s.change, points, returned: {},
     };
     await put("sales", sale);
@@ -231,14 +329,14 @@ export function usePos() {
     await patchBoot((bt) => ({
       ...bt,
       products: bt.products.map((p) => {
-        const q = cart.lines.filter((l) => l.variantId === p.variantId).reduce((a, l) => a + l.quantity, 0);
+        const q = cart.lines.filter((l) => l.variantId === p.variantId).reduce((a, l) => a + baseOf(l), 0);
         return q ? { ...p, stock: p.stock - q } : p;
       }),
       customers: bt.customers.map((c) => (c.id === cart.customerId ? { ...c, debt: c.debt + credit, wallet: c.wallet - wallet, points: c.points - redeemPoints + points } : c)),
     }));
     setCart(emptyCart());
     return sale;
-  }, [cart, cashierId, customer, needsApproval, nextReceiptNo, op, patchBoot, shift, totals]);
+  }, [cart, cashierId, customer, needsApproval, nextReceiptNo, op, patchBoot, shift, totals, priced, level, priceLines]);
 
   // ===== الوردية =====
   const openShift = useCallback(async (openingFloat: number) => {
@@ -325,7 +423,8 @@ export function usePos() {
       const next = { ...local, returned };
       await put("sales", next);
       setSales((list) => list.map((s) => (s.id === saleId ? next : s)));
-      await patchBoot((b) => ({ ...b, products: b.products.map((p) => { const q = items.filter((it) => local.lines[it.index]?.variantId === p.variantId).reduce((a, it) => a + it.quantity, 0); return q ? { ...p, stock: p.stock + q } : p; }) }));
+      const base = (i: number, q: number) => { const l = local.lines[i]; return l?.isWeighed ? q : q * (l?.unitFactor ?? 1); };
+      await patchBoot((b) => ({ ...b, products: b.products.map((p) => { const q = items.filter((it) => local.lines[it.index]?.variantId === p.variantId).reduce((a, it) => a + base(it.index, it.quantity), 0); return q ? { ...p, stock: p.stock + q } : p; }) }));
     }
     if (refundMethod === "cash" && shift) await logShift((l) => ({ ...l, refundsCash: l.refundsCash + amount }));
     return null;
@@ -336,10 +435,32 @@ export function usePos() {
     await op({ kind: "audit", payload: { clientId: newId(), at: Date.now(), userId: cashierId, action, approvedBy, meta } });
   }, [cashierId, op]);
 
+  // ===== شاشة الزبون (نافذة ثانية على نفس الجهاز) =====
+  const display = useRef<BroadcastChannel | null>(null);
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    display.current = new BroadcastChannel("rukn-pos-display");
+    return () => display.current?.close();
+  }, []);
+  const showOnDisplay = useCallback((msg: DisplayMessage) => { try { display.current?.postMessage(msg); } catch { /* الشاشة مش مفتوحة */ } }, []);
+  useEffect(() => {
+    showOnDisplay({
+      kind: "cart", shop: boot?.store.name ?? "", customer: customer?.name ?? null,
+      lines: priced.map((l, i) => ({ name: l.name, quantity: l.quantity, isWeighed: !!l.isWeighed, unitPrice: l.unitPrice, total: totals.lines[i]!, promo: l.promoDiscount })),
+      subtotal: totals.subtotal, discount: totals.discount + totals.promoDiscounts + totals.lineDiscounts, total: totals.total,
+    });
+  }, [priced, totals, customer, boot, showOnDisplay]);
+
   return {
     boot, status, online, queue, blocked, lastMessage, setLastMessage, cashier, cashierId, shift, shiftSummary, cart, customer, totals, held, sales, needsApproval,
-    sync, pull, unlock, lock, approve, addProduct, addCustom, updateLine, removeLine, setCustomer, setInvoiceDiscount, setApprovedBy, markPrinted, clearCart,
+    features, level, priced, unitsOf, byVariant, showOnDisplay,
+    sync, pull, unlock, lock, approve, addProduct, addWeighed, addCustom, updateLine, removeLine, setCustomer, setPriceLevel, setInvoiceDiscount, setApprovedBy, markPrinted, clearCart,
     scan, hold, resume, pay, openShift, cashMove, closeShift, createCustomer, customerMoney, findSale, returnSale, audit,
   };
 }
 export type PosApi = ReturnType<typeof usePos>;
+
+/** رسائل شاشة الزبون (BroadcastChannel) */
+export type DisplayMessage =
+  | { kind: "cart"; shop: string; customer: string | null; lines: { name: string; quantity: number; isWeighed: boolean; unitPrice: number; total: number; promo: number }[]; subtotal: number; discount: number; total: number }
+  | { kind: "paid"; shop: string; total: number; tendered: number; change: number; message: string | null };

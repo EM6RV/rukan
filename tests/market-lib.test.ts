@@ -3,6 +3,7 @@ import { barcodeModules, code128Modules, ean13Modules, eanCheckDigit, internalBa
 import { batchRemaining, levelPrice, suggestedExpiryDiscount, unitPrice } from "@/lib/market-pricing";
 import { computeTotals, discountPercentOf } from "@/lib/pos-engine";
 import { applyPromotions, libyaClock, type Promo, type PromoLine } from "@/lib/promotions";
+import { parseScaleLine } from "@/components/pos/scale";
 
 describe("الباركود", () => {
   it("رقم التحقق لـ EAN-13 و EAN-8", () => {
@@ -50,6 +51,17 @@ describe("الباركود", () => {
     expect(c.endsWith("1100011101011")).toBe(true); // Stop
     expect(barcodeModules("SKU-1").kind).toBe("code128");
     expect(barcodeModules("6291041500213").kind).toBe("ean13");
+  });
+});
+
+describe("قراءة الميزان", () => {
+  it("صيغ الموازين الشائعة", () => {
+    expect(parseScaleLine("ST,GS,+0.250kg")).toBe(250);
+    expect(parseScaleLine("  1250 g")).toBe(1250);
+    expect(parseScaleLine("1,5 kg")).toBe(1500);
+    expect(parseScaleLine("0.000kg")).toBeNull();
+    expect(parseScaleLine("-0.120kg")).toBeNull();
+    expect(parseScaleLine("ERR")).toBeNull();
   });
 });
 
