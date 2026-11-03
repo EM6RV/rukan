@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/feedback";
 import { formatMoney } from "@/lib/money";
+import { toWhatsappNumber } from "@/lib/phone";
+import { waLink } from "@/lib/whatsapp";
 import { debtAlerts } from "@/server/pos/customers";
 import { listBalances } from "@/server/pos/listing";
 import { posConfigOf } from "@/server/pos/sync";
@@ -37,7 +39,7 @@ export default async function DebtsPage() {
       {list.length === 0 ? <EmptyState icon={<HandCoins className="size-6" />} title="ما فيش ديون ولا أرصدة" description="البيع على الحساب وشحن المحفظة من الكاشير يطلعوا هنا." /> : (
         <Card>
           <CardHeader title="كل الأرصدة" />
-          <ul className="divide-y divide-line">{list.map((c) => <li key={c.id}><Link href={`/dashboard/customers/${c.id}`} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm hover:bg-surface-2/60"><span className="font-semibold">{c.name}</span><span className="flex flex-wrap gap-3 tabular-nums text-muted"><span>دين <b className="text-fg">{formatMoney(c.debt)}</b></span><span>محفظة {formatMoney(c.wallet)}</span>{c.points !== 0 && <span>{c.points} نقطة</span>}</span></Link></li>)}</ul>
+          <ul className="divide-y divide-line">{list.map((c) => <li key={c.id}><Link href={`/dashboard/customers/${c.id}`} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm hover:bg-surface-2/60"><span className="font-semibold">{c.name}</span><span className="flex flex-wrap gap-3 tabular-nums text-muted"><span>دين <b className="text-fg">{formatMoney(c.debt)}</b></span><span>محفظة {formatMoney(c.wallet)}</span>{c.points !== 0 && <span>{c.points} نقطة</span>}</span></Link>{c.debt > 0 && toWhatsappNumber(c.phone ?? "") && <a href={waLink(toWhatsappNumber(c.phone ?? "")!, `أهلاً ${c.name}، تذكير ودّي من ${ctx.store.name}: عليك مبلغ ${formatMoney(c.debt)}. شكراً لتعاونك.`)} target="_blank" rel="noopener noreferrer" className="mx-5 mb-2 inline-block text-xs font-semibold text-link-strong underline">ذكّره على واتساب</a>}</li>)}</ul>
         </Card>
       )}
     </div>
