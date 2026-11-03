@@ -21,7 +21,7 @@ export default async function PlayPublic({ params }: { params: Promise<{ key: st
   if (!p) notFound();
   const [floor, rates, tours] = await Promise.all([floorStatus(p.scope), listRates(p.scope), listTournaments(p.scope, { publicOnly: true })]);
   const wa = p.contact.whatsapp;
-  const hourly = rates.filter((r) => r.isActive && r.mode === "hour" && !r.days?.length && r.fromMinute == null);
+  const hourly = rates.filter((r) => r.isActive && r.mode === "hour" && !r.days?.length && r.fromMinute === 0 && r.toMinute === 1440);
   const bookable = canUse(p.limits, "bookings");
   const open = tours.filter((x) => x.status === "registration" && x.publicSignup);
   const games = [...new Set(floor.flatMap((f) => f.games))].slice(0, 30);
