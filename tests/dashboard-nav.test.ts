@@ -81,13 +81,20 @@ describe("بحث لوحة الأوامر (Ctrl+K)", () => {
 });
 
 describe("خريطة صفحات اللوحة", () => {
-  const nav = (role: Parameters<typeof can>[0], useCouriers = true, modules = false) => navFor({ can: (p) => can(role, p), useCouriers, isCourier: role === "courier", moduleOn: () => modules });
+  const nav = (role: Parameters<typeof can>[0], useCouriers = true, modules = false, lines: string[] = ["store"]) =>
+    navFor({ can: (p) => can(role, p), useCouriers, isCourier: role === "courier", moduleOn: () => modules, hasLine: (l) => lines.includes(l) });
   it("كل دور يشوف صفحاته بس", () => {
-    expect(nav("owner", true, true).length).toBe(NAV.length);
-    expect(nav("owner").length).toBe(NAV.filter((d) => !d.module).length); // الوحدات المطفية تختفي من القائمة
+    expect(nav("owner", true, true, ["store", "market", "lounge", "gym"]).length).toBe(NAV.length);
+    expect(nav("owner").length).toBe(NAV.filter((d) => !d.module && (!d.line || d.line === "store")).length); // الوحدات المطفية والمنظومات غير المشترك فيها تختفي
     expect(nav("courier").map((i) => i.href)).toEqual(["/dashboard/orders"]);
     expect(nav("orders_staff").some((i) => i.href === "/dashboard/products")).toBe(false);
     expect(nav("manager").some((i) => i.href === "/dashboard/billing")).toBe(false);
+  });
+  it("صفحات المتجر الأونلاين تختفي لنشاط بدون متجر، وصفحة كل منظومة تبان لما يشترك فيها", () => {
+    const gym = nav("owner", true, false, ["gym"]).map((i) => i.href);
+    expect(gym).toEqual(expect.arrayContaining(["/dashboard", "/dashboard/gym", "/dashboard/products", "/dashboard/staff", "/dashboard/lines"]));
+    for (const h of ["/dashboard/orders", "/dashboard/coupons", "/dashboard/design", "/dashboard/billing", "/dashboard/market"]) expect(gym).not.toContain(h);
+    expect(nav("owner").map((i) => i.href)).not.toContain("/dashboard/gym");
   });
   it("المندوبين المطفيين يختفوا (إلا للمندوب نفسه)", () => {
     expect(nav("owner", false).some((i) => i.href === "/dashboard/couriers")).toBe(false);

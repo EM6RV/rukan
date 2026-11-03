@@ -10,7 +10,10 @@ import { saveAddon, savePlan } from "@/server/admin/plans";
 import { SITE_TAG } from "@/server/admin/site-cache";
 import { savePlatformConfig, savePromo, setFreePlanEnabled } from "@/server/admin/settings";
 import { resetSiteContent, saveSiteContent } from "@/server/admin/site-content";
-import { changePlan, extendTrial, recordPayment, setSuspended, type TouchedStore } from "@/server/admin/subscriptions";
+import { adminStartTrial, changePlan, extendTrial, recordPayment, setSuspended, type TouchedStore } from "@/server/admin/subscriptions";
+import { deleteBundle, saveBundle } from "@/server/admin/bundles";
+import { saveLineConfig, setLineBeta } from "@/server/admin/settings";
+import { PRODUCT_LINES } from "@/lib/product-lines";
 import { adminResetPassword } from "@/server/admin/users";
 import { getEnv } from "@/lib/env";
 import { toWhatsappNumber } from "@/lib/phone";
@@ -40,15 +43,27 @@ const touch = (s: TouchedStore) => invalidateStore(s);
 export async function recordPaymentAction(input: unknown) {
   return run(({ db, userId }) => recordPayment(db, input, { id: userId }), (d) => touch(d.store));
 }
-export async function extendTrialAction(storeId: unknown, days: unknown) {
+const lineArg = z.enum(PRODUCT_LINES).default("store");
+export async function extendTrialAction(storeId: unknown, days: unknown, line?: unknown) {
+  const s = z.object({ storeId: id, line: lineArg }).safeParse({ storeId, line });
+  if (!s.success) return bad();
+  return run(({ db, userId }) => extendTrial(db, s.data.storeId, days, { id: userId }, Date.now(), s.data.line), (d) => touch(d.store));
+}
+/** إيقاف/تفعيل النشاط كامل، أو منظومة وحدة لو line محددة */
+export async function setSuspendedAction(storeId: unknown, suspended: unknown, reason: unknown, line?: unknown) {
+  const p = z.object({ storeId: id, suspended: z.boolean(), reason: z.string().max(200).nullish(), line: z.enum(PRODUCT_LINES).optional() }).safeParse({ storeId, suspended, reason, line: line ?? undefined });
+  if (!p.success) return bad();
+  return run(({ db, userId }) => setSuspended(db, p.data.storeId, p.data.suspended, { id: userId }, p.data.reason, Date.now(), p.data.line), (d) => touch(d.store));
+}
+export async function adminStartTrialAction(storeId: unknown, line: unknown) {
+  const p = z.object({ storeId: id, line: z.enum(PRODUCT_LINES) }).safeParse({ storeId, line });
+  if (!p.success) return bad();
+  return run(({ db, userId }) => adminStartTrial(db, p.data.storeId, p.data.line, { id: userId }), (d) => touch(d.store));
+}
+export async function setLineBetaAction(storeId: unknown, lines: unknown) {
   const s = id.safeParse(storeId);
   if (!s.success) return bad();
-  return run(({ db, userId }) => extendTrial(db, s.data, days, { id: userId }), (d) => touch(d.store));
-}
-export async function setSuspendedAction(storeId: unknown, suspended: unknown, reason: unknown) {
-  const p = z.object({ storeId: id, suspended: z.boolean(), reason: z.string().max(200).nullish() }).safeParse({ storeId, suspended, reason });
-  if (!p.success) return bad();
-  return run(({ db, userId }) => setSuspended(db, p.data.storeId, p.data.suspended, { id: userId }, p.data.reason), (d) => touch(d.store));
+  return run(({ db, userId }) => setLineBeta(db, s.data, lines, userId));
 }
 export async function changePlanAction(storeId: unknown, planId: unknown) {
   const p = z.object({ storeId: id, planId: id }).safeParse({ storeId, planId });
@@ -60,6 +75,18 @@ export async function changePlanAction(storeId: unknown, planId: unknown) {
 export async function savePlanAction(input: unknown) {
   // الباقات تظهر في الموقع التسويقي أيضاً
   return run(({ db, userId }) => savePlan(db, input, userId), (d) => { d.affectedStores.forEach(touch); revalidateTag(SITE_TAG, { expire: 0 }); revalidatePath("/"); });
+}
+
+export async function saveBundleAction(input: unknown) {
+  return run(({ db, userId }) => saveBundle(db, input, userId));
+}
+export async function deleteBundleAction(bundleId: unknown) {
+  const p = id.safeParse(bundleId);
+  if (!p.success) return bad();
+  return run(({ db, userId }) => deleteBundle(db, p.data, userId));
+}
+export async function saveLineConfigAction(input: unknown) {
+  return run(({ db, userId }) => saveLineConfig(db, input, userId));
 }
 
 export async function saveAddonAction(input: unknown) {

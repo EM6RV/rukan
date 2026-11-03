@@ -5,15 +5,16 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
   BarChart3, Blocks, Brush, CreditCard, FolderTree, LayoutDashboard, LayoutGrid, Package, Palette, PanelRightClose, PanelRightOpen,
-  PenLine, RotateCcw, Star, Tags, PackageMinus, History, ScrollText, Activity, Warehouse, ArrowLeftRight, ClipboardCheck, ClipboardList, Handshake, Wallet, Receipt, HandCoins, LineChart, MessagesSquare, Search, Settings, ShoppingBag, ShoppingCart, Ticket, Truck, UserCog, Users, type LucideIcon,
+  PenLine, RotateCcw, ShoppingBasket, Gamepad2, Dumbbell, Layers, Star, Tags, PackageMinus, History, ScrollText, Activity, Warehouse, ArrowLeftRight, ClipboardCheck, ClipboardList, Handshake, Wallet, Receipt, HandCoins, LineChart, MessagesSquare, Search, Settings, ShoppingBag, ShoppingCart, Ticket, Truck, UserCog, Users, type LucideIcon,
 } from "lucide-react";
-import { activeHref, BOTTOM_NAV, MENU_HREF, NAV_GROUPS, type NavIcon, type NavItem } from "@/lib/dashboard-nav";
+import { activeHref, BOTTOM_NAV, BOTTOM_NAV_SIZE, MENU_HREF, NAV_GROUPS, type NavIcon, type NavItem } from "@/lib/dashboard-nav";
 import { cn } from "@/lib/cn";
 
 export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   home: LayoutDashboard, orders: ShoppingBag, products: Package, categories: FolderTree, customers: Users, carts: ShoppingCart, couriers: Truck,
   returns: RotateCcw, coupons: Ticket, reviews: Star, brands: Tags, lowstock: PackageMinus, stock: History, audit: ScrollText, analytics: Activity, warehouse: Warehouse, transfer: ArrowLeftRight, stocktake: ClipboardCheck, purchase: ClipboardList, supplier: Handshake, wallet: Wallet, expense: Receipt, debt: HandCoins, pnl: LineChart, inbox: MessagesSquare, reports: BarChart3, services: Brush, content: PenLine, design: Palette, staff: UserCog, billing: CreditCard,
   settings: Settings, modules: Blocks, menu: LayoutGrid,
+  market: ShoppingBasket, lounge: Gamepad2, gym: Dumbbell, lines: Layers,
 };
 
 export function CountBadge({ n, className }: { n?: number; className?: string }) {
@@ -76,7 +77,7 @@ export function Sidebar({ items, collapsed: initial, storeCard, storeInitial, fo
 // ===== الشريط السفلي (موبايل): 4 أزرار ثابتة + «القائمة» =====
 export function BottomNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
-  const shown = BOTTOM_NAV.map((k) => items.find((i) => i.icon === k)).filter((i): i is NavItem => !!i);
+  const shown = BOTTOM_NAV.map((k) => items.find((i) => i.icon === k)).filter((i): i is NavItem => !!i).slice(0, BOTTOM_NAV_SIZE);
   const active = activeHref(pathname, items);
   const menuActive = pathname === MENU_HREF || (!!active && !shown.some((i) => i.href === active));
   const restBadge = items.filter((i) => !shown.includes(i)).reduce((s, i) => s + (i.badge ?? 0), 0);

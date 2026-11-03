@@ -10,6 +10,9 @@ export const BUSINESS_PRESETS: Record<BusinessType, { template: StoreTemplate; p
   accessories: { template: "lamsa", palette: { name: "ملكي", primary: "#0D263E", accent: "#C19E58" } },
   food: { template: "hikaya", palette: { name: "دافي", primary: "#7A3E12", accent: "#E0A030" } },
   other: { template: "naqa", palette: { name: "رُكن", primary: "#0D263E", accent: "#C19E58" } },
+  grocery: { template: "souq", palette: { name: "زمردي", primary: "#12372A", accent: "#D9B65C" } },
+  lounge: { template: "nabd", palette: { name: "ليلي", primary: "#1B1F3B", accent: "#7C83FD" } },
+  gym: { template: "nabd", palette: { name: "جريء", primary: "#111111", accent: "#E4572E" } },
 };
 
 export const PALETTES: Palette[] = [

@@ -41,7 +41,7 @@ export const STORE_TEMPLATE_LABELS: Record<StoreTemplate, string> = {
   lamsa: "لمسة",
 };
 
-export const BUSINESS_TYPES = ["clothing", "perfume", "beauty", "accessories", "food", "other"] as const;
+export const BUSINESS_TYPES = ["clothing", "perfume", "beauty", "accessories", "food", "other", "grocery", "lounge", "gym"] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];
 export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   clothing: "ملابس",
@@ -50,7 +50,12 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   accessories: "إكسسوارات",
   food: "أكل بيتي",
   other: "أخرى",
+  grocery: "مواد غذائية",
+  lounge: "صالة ألعاب",
+  gym: "نادي رياضي",
 };
+/** أنواع النشاط اللي تطلع في معالج المتجر الأونلاين (الباقي يتحدد من المنظومة) */
+export const STORE_BUSINESS_TYPES = ["clothing", "perfume", "beauty", "accessories", "food", "other"] as const satisfies readonly BusinessType[];
 
 export const PAYMENT_METHODS = ["cod", "bank_transfer", "gateway"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -85,9 +90,12 @@ export const STORE_MODULE_INFO: Record<StoreModule, { title: string; description
 export const AVAILABLE_MODULES: readonly StoreModule[] = ["warehouses", "purchasing", "accounting"];
 
 // الإضافات المدفوعة فوق الباقة
-export const ADDON_KINDS = ["staff", "warehouse", "products", "custom_domain"] as const;
+export const ADDON_KINDS = ["staff", "warehouse", "products", "custom_domain", "branch", "register", "station_pack", "member_pack"] as const;
 export type AddonKind = (typeof ADDON_KINDS)[number];
-export const ADDON_KIND_LABELS: Record<AddonKind, string> = { staff: "موظف إضافي", warehouse: "مخزن إضافي", products: "منتجات إضافية", custom_domain: "دومين خاص" };
+export const ADDON_KIND_LABELS: Record<AddonKind, string> = {
+  staff: "موظف إضافي", warehouse: "مخزن إضافي", products: "منتجات إضافية", custom_domain: "دومين خاص",
+  branch: "فرع إضافي", register: "كاشير إضافي", station_pack: "أجهزة إضافية (صالة)", member_pack: "أعضاء إضافيين (نادي)",
+};
 
 export const DEFAULT_TRIAL_DAYS = 3;
 /** باقة التجربة الافتراضية (slug) لو الأدمن ما حدد غيرها */

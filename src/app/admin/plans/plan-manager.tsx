@@ -11,29 +11,47 @@ import { Modal } from "@/components/ui/modal";
 import { Toggle } from "@/components/ui/toggle";
 import { DURATIONS, savingsPercent, type DurationKey } from "@/lib/billing";
 import { ADDON_KINDS, ADDON_KIND_LABELS, STORE_MODULES, STORE_MODULE_INFO, type AddonKind, type StoreModule } from "@/lib/constants";
-import { FEATURES, FEATURE_INFO, type Feature } from "@/lib/entitlements";
+import { FEATURES, FEATURE_INFO, LINE_FEATURES, type Feature } from "@/lib/entitlements";
+import { ADDON_KIND_LINE, LINE_INFO, PRODUCT_LINES, type ProductLine } from "@/lib/product-lines";
+import { cn } from "@/lib/cn";
 import { dirhamToInput, formatMoney, inputToDirham } from "@/lib/money";
 import type { DurationPerks, PlanLimits, PlanPrices } from "@/db/schema/platform";
-import { saveAddonAction, savePlanAction } from "../actions";
+import { deleteBundleAction, saveAddonAction, saveBundleAction, savePlanAction } from "../actions";
 
 export type AdminPlan = {
-  id: string; slug: string; nameAr: string; descriptionAr: string | null; prices: PlanPrices; comparePrices: PlanPrices; durationPerks: DurationPerks;
+  id: string; slug: string; line: ProductLine; nameAr: string; descriptionAr: string | null; prices: PlanPrices; comparePrices: PlanPrices; durationPerks: DurationPerks;
   isFeatured: boolean; isFree: boolean; sortOrder: number; isActive: boolean; limits: PlanLimits; storeCount: number;
 };
 export type AdminAddon = { id: string; slug: string; nameAr: string; kind: AddonKind; units: number; monthlyPrice: number; isActive: boolean; sortOrder: number };
+export type AdminBundle = { id: string; nameAr: string; lines: ProductLine[]; discountPercent: number; isActive: boolean };
 
-const LIMITS: { key: "maxProducts" | "maxStaff" | "maxOrdersPerMonth" | "maxWarehouses"; label: string; unit: string }[] = [
-  { key: "maxProducts", label: "حد المنتجات", unit: "منتج" },
-  { key: "maxStaff", label: "حد الموظفين", unit: "موظف" },
-  { key: "maxOrdersPerMonth", label: "طلبيات في الشهر", unit: "طلبية/شهر" },
-  { key: "maxWarehouses", label: "حد المخازن", unit: "مخزن" },
-];
+type LimitKey = "maxProducts" | "maxStaff" | "maxOrdersPerMonth" | "maxWarehouses" | "maxBranches" | "maxRegisters" | "maxStations" | "maxMembers";
+const ALL_LIMITS: Record<LimitKey, { label: string; unit: string; def: string }> = {
+  maxProducts: { label: "حد المنتجات", unit: "منتج", def: "" },
+  maxStaff: { label: "حد الموظفين", unit: "موظف", def: "" },
+  maxOrdersPerMonth: { label: "طلبيات في الشهر", unit: "طلبية/شهر", def: "" },
+  maxWarehouses: { label: "حد المخازن", unit: "مخزن", def: "1" },
+  maxBranches: { label: "حد الفروع", unit: "فرع", def: "1" },
+  maxRegisters: { label: "حد الكاشيرات", unit: "كاشير", def: "1" },
+  maxStations: { label: "حد الأجهزة", unit: "جهاز", def: "6" },
+  maxMembers: { label: "حد الأعضاء النشطين", unit: "عضو", def: "150" },
+};
+/** الحدود اللي تبان لكل منظومة */
+const LINE_LIMITS: Record<ProductLine, LimitKey[]> = {
+  store: ["maxProducts", "maxStaff", "maxOrdersPerMonth", "maxWarehouses"],
+  market: ["maxStaff", "maxBranches", "maxRegisters", "maxWarehouses"],
+  lounge: ["maxStaff", "maxBranches", "maxStations"],
+  gym: ["maxStaff", "maxBranches", "maxMembers"],
+};
+const limitsOf = (line: ProductLine) => LINE_LIMITS[line].map((key) => ({ key, ...ALL_LIMITS[key] }));
 const limitText = (n: number | null | undefined, unit: string) => (n == null ? `${unit} بدون حد` : `${n} ${unit}`);
 const numOrNull = (s: string) => (s.trim() === "" ? null : Number(s));
 const money = (n: number | null | undefined) => (n == null ? "" : dirhamToInput(n) || "0");
 
-function PlanForm({ initial, onClose }: { initial?: AdminPlan; onClose: () => void }) {
+function PlanForm({ initial, line, onClose }: { initial?: AdminPlan; line: ProductLine; onClose: () => void }) {
   const lim = initial?.limits;
+  const LIMITS = limitsOf(line);
+  const lineFeatures = LINE_FEATURES[line];
   const [v, setV] = useState({
     slug: initial?.slug ?? "", nameAr: initial?.nameAr ?? "", descriptionAr: initial?.descriptionAr ?? "",
     isFeatured: initial?.isFeatured ?? false, isFree: initial?.isFree ?? false, sortOrder: String(initial?.sortOrder ?? 0), isActive: initial?.isActive ?? true,
@@ -41,7 +59,7 @@ function PlanForm({ initial, onClose }: { initial?: AdminPlan; onClose: () => vo
     compare: Object.fromEntries(DURATIONS.map((d) => [d.key, money(initial?.comparePrices[d.key])])) as Record<DurationKey, string>,
     perkDesigns: Object.fromEntries(DURATIONS.map((d) => [d.key, String(initial?.durationPerks[d.key]?.freeDesigns ?? "")])) as Record<DurationKey, string>,
     perkNote: Object.fromEntries(DURATIONS.map((d) => [d.key, initial?.durationPerks[d.key]?.note ?? ""])) as Record<DurationKey, string>,
-    limits: Object.fromEntries(LIMITS.map((l) => [l.key, lim ? (lim[l.key] == null ? "" : String(lim[l.key])) : l.key === "maxWarehouses" ? "1" : ""])) as Record<(typeof LIMITS)[number]["key"], string>,
+    limits: Object.fromEntries(LIMITS.map((l) => [l.key, lim ? (lim[l.key] == null ? "" : String(lim[l.key])) : l.def])) as Record<LimitKey, string>,
     freeDesigns: String(lim?.freeDesigns ?? 0),
     features: Object.fromEntries(FEATURES.map((f) => [f, lim?.[f] === true])) as Record<Feature, boolean>,
     modules: Object.fromEntries(STORE_MODULES.map((m) => [m, lim?.modules?.[m] === true])) as Record<StoreModule, boolean>,
@@ -66,13 +84,13 @@ function PlanForm({ initial, onClose }: { initial?: AdminPlan; onClose: () => vo
       freeDesigns: Number(v.freeDesigns) || 0, ...v.features, modules: v.modules,
     };
     act(() => savePlanAction({
-      id: initial?.id, slug: initial ? undefined : v.slug, nameAr: v.nameAr, descriptionAr: v.descriptionAr, prices, comparePrices, durationPerks,
+      id: initial?.id, slug: initial ? undefined : v.slug, line, nameAr: v.nameAr, descriptionAr: v.descriptionAr, prices, comparePrices, durationPerks,
       isFeatured: v.isFeatured, isFree: v.isFree, sortOrder: Number(v.sortOrder) || 0, isActive: v.isActive, limits,
     }), "تم حفظ الباقة", onClose);
   }
 
   return (
-    <Modal open onClose={onClose} title={initial ? `تعديل باقة ${initial.nameAr}` : "باقة جديدة"} className="max-w-2xl"
+    <Modal open onClose={onClose} title={initial ? `تعديل باقة ${initial.nameAr} (${LINE_INFO[line].brand})` : `باقة جديدة لـ ${LINE_INFO[line].brand}`} className="max-w-2xl"
       footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button loading={pending} onClick={submit}>حفظ</Button></>}>
       <div className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
@@ -105,7 +123,7 @@ function PlanForm({ initial, onClose }: { initial?: AdminPlan; onClose: () => vo
 
         <fieldset className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2">
           <legend className="px-1 text-sm font-semibold">المميزات</legend>
-          {FEATURES.map((f) => <Toggle key={f} label={FEATURE_INFO[f].title} checked={v.features[f]} onChange={(c) => set("features", { ...v.features, [f]: c })} />)}
+          {lineFeatures.map((f) => <Toggle key={f} label={FEATURE_INFO[f].title} checked={v.features[f]} onChange={(c) => set("features", { ...v.features, [f]: c })} />)}
         </fieldset>
 
         <fieldset className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2">
@@ -116,9 +134,34 @@ function PlanForm({ initial, onClose }: { initial?: AdminPlan; onClose: () => vo
         <div className="space-y-3">
           <Toggle label="فعّالة (تظهر في الأسعار)" checked={v.isActive} onChange={(c) => set("isActive", c)} />
           <Toggle label="الأكثر طلباً (شارة في صفحة الأسعار)" checked={v.isFeatured} onChange={(c) => set("isFeatured", c)} />
-          <Toggle label="باقة مجانية للأبد" hint="تبان بس لما تطلقها من «إعدادات المنصة»" checked={v.isFree} onChange={(c) => set("isFree", c)} />
+          {line === "store" && <Toggle label="باقة مجانية للأبد" hint="تبان بس لما تطلقها من «إعدادات المنصة»" checked={v.isFree} onChange={(c) => set("isFree", c)} />}
         </div>
         {(localError ?? error) && <p role="alert" className={errorClass}>{localError ?? error}</p>}
+      </div>
+    </Modal>
+  );
+}
+
+function BundleForm({ initial, onClose }: { initial?: AdminBundle; onClose: () => void }) {
+  const [v, setV] = useState({ nameAr: initial?.nameAr ?? "", lines: initial?.lines ?? (["market", "store"] as ProductLine[]), pct: String(initial?.discountPercent ?? 10), isActive: initial?.isActive ?? true });
+  const { act, pending, error } = useAct();
+  const del = useAct();
+  return (
+    <Modal open onClose={onClose} title={initial ? `تعديل ${initial.nameAr}` : "حزمة دمج جديدة"}
+      footer={<>
+        {initial && <Button variant="danger" className="me-auto" loading={del.pending} onClick={() => del.act(() => deleteBundleAction(initial.id), "تم حذف الحزمة", onClose)}>حذف</Button>}
+        <Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button>
+        <Button loading={pending} onClick={() => act(() => saveBundleAction({ id: initial?.id, nameAr: v.nameAr, lines: v.lines, discountPercent: Number(v.pct), isActive: v.isActive }), "تم حفظ الحزمة", onClose)}>حفظ</Button>
+      </>}>
+      <div className="space-y-4">
+        <Input label="الاسم" value={v.nameAr} maxLength={40} onChange={(e) => setV({ ...v, nameAr: e.target.value })} placeholder="مثلاً: ماركت + متجر" />
+        <fieldset className="grid gap-3 sm:grid-cols-2">
+          <legend className="mb-2 text-sm font-medium">المنظومات</legend>
+          {PRODUCT_LINES.map((l) => <Toggle key={l} label={LINE_INFO[l].brand} checked={v.lines.includes(l)} onChange={(c) => setV({ ...v, lines: c ? [...v.lines, l] : v.lines.filter((x) => x !== l) })} />)}
+        </fieldset>
+        <Input label="نسبة الخصم على كل منظومة (%)" inputMode="numeric" value={v.pct} onChange={(e) => setV({ ...v, pct: e.target.value.replace(/\D/g, "") })} />
+        <Toggle label="فعّالة" checked={v.isActive} onChange={(isActive) => setV({ ...v, isActive })} />
+        {(error ?? del.error) && <p role="alert" className={errorClass}>{error ?? del.error}</p>}
       </div>
     </Modal>
   );
@@ -140,7 +183,7 @@ function AddonForm({ initial, onClose }: { initial?: AdminAddon; onClose: () => 
         <div className="grid grid-cols-2 gap-3">
           {!initial && <Input label="الرمز (إنجليزي)" dir="ltr" className="text-right" value={v.slug} maxLength={24} onChange={(e) => setV({ ...v, slug: e.target.value.toLowerCase() })} />}
           <Input label="الاسم" value={v.nameAr} maxLength={40} onChange={(e) => setV({ ...v, nameAr: e.target.value })} />
-          <Select label="النوع" value={v.kind} onChange={(e) => setV({ ...v, kind: e.target.value as AddonKind })}>{ADDON_KINDS.map((k) => <option key={k} value={k}>{ADDON_KIND_LABELS[k]}</option>)}</Select>
+          <Select label="النوع" value={v.kind} onChange={(e) => setV({ ...v, kind: e.target.value as AddonKind })} hint={ADDON_KIND_LINE[v.kind] ? `مع اشتراك ${LINE_INFO[ADDON_KIND_LINE[v.kind]!].brand} بس` : "مع أي منظومة"}>{ADDON_KINDS.map((k) => <option key={k} value={k}>{ADDON_KIND_LABELS[k]}</option>)}</Select>
           {v.kind !== "custom_domain" && <Input label="كم تزيد الوحدة" inputMode="numeric" value={v.units} onChange={(e) => setV({ ...v, units: e.target.value })} hint={v.kind === "products" ? "مثلاً 500 منتج" : "عادة 1"} />}
           <Input label="السعر في الشهر (د.ل)" inputMode="decimal" value={v.price} onChange={(e) => setV({ ...v, price: e.target.value })} />
           <Input label="الترتيب" inputMode="numeric" value={v.sortOrder} onChange={(e) => setV({ ...v, sortOrder: e.target.value })} />
@@ -152,19 +195,32 @@ function AddonForm({ initial, onClose }: { initial?: AdminAddon; onClose: () => 
   );
 }
 
-export function PlanManager({ plans, addons }: { plans: AdminPlan[]; addons: AdminAddon[] }) {
+export function PlanManager({ plans, addons, bundles }: { plans: AdminPlan[]; addons: AdminAddon[]; bundles: AdminBundle[] }) {
   const [editing, setEditing] = useState<AdminPlan | "new" | null>(null);
   const [addon, setAddon] = useState<AdminAddon | "new" | null>(null);
+  const [bundle, setBundle] = useState<AdminBundle | "new" | null>(null);
+  const [line, setLine] = useState<ProductLine>("store");
+  const shown = plans.filter((p) => p.line === line);
+  const LIMITS = limitsOf(line);
   return (
     <div className="space-y-8">
       <section className="space-y-4" aria-labelledby="plans-h">
-        <div className="flex items-center justify-between gap-3"><h2 id="plans-h" className="text-lg">الباقات</h2><Button onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden /> باقة جديدة</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="plans-h" className="text-lg">الباقات</h2><Button onClick={() => setEditing("new")}><Plus className="size-4" aria-hidden /> باقة جديدة</Button></div>
+        <div role="tablist" aria-label="المنظومة" className="flex flex-wrap gap-2">
+          {PRODUCT_LINES.map((l) => (
+            <button key={l} role="tab" type="button" aria-selected={line === l} onClick={() => setLine(l)}
+              className={cn("min-h-10 rounded-full border px-4 text-sm font-medium", line === l ? "border-fg bg-fg text-bg" : "border-line bg-surface hover:bg-surface-2")}>
+              {LINE_INFO[l].brand} <span className="opacity-70">({plans.filter((p) => p.line === l).length})</span>
+            </button>
+          ))}
+        </div>
         <ul className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {plans.map((p) => (
+          {shown.length === 0 && <li className="text-sm text-muted">ما فيش باقات لـ {LINE_INFO[line].brand}.</li>}
+          {shown.map((p) => (
             <li key={p.id}>
               <Card className="flex h-full flex-col gap-3 p-5">
                 <div className="flex items-start justify-between gap-2">
-                  <div><h3 className="text-lg">{p.nameAr}</h3><p dir="ltr" className="text-start text-xs text-muted">{p.slug} · {p.storeCount} متجر</p></div>
+                  <div><h3 className="text-lg">{p.nameAr}</h3><p className="text-xs text-muted"><span dir="ltr">{p.slug}</span> · {p.storeCount} نشاط</p></div>
                   <div className="flex flex-wrap justify-end gap-1.5">{p.isFeatured && <Badge tone="gold">الأكثر طلباً</Badge>}{p.isFree && <Badge tone="teal">مجانية</Badge>}{!p.isActive && <Badge>موقوفة</Badge>}</div>
                 </div>
                 {p.descriptionAr && <p className="text-sm text-muted">{p.descriptionAr}</p>}
@@ -190,7 +246,7 @@ export function PlanManager({ plans, addons }: { plans: AdminPlan[]; addons: Adm
                   {LIMITS.map((l) => <li key={l.key}>{limitText(p.limits[l.key], l.unit)}</li>)}
                 </ul>
                 <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                  {FEATURES.map((f) => <li key={f} className={`flex items-center gap-1 ${p.limits[f] ? "" : "text-muted"}`}>{p.limits[f] ? <Check className="size-3.5 text-success-fg" aria-hidden /> : <X className="size-3.5" aria-hidden />}{FEATURE_INFO[f].title}</li>)}
+                  {LINE_FEATURES[p.line].map((f) => <li key={f} className={`flex items-center gap-1 ${p.limits[f] ? "" : "text-muted"}`}>{p.limits[f] ? <Check className="size-3.5 text-success-fg" aria-hidden /> : <X className="size-3.5" aria-hidden />}{FEATURE_INFO[f].title}</li>)}
                   {STORE_MODULES.filter((m) => p.limits.modules?.[m]).map((m) => <li key={m} className="flex items-center gap-1"><Check className="size-3.5 text-success-fg" aria-hidden />{STORE_MODULE_INFO[m].title}</li>)}
                 </ul>
                 <Button variant="outline" size="sm" className="mt-auto" onClick={() => setEditing(p)}>تعديل</Button>
@@ -216,7 +272,24 @@ export function PlanManager({ plans, addons }: { plans: AdminPlan[]; addons: Adm
         </ul>
       </section>
 
-      {editing && <PlanForm key={editing === "new" ? "new" : editing.id} initial={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} />}
+      <section className="space-y-4" aria-labelledby="bundles-h">
+        <div className="flex items-center justify-between gap-3">
+          <div><h2 id="bundles-h" className="text-lg">حزم الدمج</h2><p className="text-sm text-muted">خصم لما النشاط يجمع منظومتين أو أكثر. يتقترح بروحه في مبلغ الدفعة.</p></div>
+          <Button variant="outline" onClick={() => setBundle("new")}><Plus className="size-4" aria-hidden /> حزمة</Button>
+        </div>
+        <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
+          {bundles.length === 0 && <li className="p-4 text-center text-sm text-muted">ما فيش حزم.</li>}
+          {bundles.map((b) => (
+            <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div><p className="font-semibold">{b.nameAr} {!b.isActive && <Badge>موقوفة</Badge>}</p><p className="text-sm text-muted">{b.lines.map((l) => LINE_INFO[l].brand).join(" + ")} · خصم {b.discountPercent}%</p></div>
+              <Button size="sm" variant="ghost" onClick={() => setBundle(b)}>تعديل</Button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {editing && <PlanForm key={editing === "new" ? `new-${line}` : editing.id} line={editing === "new" ? line : editing.line} initial={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} />}
+      {bundle && <BundleForm key={bundle === "new" ? "new" : bundle.id} initial={bundle === "new" ? undefined : bundle} onClose={() => setBundle(null)} />}
       {addon && <AddonForm key={addon === "new" ? "new" : addon.id} initial={addon === "new" ? undefined : addon} onClose={() => setAddon(null)} />}
     </div>
   );

@@ -18,6 +18,7 @@ import { getDb } from "@/db";
 import { activeAnnouncementsFor } from "@/server/admin/announcements";
 import { getOrdersPulse } from "@/server/orders/pulse";
 import { requireStoreContext } from "@/server/store-context";
+import { LINE_INFO, PRODUCT_LINES } from "@/lib/product-lines";
 import { logoutAction } from "../(auth)/actions";
 
 export const metadata: Metadata = { title: { template: "%s | رُكن", default: "رُكن" } };
@@ -31,11 +32,27 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { access } = ctx;
   const announcements = await activeAnnouncementsFor(getDb(), ctx.user.id);
 
-  const banner =
-    access.state === "suspended" ? { tone: "danger", text: "متجرك موقوف. تواصل مع الدعم لإعادة تفعيله." }
-    : access.state === "expired" ? { tone: "danger", text: "انتهت فترة اشتراكك: متجرك مغلق للزباين واللوحة للقراءة فقط." }
-    : access.daysLeft !== null && access.daysLeft <= 5 ? { tone: "warning", text: `باقي ${access.daysLeft} ${access.daysLeft === 1 ? "يوم" : "أيام"} على انتهاء ${access.state === "trial" ? "التجربة المجانية" : "اشتراكك"}.` }
-    : null;
+  // تنبيه لكل منظومة: موقوفة/منتهية/قربت تخلص. المتجر لحاله يحافظ على نصه القديم.
+  const subscribed = PRODUCT_LINES.filter((l) => ctx.lines[l].subscribed);
+  const only = subscribed.length <= 1;
+  type Banner = { key: string; tone: "danger" | "warning"; text: string; href: string | null };
+  const banners: Banner[] = subscribed.flatMap((l): Banner[] => {
+    const a = ctx.lines[l];
+    const name = l === "store" ? (only ? "متجرك" : "المتجر الأونلاين") : LINE_INFO[l].brand;
+    const href = l === "store" ? "/dashboard/billing" : "/dashboard/lines";
+    const days = `${a.daysLeft} ${a.daysLeft === 1 ? "يوم" : "أيام"}`;
+    if (a.state === "suspended") return [{ key: l, tone: "danger", text: `${name} موقوف. تواصل مع الدعم لإعادة تفعيله.`, href: null }];
+    if (a.state === "expired") {
+      const text = l !== "store" ? `انتهى اشتراك ${name}: المنظومة للقراءة فقط لين تجدد.`
+        : only ? "انتهت فترة اشتراكك: متجرك مغلق للزباين واللوحة للقراءة فقط." : "انتهى اشتراك المتجر الأونلاين: متجرك مغلق للزباين.";
+      return [{ key: l, tone: "danger", text, href }];
+    }
+    if (a.daysLeft !== null && a.daysLeft <= 5) {
+      const what = a.state === "trial" ? "التجربة المجانية" : "اشتراكك";
+      return [{ key: l, tone: "warning", text: only ? `باقي ${days} على انتهاء ${what}.` : `باقي ${days} على انتهاء ${a.state === "trial" ? "تجربة" : "اشتراك"} ${name}.`, href }];
+    }
+    return [];
+  });
 
   return (
     <div className="min-h-dvh bg-bg lg:flex">
@@ -69,12 +86,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <LogoutButton />
           </div>
         </header>
-        {banner && (
-          <div role="status" className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium ${banner.tone === "danger" ? "bg-danger/15 text-danger-fg" : "bg-gold/20"}`}>
+        {banners.map((banner) => (
+          <div key={banner.key} role="status" className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium ${banner.tone === "danger" ? "bg-danger/15 text-danger-fg" : "bg-gold/20"}`}>
             <TriangleAlert className="size-4 shrink-0" aria-hidden /> <span className="min-w-0 flex-1">{banner.text}</span>
-            {hasPermission(ctx, "billing") && access.state !== "suspended" && <Link href="/dashboard/billing" className="shrink-0 rounded-md bg-fg px-3 py-1 text-xs font-semibold text-bg hover:opacity-90">جدّد الاشتراك</Link>}
+            {hasPermission(ctx, "billing") && banner.href && <Link href={banner.href} className="shrink-0 rounded-md bg-fg px-3 py-1 text-xs font-semibold text-bg hover:opacity-90">جدّد الاشتراك</Link>}
           </div>
-        )}
+        ))}
         {ctx.store.planNotice && hasPermission(ctx, "billing") && <PlanNotice notice={ctx.store.planNotice} cycle={ctx.store.billingCycle} planName={ctx.planName} />}
         <OfflineBanner />
         <PwaSetup />

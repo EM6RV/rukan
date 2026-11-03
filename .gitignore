@@ -8,3 +8,4 @@ next-env.d.ts
 data/*.db*
 coverage
 .DS_Store
+e2e/shots/

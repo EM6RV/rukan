@@ -4,6 +4,7 @@ import { createdAt, pk, updatedAt } from "./_helpers";
 import type { AddonKind, BillingCycle, BusinessType, DesignService, LibyaRegion, StoreModule, StoreStatus, StoreTemplate } from "@/lib/constants";
 export type { AddonKind } from "@/lib/constants";
 import type { DurationKey } from "@/lib/billing";
+import type { ProductLine } from "@/lib/product-lines";
 
 // ===== المستخدمون والجلسات =====
 
@@ -99,6 +100,22 @@ export type PlanLimits = {
   freeDesigns?: number;
   /** الوحدات الاختيارية المسموحة في الباقة (غير موجودة = مقفولة) */
   modules?: Partial<Record<StoreModule, boolean>>;
+
+  // ===== حدود ومميزات المنظومات (ماركت/بلاي/فِت). غير موجود = مقفول، والحد غير الموجود = 1 =====
+  /** عدد الفروع (مشترك لكل المنظومات). غير موجود = 1، null = غير محدود */
+  maxBranches?: number | null;
+  /** ماركت: عدد الكاشيرات */
+  maxRegisters?: number | null;
+  /** بلاي: عدد الأجهزة. غير موجود = 0 */
+  maxStations?: number | null;
+  /** فِت: عدد الأعضاء النشطين. غير موجود = 0 */
+  maxMembers?: number | null;
+  // ماركت
+  debtBook?: boolean; wholesale?: boolean; batches?: boolean; promotions?: boolean; cameraScan?: boolean; onlineOrders?: boolean; hardware?: boolean;
+  // بلاي
+  bookings?: boolean; hourPacks?: boolean; wallScreen?: boolean; tournaments?: boolean; powerControl?: boolean;
+  // فِت
+  classes?: boolean; trainers?: boolean; installments?: boolean; memberPortal?: boolean; kiosk?: boolean; progress?: boolean; advancedMessages?: boolean;
 };
 
 /** سعر كل مدة بالدرهم. null/غير موجود = الباقة ما تطلعش في المدة هذي */
@@ -109,6 +126,8 @@ export type DurationPerks = Partial<Record<DurationKey, { freeDesigns?: number; 
 export const plans = sqliteTable("plans", {
   id: pk(),
   slug: text("slug").notNull().unique(),
+  /** المنظومة اللي تتبعها الباقة (متجر/ماركت/بلاي/فِت) */
+  line: text("line").$type<ProductLine>().notNull().default("store"),
   nameAr: text("name_ar").notNull(),
   descriptionAr: text("description_ar"),
   /** @deprecated من المرحلة 1: الأسعار في prices. باقي للتوافق مع البيانات القديمة بس */
@@ -138,11 +157,21 @@ export const stores = sqliteTable(
     ownerUserId: text("owner_user_id").notNull().references(() => users.id),
     businessType: text("business_type").$type<BusinessType>().notNull().default("other"),
     template: text("template").$type<StoreTemplate>().notNull().default("simple" as StoreTemplate) /* افتراض قديم في القاعدة؛ الإدخال دايماً يحدد القالب صراحة */,
+    // ===== الاشتراك (@deprecated) =====
+    // من منظومات رُكن: المصدر هو line_subscriptions (سطر لكل منظومة). الأعمدة هذي نسخة من سطر «store»
+    // تتحدث مع كل كتابة (للتوافق مع الكود القديم)، ولو النشاط ما عندوش متجر أونلاين: expired (أو suspended).
+    /** @deprecated استعمل lineAccess / line_subscriptions */
     status: text("status").$type<StoreStatus>().notNull().default("trial"),
+    /** @deprecated استعمل line_subscriptions.plan_id */
     planId: text("plan_id").references(() => plans.id),
+    /** @deprecated استعمل line_subscriptions.billing_cycle */
     billingCycle: text("billing_cycle").$type<BillingCycle>().notNull().default("monthly"),
+    /** @deprecated استعمل line_subscriptions.trial_ends_at */
     trialEndsAt: integer("trial_ends_at", { mode: "timestamp_ms" }),
+    /** @deprecated استعمل line_subscriptions.current_period_end */
     currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }),
+    /** المنظومات المفتوحة للنشاط هذا كتجربة قبل الإطلاق العام (زي inboxBeta) */
+    lineBeta: text("line_beta", { mode: "json" }).$type<ProductLine[]>().notNull().default(sql`'[]'`),
     nextOrderNumber: integer("next_order_number").notNull().default(1001),
     // يستعمل مندوبين/شركات توصيل (وكاش عندهم)؟ لو مقفل نخفي المندوبين والكاش من اللوحة (افتراضياً شغال)
     useCouriers: integer("use_couriers", { mode: "boolean" }).notNull().default(true),
@@ -192,6 +221,8 @@ export const subscriptionPayments = sqliteTable(
   {
     id: pk(),
     storeId: text("store_id").notNull().references(() => stores.id),
+    /** الدفعة على اشتراك أي منظومة */
+    line: text("line").$type<ProductLine>().notNull().default("store"),
     planId: text("plan_id").notNull().references(() => plans.id),
     billingCycle: text("billing_cycle").$type<BillingCycle>().notNull(),
     amount: integer("amount").notNull(),
@@ -222,18 +253,60 @@ export const addons = sqliteTable("addons", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
-/** الإضافات المفعّلة لكل متجر (تتسجل مع دفعة الاشتراك وتمشي مع فترته) */
+/** الإضافات المفعّلة لكل نشاط (تتسجل مع دفعة اشتراك منظومة وتمشي مع فترتها) */
 export const storeAddons = sqliteTable(
   "store_addons",
   {
     id: pk(),
     storeId: text("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    /** المنظومة اللي اندفعت الإضافة مع اشتراكها */
+    line: text("line").$type<ProductLine>().notNull().default("store"),
     addonId: text("addon_id").notNull().references(() => addons.id),
     quantity: integer("quantity").notNull().default(1),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("store_addons_uq").on(t.storeId, t.addonId)],
+  (t) => [uniqueIndex("store_addons_line_uq").on(t.storeId, t.line, t.addonId)],
 );
+
+// ===== اشتراكات المنظومات =====
+
+/** إجابات المعالج القصير لكل منظومة (تستعملها المراحل الجاية لتجهيز الكاشيرات والأجهزة والاشتراكات) */
+export type LineSetup = {
+  done?: boolean;
+  market?: { shopName?: string; registers?: number; wholesale?: boolean; scale?: boolean };
+  lounge?: { stations?: { type: string; count: number }[]; hourlyPrice?: number };
+  gym?: { sections?: ("men" | "women" | "mixed")[]; membershipTypes?: { name: string; months: number; price: number }[]; trainers?: string[] };
+};
+
+/** سطر لكل منظومة مشترك فيها النشاط (المصدر الوحيد لحالة الاشتراك) */
+export const lineSubscriptions = sqliteTable(
+  "line_subscriptions",
+  {
+    id: pk(),
+    storeId: text("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    line: text("line").$type<ProductLine>().notNull(),
+    planId: text("plan_id").references(() => plans.id),
+    billingCycle: text("billing_cycle").$type<BillingCycle>().notNull().default("monthly"),
+    status: text("status").$type<StoreStatus>().notNull().default("trial"),
+    trialEndsAt: integer("trial_ends_at", { mode: "timestamp_ms" }),
+    currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }),
+    setup: text("setup", { mode: "json" }).$type<LineSetup>().notNull().default(sql`'{}'`),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("line_subs_store_line_uq").on(t.storeId, t.line), index("line_subs_line_status_idx").on(t.line, t.status)],
+);
+
+/** حزم الدمج: خصم لما النشاط يجمع منظومتين أو أكثر (مثلاً ماركت + متجر) */
+export const lineBundles = sqliteTable("line_bundles", {
+  id: pk(),
+  nameAr: text("name_ar").notNull(),
+  lines: text("lines", { mode: "json" }).$type<ProductLine[]>().notNull(),
+  /** نسبة الخصم على كل منظومة داخل الحزمة (0–90) */
+  discountPercent: integer("discount_percent").notNull(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: createdAt(),
+});
 
 // ===== إعلانات ومحتوى الموقع =====
 

@@ -19,12 +19,19 @@ import { hasPermission } from "@/server/permissions";
 import { storeUrl } from "@/lib/store-url";
 import { currentRequest } from "@/server/request-origin";
 import { requireStoreContext } from "@/server/store-context";
+import { redirect } from "next/navigation";
+import { LINE_INFO, OPS_LINES } from "@/lib/product-lines";
 import { t } from "@/server/tenant";
 
 export const metadata: Metadata = { title: "الرئيسية" };
 
 export default async function DashboardHome() {
   const ctx = await requireStoreContext("dashboard");
+  // نشاط بدون متجر أونلاين: الرئيسية هي صفحة أول منظومة عنده
+  if (!ctx.lines.store.subscribed) {
+    const first = OPS_LINES.find((l) => ctx.lines[l].subscribed);
+    redirect(first ? LINE_INFO[first].home : "/dashboard/lines");
+  }
   const { scope, store, limits } = ctx;
 
   const ordersMonth = limits.maxOrdersPerMonth != null ? await ordersThisMonth(getDb(), store.id) : 0;

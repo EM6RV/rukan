@@ -12,7 +12,7 @@ import { changePlan, extendTrial, listExpiring, listPayments, recordPayment, set
 import { addMonths, monthKey, renewalMessage } from "@/lib/billing";
 import { DEFAULT_SITE_CONTENT } from "@/lib/site-content";
 import { createStoreForUser } from "@/server/store-service";
-import { makeTestDb } from "./helpers/db";
+import { makeTestDb, patchStoreSub } from "./helpers/db";
 
 const DAY = 86_400_000;
 const LIMITS: PlanLimits = { maxProducts: 500, maxStaff: 3, allTemplates: true, coupons: true, reports: true, customDomain: false, pixels: false, removeBranding: false };
@@ -26,7 +26,9 @@ async function shop(slug: string, patch: Partial<typeof stores.$inferInsert> = {
   const [u] = await db.insert(users).values({ phone: `0914${String(++seq).padStart(6, "0")}`, name: `مالك ${slug}`, passwordHash: "x" }).returning();
   const r = await createStoreForUser(db, { userId: u!.id, name: slug, slug });
   if (!r.ok) throw new Error(r.error);
-  await db.update(stores).set({ onboardedAt: new Date(), planId: growth, ...patch }).where(eq(stores.id, r.data.storeId));
+  const { status, planId, billingCycle, trialEndsAt, currentPeriodEnd, ...rest } = { planId: growth, ...patch };
+  await db.update(stores).set({ onboardedAt: new Date(), ...rest }).where(eq(stores.id, r.data.storeId));
+  await patchStoreSub(db, r.data.storeId, Object.fromEntries(Object.entries({ status, planId, billingCycle, trialEndsAt, currentPeriodEnd }).filter(([, v]) => v !== undefined)));
   return { id: r.data.storeId, ownerId: u!.id, phone: u!.phone };
 }
 const row = async (id: string) => (await db.select().from(stores).where(eq(stores.id, id)))[0]!;
@@ -265,7 +267,8 @@ describe("إحصائيات المنصة", () => {
         const [u] = await d2.insert(users).values({ phone: `0915${String(++seq).padStart(6, "0")}`, name: slug, passwordHash: "x" }).returning();
         const r = await createStoreForUser(d2, { userId: u!.id, name: slug, slug });
         if (!r.ok) throw new Error(r.error);
-        await d2.update(stores).set({ onboardedAt: new Date(), planId: pl!.id, ...patch }).where(eq(stores.id, r.data.storeId));
+        await d2.update(stores).set({ onboardedAt: new Date() }).where(eq(stores.id, r.data.storeId));
+        await patchStoreSub(d2, r.data.storeId, { planId: pl!.id, ...patch });
         return r.data.storeId;
       };
       const m = await mk("mo-m", { status: "active", currentPeriodEnd: new Date(now + 20 * DAY), billingCycle: "monthly", planId: plM!.id });

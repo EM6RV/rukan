@@ -8,6 +8,10 @@ import { firstError } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { fail, ok, type Result } from "../catalog/result";
 import { getPlatformSetting } from "../platform-settings";
+import { DEFAULT_LINE_TRIAL_DAYS, DEFAULT_LINE_TRIAL_PLAN, LINE_INFO, OPS_LINES, type LineLaunch } from "@/lib/product-lines";
+import { lineLaunch, trialDaysKey, trialPlanKey } from "../lines";
+
+type OpsLine = (typeof OPS_LINES)[number];
 
 /** عرض ترويجي يطلع كشريط فوق الموقع التسويقي (مثلاً «أول شهر مجاني») */
 export type Promo = { enabled: boolean; text: string; linkLabel: string; endsAt: number | null };
@@ -57,7 +61,7 @@ export async function savePlatformConfig(db: Db, input: unknown, actorUserId: st
   const p = schema.safeParse(input);
   if (!p.success) return fail(firstError(p.error));
   const plan = await db.select().from(plans).where(eq(plans.slug, p.data.trialPlanSlug)).get();
-  if (!plan || !plan.isActive) return fail("باقة التجربة لازم تكون موجودة وفعّالة.");
+  if (!plan || !plan.isActive || plan.line !== "store") return fail("باقة التجربة لازم تكون من باقات المتجر وفعّالة.");
   await put(db, "trial_days", p.data.trialDays);
   await put(db, "trial_plan_slug", p.data.trialPlanSlug);
   await put(db, "support_whatsapp", p.data.supportWhatsapp ?? ""); // JSON null يتخزن NULL والعمود NOT NULL، فنخزن نص فاضي
@@ -77,6 +81,55 @@ export async function setFreePlanEnabled(db: Db, enabled: unknown, actorUserId: 
   await put(db, "free_plan_enabled", enabled);
   await writeAudit(db, { actorUserId, storeId: null, action: enabled ? "platform.free_plan_on" : "platform.free_plan_off" });
   return ok(undefined);
+}
+
+// ===== المنظومات (ماركت/بلاي/فِت): الإطلاق ومدة التجربة وباقتها =====
+
+export type LineConfig = Record<OpsLine, { trialDays: number; trialPlanSlug: string; launch: LineLaunch }>;
+
+export async function getLineConfig(db: Db): Promise<LineConfig> {
+  const launch = await lineLaunch(db);
+  const out = {} as LineConfig;
+  for (const l of OPS_LINES) {
+    out[l] = {
+      trialDays: await getPlatformSetting<number>(db, trialDaysKey(l), DEFAULT_LINE_TRIAL_DAYS[l]),
+      trialPlanSlug: await getPlatformSetting<string>(db, trialPlanKey(l), DEFAULT_LINE_TRIAL_PLAN[l]),
+      launch: launch[l],
+    };
+  }
+  return out;
+}
+
+const lineConfigSchema = z.object(Object.fromEntries(OPS_LINES.map((l) => [l, z.object({
+  trialDays: z.number({ error: "اكتب عدد أيام التجربة" }).int("عدد الأيام لازم يكون رقم صحيح").min(1, "على الأقل يوم").max(90, "الحد الأقصى 90 يوم"),
+  trialPlanSlug: z.string().min(1, "اختار باقة التجربة"),
+  launch: z.enum(["live", "soon"]),
+})])) as Record<OpsLine, z.ZodObject<{ trialDays: z.ZodNumber; trialPlanSlug: z.ZodString; launch: z.ZodEnum<{ live: "live"; soon: "soon" }> }>>);
+
+export async function saveLineConfig(db: Db, input: unknown, actorUserId: string): Promise<Result> {
+  const p = lineConfigSchema.safeParse(input);
+  if (!p.success) return fail(firstError(p.error));
+  for (const l of OPS_LINES) {
+    const plan = await db.select().from(plans).where(eq(plans.slug, p.data[l].trialPlanSlug)).get();
+    if (!plan || !plan.isActive || plan.line !== l) return fail(`باقة تجربة ${LINE_INFO[l].brand} لازم تكون من باقاتها وفعّالة.`);
+  }
+  for (const l of OPS_LINES) {
+    await put(db, trialDaysKey(l), p.data[l].trialDays);
+    await put(db, trialPlanKey(l), p.data[l].trialPlanSlug);
+  }
+  await put(db, "line_launch", Object.fromEntries(OPS_LINES.map((l) => [l, p.data[l].launch])));
+  await writeAudit(db, { actorUserId, storeId: null, action: "platform.lines", meta: { ...p.data } });
+  return ok(undefined);
+}
+
+/** تجربة منظومة لنشاط معين قبل الإطلاق العام (زي inboxBeta) */
+export async function setLineBeta(db: Db, storeId: string, input: unknown, actorUserId: string): Promise<Result<{ slug: string }>> {
+  const p = z.array(z.enum(OPS_LINES)).max(OPS_LINES.length).safeParse(input);
+  if (!p.success) return fail("اختيار غلط.");
+  const [row] = await db.update(stores).set({ lineBeta: [...new Set(p.data)] }).where(eq(stores.id, storeId)).returning({ slug: stores.slug });
+  if (!row) return fail("ما لقينا المتجر. حدّث الصفحة.");
+  await writeAudit(db, { actorUserId, storeId, action: "store.line_beta", entityType: "store", entityId: storeId, meta: { lines: p.data } });
+  return ok({ slug: row.slug });
 }
 
 const promoSchema = z.object({

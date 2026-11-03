@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import type { Db } from "@/db";
 import { addons, cities, plans, stores, users } from "@/db/schema/platform";
-import { canUse, cheapestPlanWith, effectiveLimits, FEATURES } from "@/lib/entitlements";
+import { canUse, cheapestPlanWith, effectiveLimits, FEATURES, LINE_FEATURES } from "@/lib/entitlements";
 import { DEFAULT_PLANS, FREE_LIMITS, GROWTH_LIMITS, PRO_LIMITS, STARTER_LIMITS } from "@/lib/plan-catalog";
 import { recordPayment } from "@/server/admin/subscriptions";
 import { saveProduct } from "@/server/catalog/products";
@@ -21,7 +21,7 @@ describe("canUse: المميزات حسب الباقة", () => {
     expect(["coupons", "reports", "abandonedCarts", "removeBranding"].every((f) => canUse(GROWTH_LIMITS, f as never))).toBe(true);
     expect(canUse(GROWTH_LIMITS, "customDomain")).toBe(false);
     expect(canUse(GROWTH_LIMITS, "pixels")).toBe(false);
-    expect(FEATURES.every((f) => canUse(PRO_LIMITS, f))).toBe(true); // الاحترافي: كل شي
+    expect(LINE_FEATURES.store.every((f) => canUse(PRO_LIMITS, f))).toBe(true); // الاحترافي: كل شي
     expect(FEATURES.some((f) => canUse(FREE_LIMITS, f))).toBe(false); // المجانية: ولا ميزة (حتى القوالب: قالب واحد بس)
     expect(canUse({}, "coupons")).toBe(false); // غير موجودة = مقفولة
   });

@@ -107,7 +107,7 @@ describe("حماية إضافية", () => {
 
   it("كل صفحات dashboard تحدد صلاحيتها (requireStoreContext بصلاحية صريحة)", () => {
     for (const p of all.filter((f) => /dashboard\/.+page\.tsx$/.test(f) && !f.includes("/onboarding/"))) {
-      expect(read(p), `${rel(p)} بدون requireStoreContext`).toMatch(/requireStoreContext\(("[a-z]+")/);
+      expect(read(p), `${rel(p)} بدون requireStoreContext`).toMatch(/(requireStoreContext\(|requireLineContext\("[a-z]+", )("[a-z]+")/);
     }
   });
 });

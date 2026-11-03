@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { addons, cities, platformSettings, plans, storeMembers, stores, users } from "../src/db/schema/platform";
-import { DEFAULT_ADDONS, DEFAULT_PLANS } from "../src/lib/plan-catalog";
+import { DEFAULT_ADDONS, DEFAULT_PLANS, LINE_PLANS } from "../src/lib/plan-catalog";
 import { storeSettings } from "../src/db/schema/tenant";
 import { getEnv, isDeployed } from "../src/lib/env";
 import { LIBYA_CITIES } from "../src/lib/libya-cities";
@@ -14,7 +14,8 @@ const { db, client } = createDb(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
 
 // الباقات: بداية / نمو / احترافي (سعر لكل مدة) + المجانية المخفية. القيم من src/lib/plan-catalog.ts وتتعدل بعدين من الأدمن.
 // onConflictDoNothing: ما نغطّوش على تعديلات الأدمن في قاعدة موجودة.
-for (const p of DEFAULT_PLANS) {
+// + باقات المنظومات (ماركت/بلاي/فِت): أساسية/نمو/احترافية لكل وحدة.
+for (const p of [...DEFAULT_PLANS, ...LINE_PLANS]) {
   const base = p.prices.m1 ?? p.prices.m6 ?? 0; // الأعمدة القديمة (للتوافق بس)
   await db.insert(plans).values({ ...p, billingPeriod: "monthly", price: base }).onConflictDoNothing({ target: plans.slug });
 }

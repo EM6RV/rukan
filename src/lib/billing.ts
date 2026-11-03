@@ -48,14 +48,16 @@ export const monthlyEquivalent = (price: number, cycle: BillingPeriod) => Math.r
 export const monthKey = (ms: number) => new Date(ms + LIBYA_OFFSET).toISOString().slice(0, 7);
 
 /** رسالة واتساب جاهزة من الأدمن لصاحب المتجر قبل انتهاء الاشتراك */
-export function renewalMessage(o: { ownerName: string; storeName: string; daysLeft: number; endDate: string; planName?: string | null }): string {
+export function renewalMessage(o: { ownerName: string; storeName: string; daysLeft: number; endDate: string; planName?: string | null; lineName?: string }): string {
   const when = o.daysLeft <= 0 ? "انتهى" : o.daysLeft === 1 ? "ينتهي بكرة" : `ينتهي بعد ${o.daysLeft} أيام`;
-  return `السلام عليكم ${o.ownerName}، اشتراك متجرك «${o.storeName}» في رُكن${o.planName ? ` (باقة ${o.planName})` : ""} ${when} (${o.endDate}). للتجديد كلمنا وحنفعّل اشتراكك أول ما يوصلنا الدفع. شكراً لثقتك!`;
+  const what = o.lineName ? `اشتراك «${o.storeName}» في ${o.lineName}` : `اشتراك متجرك «${o.storeName}» في رُكن`;
+  return `السلام عليكم ${o.ownerName}، ${what}${o.planName ? ` (باقة ${o.planName})` : ""} ${when} (${o.endDate}). للتجديد كلمنا وحنفعّل اشتراكك أول ما يوصلنا الدفع. شكراً لثقتك!`;
 }
 
-/** رسالة من البياع للدعم لطلب ترقية/تجديد */
-export function upgradeRequestMessage(o: { storeName: string; slug: string; planName?: string | null; wantedPlan?: string }): string {
-  return `السلام عليكم، أنا صاحب متجر «${o.storeName}» (${o.slug}) في رُكن${o.planName ? ` وباقتي الحالية ${o.planName}` : ""}. نبي ${o.wantedPlan ? `نرقّي/نجدد على باقة ${o.wantedPlan}` : "نجدد اشتراكي"}. كيف ندفع؟`;
+/** رسالة من البياع للدعم لطلب ترقية/تجديد (lineName: اسم المنظومة لو مش المتجر الأونلاين) */
+export function upgradeRequestMessage(o: { storeName: string; slug: string; planName?: string | null; wantedPlan?: string; lineName?: string }): string {
+  const who = o.lineName ? `صاحب «${o.storeName}» (${o.slug}) في ${o.lineName}` : `صاحب متجر «${o.storeName}» (${o.slug}) في رُكن`;
+  return `السلام عليكم، أنا ${who}${o.planName ? ` وباقتي الحالية ${o.planName}` : ""}. نبي ${o.wantedPlan ? `نرقّي/نجدد على باقة ${o.wantedPlan}` : "نجدد اشتراكي"}. كيف ندفع؟`;
 }
 
 export const daysBetween = (from: number, to: number) => Math.ceil((to - from) / DAY);

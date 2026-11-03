@@ -8,14 +8,14 @@ import { forStore, t, type StoreScope } from "./tenant";
 
 const LIBYA_OFFSET = 2 * 3_600_000;
 
-/** الحدود الفعلية لمتجر: حدود باقته + إضافاته المفعّلة + ميزة مدته */
+/** الحدود الفعلية للمتجر الأونلاين (منظومة store): حدود باقته + إضافاته المفعّلة + ميزة مدته */
 export async function loadStoreLimits(
   db: Db, store: { id: string; billingCycle: BillingPeriod }, plan: { limits: PlanLimits; durationPerks: DurationPerks } | null,
 ): Promise<PlanLimits> {
   const rows = await db
     .select({ kind: addons.kind, units: addons.units, quantity: storeAddons.quantity })
     .from(storeAddons).innerJoin(addons, eq(addons.id, storeAddons.addonId))
-    .where(and(eq(storeAddons.storeId, store.id), eq(addons.isActive, true)));
+    .where(and(eq(storeAddons.storeId, store.id), eq(storeAddons.line, "store"), eq(addons.isActive, true)));
   return effectiveLimits(plan?.limits ?? FALLBACK_LIMITS, { cycle: store.billingCycle, perks: plan?.durationPerks, addons: rows });
 }
 
