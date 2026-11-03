@@ -178,6 +178,16 @@ export const products = sqliteTable(
     personalizationLabel: text("personalization_label"),
     personalizationMaxChars: integer("personalization_max_chars"),
     personalizationPrice: integer("personalization_price").notNull().default(0),
+    // ===== الماركت =====
+    /** weight = موزون: السعر للكيلو والمخزون بالجرام */
+    soldBy: text("sold_by", { enum: ["unit", "weight"] }).notNull().default("unit"),
+    /** رقم الصنف في باركود الميزان (PLU) */
+    pluCode: text("plu_code"),
+    /** ترتيبه في الأزرار السريعة للكاشير (null = مش في الأزرار) */
+    quickPosition: integer("quick_position"),
+    quickColor: text("quick_color"),
+    /** مكانه في المحل (للجرد الجزئي بالرف والتجهيز) */
+    shelf: text("shelf"),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }), // حذف ناعم علشان الطلبيات القديمة
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -185,6 +195,7 @@ export const products = sqliteTable(
   (t) => [
     uniqueIndex("products_store_id_uq").on(t.storeId, t.id),
     uniqueIndex("products_slug_uq").on(t.storeId, t.slug),
+    uniqueIndex("products_plu_uq").on(t.storeId, t.pluCode),
     index("products_list_idx").on(t.storeId, t.isVisible, t.position),
   ],
 );
@@ -545,6 +556,11 @@ export const stocktakes = sqliteTable(
     warehouseId: text("warehouse_id").notNull(),
     status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
     lockWarehouse: integer("lock_warehouse", { mode: "boolean" }).notNull().default(false),
+    /** جرد جزئي: قسم أو رف (null = كامل) */
+    categoryId: text("category_id"),
+    shelf: text("shelf"),
+    /** اللي اعتمد الفروقات (تسوية الجرد) */
+    settledBy: text("settled_by"),
     note: text("note"),
     createdAt: createdAt(),
     closedAt: integer("closed_at", { mode: "timestamp_ms" }),
@@ -598,6 +614,10 @@ export const purchaseInvoices = sqliteTable(
     warehouseId: text("warehouse_id"), // null = الرئيسي
     status: text("status", { enum: ["draft", "partial", "received", "cancelled"] }).notNull().default("draft"),
     note: text("note"),
+    /** تاريخ استحقاق الدفع للمورد (دين المورد) */
+    dueAt: integer("due_at", { mode: "timestamp_ms" }),
+    /** طلب الشراء اللي اتحول للفاتورة هذي */
+    purchaseOrderId: text("purchase_order_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -618,6 +638,11 @@ export const purchaseItems = sqliteTable(
     quantity: integer("quantity").notNull(),
     receivedQuantity: integer("received_quantity").notNull().default(0),
     unitCost: integer("unit_cost").notNull(),
+    /** الشراء بالكرتونة: كل وحدة = unitFactor حبة (الكمية والتكلفة بوحدة الشراء) */
+    unitFactor: integer("unit_factor").notNull().default(1),
+    /** الدفعة وتاريخ الصلاحية (يتسجلوا كدفعة مخزون عند الاستلام) */
+    batchNo: text("batch_no"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
   },
   (t) => [
     uniqueIndex("purchase_items_store_id_uq").on(t.storeId, t.id),
@@ -893,6 +918,10 @@ export const orders = sqliteTable(
     source: text("source"), // instagram, tiktok, direct…
     /** ترتيب الطلبية في شهرها (بتوقيت ليبيا) وقت إنشائها: لحد «طلبيات في الشهر». null = قديمة (ظاهرة دايماً) */
     monthRank: integer("month_rank"),
+    /** تجهيز الطلبية في المحل (الماركت): pending ← picking ← ready */
+    prepStatus: text("prep_status", { enum: ["pending", "picking", "ready"] }),
+    preparedBy: text("prepared_by"),
+    preparedAt: integer("prepared_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -923,6 +952,10 @@ export const orderItems = sqliteTable(
     quantity: integer("quantity").notNull(),
     imageMediaId: text("image_media_id"),
     personalizationText: text("personalization_text"), // نقش / رسالة إهداء كتبها الزبون
+    /** التجهيز: الكمية اللي اتجمعت بالمسح، والبديل المقترح لو الصنف ناقص */
+    pickedQty: integer("picked_qty").notNull().default(0),
+    substituteVariantId: text("substitute_variant_id"),
+    substituteNote: text("substitute_note"),
   },
   (t) => [
     uniqueIndex("order_items_store_id_uq").on(t.storeId, t.id),
@@ -992,7 +1025,7 @@ export const stockMovements = sqliteTable(
     storeId: storeIdCol(),
     variantId: text("variant_id").notNull(),
     delta: integer("delta").notNull(),
-    reason: text("reason", { enum: ["order", "return", "manual", "import", "cancel", "transfer", "stocktake", "purchase", "purchase_return", "pos_sale", "pos_return"] }).notNull(),
+    reason: text("reason", { enum: ["order", "return", "manual", "import", "cancel", "transfer", "stocktake", "purchase", "purchase_return", "pos_sale", "pos_return", "writeoff", "substitute"] }).notNull(),
     warehouseId: text("warehouse_id"), // المخزن المتأثر (null = الرئيسي / وحدة المخازن مطفية)
     orderId: text("order_id"),
     note: text("note"),
@@ -1262,6 +1295,11 @@ export const saleItems = sqliteTable(
     unitCost: integer("unit_cost"), // تكلفة الوحدة الأصغر لحظة البيع
     returnedQty: integer("returned_qty").notNull().default(0),
     refId: text("ref_id"),
+    /** وحدة البيع (كرتونة…) null = الحبة */
+    unitId: text("unit_id"),
+    /** خصم العرض التلقائي (منفصل عن خصم الكاشير وما يحتاجش موافقة) */
+    promotionId: text("promotion_id"),
+    promoDiscount: integer("promo_discount").notNull().default(0),
   },
   (t) => [
     uniqueIndex("sale_items_store_id_uq").on(t.storeId, t.id),
@@ -1390,5 +1428,202 @@ export const staffAttendance = sqliteTable(
     uniqueIndex("staff_attendance_client_uq").on(t.storeId, t.clientId),
     index("staff_attendance_user_idx").on(t.storeId, t.userId, t.inAt),
     scopedFk("sa_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
+  ],
+);
+
+// =====================================================================
+// ===== رُكن ماركت: الباركودات، الوحدات، مستويات الأسعار، الدفعات والصلاحية، العروض، طلبات الشراء =====
+// =====================================================================
+
+/** وحدات البيع والشراء للمنتج (كرتونة = 24 حبة). السعر null = المعامل × سعر الحبة */
+export const productUnits = sqliteTable(
+  "product_units",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    productId: text("product_id").notNull(),
+    name: text("name").notNull(),
+    factor: integer("factor").notNull(),
+    price: integer("price"),
+    semiPrice: integer("semi_price"),
+    wholesalePrice: integer("wholesale_price"),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex("product_units_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("product_units_name_uq").on(t.storeId, t.productId, t.name),
+    scopedFk("pu_product_fk", [t.storeId, t.productId], [products.storeId, products.id], "cascade"),
+  ],
+);
+
+/** باركودات متعددة لكل متغير (ولكل وحدة: باركود الكرتونة غير باركود الحبة). الكود فريد في النشاط */
+export const productBarcodes = sqliteTable(
+  "product_barcodes",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    variantId: text("variant_id").notNull(),
+    unitId: text("unit_id"),
+    code: text("code").notNull(),
+    /** internal = اتولّد من رُكن (يبدا بـ 2) */
+    isInternal: integer("is_internal", { mode: "boolean" }).notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("product_barcodes_code_uq").on(t.storeId, t.code),
+    index("product_barcodes_variant_idx").on(t.storeId, t.variantId),
+    scopedFk("pb_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id], "cascade"),
+    scopedFk("pb_unit_fk", [t.storeId, t.unitId], [productUnits.storeId, productUnits.id], "cascade"),
+  ],
+);
+
+/** أسعار نص الجملة والجملة للحبة (التجزئة = سعر المتغير العادي) */
+export const variantPrices = sqliteTable(
+  "variant_prices",
+  {
+    storeId: storeIdCol(),
+    variantId: text("variant_id").notNull(),
+    level: text("level", { enum: ["semi", "wholesale"] }).notNull(),
+    price: integer("price").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.variantId, t.level] }),
+    scopedFk("vp_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id], "cascade"),
+  ],
+);
+
+/**
+ * دفعات المخزون بتاريخ صلاحيتها. الكمية هنا = اللي استلمت في الدفعة؛ المتبقي من كل دفعة يتحسب بـ FEFO
+ * (الأقرب انتهاءً يطلع أول): المخزون الحالي يتوزع على الدفعات من الأبعد انتهاءً للأقرب.
+ */
+export const stockBatches = sqliteTable(
+  "stock_batches",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    variantId: text("variant_id").notNull(),
+    batchNo: text("batch_no"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    quantity: integer("quantity").notNull(),
+    unitCost: integer("unit_cost"),
+    purchaseItemId: text("purchase_item_id"),
+    note: text("note"),
+    receivedAt: integer("received_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("stock_batches_store_id_uq").on(t.storeId, t.id),
+    index("stock_batches_variant_idx").on(t.storeId, t.variantId, t.expiresAt),
+    scopedFk("sb_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id], "cascade"),
+    scopedFk("sb_purchase_item_fk", [t.storeId, t.purchaseItemId], [purchaseItems.storeId, purchaseItems.id]),
+  ],
+);
+
+/** إتلاف (تالف/منتهي) بتكلفته: ينقص المخزون ويطلع في تقرير الهالك */
+export const writeoffs = sqliteTable(
+  "writeoffs",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    variantId: text("variant_id").notNull(),
+    batchId: text("batch_id"),
+    warehouseId: text("warehouse_id"),
+    quantity: integer("quantity").notNull(),
+    reason: text("reason", { enum: ["expired", "damaged", "other"] }).notNull(),
+    unitCost: integer("unit_cost").notNull().default(0),
+    totalCost: integer("total_cost").notNull().default(0),
+    note: text("note"),
+    actorUserId: text("actor_user_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("writeoffs_created_idx").on(t.storeId, t.createdAt),
+    scopedFk("wo_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
+    scopedFk("wo_batch_fk", [t.storeId, t.batchId], [stockBatches.storeId, stockBatches.id]),
+  ],
+);
+
+/**
+ * العروض التلقائية في الكاشير. config حسب النوع:
+ * buy_x_get_y {variantIds, buy, get} · nth_discount {variantIds, nth, percent} ·
+ * time_price {variantIds, percent, days, fromMinute, toMinute} · bundle_price {items:[{variantId, qty}], price}
+ */
+export const promotions = sqliteTable(
+  "promotions",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: ["buy_x_get_y", "nth_discount", "time_price", "bundle_price"] }).notNull(),
+    config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
+    startsAt: integer("starts_at", { mode: "timestamp_ms" }),
+    endsAt: integer("ends_at", { mode: "timestamp_ms" }),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("promotions_store_id_uq").on(t.storeId, t.id)],
+);
+
+/** طلب شراء للمورد (من اقتراح الشراء أو يدوي) يتبعت على واتساب ويتحول لفاتورة شراء عند الاستلام */
+export const purchaseOrders = sqliteTable(
+  "purchase_orders",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    number: integer("number").notNull(),
+    supplierId: text("supplier_id").notNull(),
+    status: text("status", { enum: ["draft", "sent", "invoiced", "cancelled"] }).notNull().default("draft"),
+    note: text("note"),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+    invoiceId: text("invoice_id"),
+    createdBy: text("created_by"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("purchase_orders_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("purchase_orders_number_uq").on(t.storeId, t.number),
+    scopedFk("po_supplier_fk", [t.storeId, t.supplierId], [suppliers.storeId, suppliers.id]),
+  ],
+);
+
+export const purchaseOrderItems = sqliteTable(
+  "purchase_order_items",
+  {
+    storeId: storeIdCol(),
+    orderId: text("order_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    /** الكمية بوحدة الطلب (كرتونة لو unitFactor > 1) */
+    quantity: integer("quantity").notNull(),
+    unitFactor: integer("unit_factor").notNull().default(1),
+    unitName: text("unit_name"),
+    unitCost: integer("unit_cost").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orderId, t.variantId] }),
+    scopedFk("poi_order_fk", [t.storeId, t.orderId], [purchaseOrders.storeId, purchaseOrders.id], "cascade"),
+    scopedFk("poi_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
+  ],
+);
+
+/** عدّات الجرد بالمسح: أكثر من عدّاد في نفس الوقت، كل مسح سطر (والمعدود = المجموع). clientId يمنع التكرار */
+export const stocktakeCounts = sqliteTable(
+  "stocktake_counts",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    stocktakeId: text("stocktake_id").notNull(),
+    variantId: text("variant_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    userId: text("user_id"),
+    clientId: text("client_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("stocktake_counts_client_uq").on(t.storeId, t.clientId),
+    index("stocktake_counts_idx").on(t.storeId, t.stocktakeId, t.variantId),
+    scopedFk("stc_stocktake_fk", [t.storeId, t.stocktakeId], [stocktakes.storeId, stocktakes.id], "cascade"),
+    scopedFk("stc_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
   ],
 );
