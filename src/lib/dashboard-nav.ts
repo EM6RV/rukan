@@ -8,13 +8,15 @@ export type NavIcon =
   | "home" | "orders" | "products" | "categories" | "customers" | "carts" | "couriers" | "returns" | "coupons"
   | "reports" | "reviews" | "brands" | "lowstock" | "stock" | "audit" | "analytics"
   | "market" | "lounge" | "gym" | "lines" | "receipt" | "shift" | "branch" | "pos"
+  | "stations" | "pricing" | "booking" | "tournament" | "tv" | "lreports"
   | "barcode" | "expiry" | "promo" | "reorder" | "prep" | "waste" | "mreports"
   | "inbox" | "warehouse" | "transfer" | "stocktake" | "purchase" | "supplier" | "wallet" | "expense" | "debt" | "pnl" | "content" | "design" | "services" | "staff" | "billing" | "settings" | "modules" | "menu";
 
-export type NavGroupKey = "systems" | "market" | "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
+export type NavGroupKey = "systems" | "market" | "lounge" | "sales" | "catalog" | "inventory" | "purchasing" | "accounting" | "marketing" | "store" | "team" | "settings";
 export const NAV_GROUPS: { key: NavGroupKey; title: string }[] = [
   { key: "systems", title: "المنظومات" },
   { key: "market", title: "الماركت" },
+  { key: "lounge", title: "الصالة" },
   { key: "sales", title: "المبيعات" },
   { key: "catalog", title: "الكتالوج" },
   { key: "inventory", title: "المخزون" },
@@ -58,6 +60,12 @@ export const NAV: NavDef[] = [
   { href: "/dashboard/market/stocktake", label: "الجرد بالمسح", icon: "stocktake", group: "market", permission: "products", keywords: "جرد مسح عد فروقات تسوية رف", line: "market" },
   { href: "/dashboard/market/prep", label: "تجهيز الطلبيات", icon: "prep", group: "market", permission: "orders", keywords: "تجهيز طلبيات اونلاين تجميع بديل", line: "market", alsoLines: ["store"] },
   { href: "/dashboard/market/reports", label: "تقارير الماركت", icon: "mreports", group: "market", permission: "reports", keywords: "تقرير مبيعات ربح كاشير وردية قسم ذروة راكد", line: "market" },
+  { href: "/dashboard/lounge/stations", label: "الأجهزة والصيانة", icon: "stations", group: "lounge", permission: "settings", keywords: "جهاز بلايستيشن صيانة غرفة vip العاب", line: "lounge" },
+  { href: "/dashboard/lounge/pricing", label: "الأسعار والباقات", icon: "pricing", group: "lounge", permission: "settings", keywords: "سعر ساعة ماتش باقة ساعات تقريب", line: "lounge" },
+  { href: "/dashboard/lounge/bookings", label: "الحجوزات", icon: "booking", group: "lounge", permission: "customers", keywords: "حجز جهاز موعد", line: "lounge" },
+  { href: "/dashboard/lounge/tournaments", label: "البطولات", icon: "tournament", group: "lounge", permission: "marketing", keywords: "بطولة قرعة ترتيب", line: "lounge" },
+  { href: "/dashboard/lounge/tv", label: "شاشة الحائط", icon: "tv", group: "lounge", permission: "settings", keywords: "تلفزيون شاشة عرض", line: "lounge" },
+  { href: "/dashboard/lounge/reports", label: "تقارير الصالة", icon: "lreports", group: "lounge", permission: "reports", keywords: "تقرير اشغال ايراد ذروة", line: "lounge" },
   { href: "/dashboard/orders", label: "الطلبيات", icon: "orders", group: "sales", permission: "orders", keywords: "طلب طلبية", line: "store" },
   { href: "/dashboard/inbox", label: "صندوق الرسائل", icon: "inbox", group: "sales", permission: "orders", keywords: "رسائل محادثات انستغرام فيسبوك واتساب", module: "marketplaceInbox", line: "store" },
   { href: "/dashboard/customers", label: "الزبائن", icon: "customers", group: "sales", permission: "customers", keywords: "زبون عملاء" },

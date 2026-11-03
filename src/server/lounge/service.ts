@@ -3,7 +3,6 @@ import { and, asc, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
 import { z } from "zod";
 import { STATION_KINDS, STATION_KIND_LABELS } from "@/lib/line-setup";
 import { DEFAULT_LOUNGE_RULES, overlaps, rateAt, remainingMinutes, sessionCharge, sessionState } from "@/lib/lounge-pricing";
-import { formatDateTime } from "@/lib/datetime";
 import { normalizeLibyanPhone } from "@/lib/phone";
 import { knockoutBracket, leagueSchedule, setResult, standings, championOf, type Slot } from "@/lib/tournament";
 import { firstError } from "@/lib/validation";
@@ -200,8 +199,7 @@ export async function createBooking(scope: StoreScope, input: unknown, source: "
   return ok({ id: row!.id, message: bookingMessage({ name: p.data.name, station: st.name, startsAt: want.startsAt, minutes: p.data.minutes }) });
 }
 
-export const bookingMessage = (b: { name: string; station: string; startsAt: number; minutes: number; shop?: string }) =>
-  `مرحبا ${b.name}، حجزك${b.shop ? ` في ${b.shop}` : ""} مأكد ✅\nالجهاز: ${b.station}\nالوقت: ${formatDateTime(b.startsAt)} (${b.minutes} دقيقة)\nلو تأخرت أكثر من ربع ساعة الحجز يتلغى. نستنوك!`;
+import { bookingMessage } from "./messages";
 
 export async function setBookingStatus(scope: StoreScope, id: string, status: "confirmed" | "cancelled" | "arrived" | "no_show"): Promise<Result> {
   const rows = await scope.update(t.loungeBookings, { status }, eq(t.loungeBookings.id, id));

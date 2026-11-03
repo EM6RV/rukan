@@ -5,7 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
   BarChart3, Blocks, Brush, CreditCard, FolderTree, LayoutDashboard, LayoutGrid, Package, Palette, PanelRightClose, PanelRightOpen,
-  PenLine, RotateCcw, ShoppingBasket, Gamepad2, Dumbbell, Layers, ReceiptText, Clock3, Building2, MonitorSmartphone, Star, Tags, PackageMinus, History, ScrollText, Activity, Warehouse, ArrowLeftRight, ClipboardCheck, ClipboardList, Handshake, Wallet, Receipt, HandCoins, LineChart, MessagesSquare, Search, Settings, ShoppingBag, ShoppingCart, Ticket, Truck, UserCog, Users, Barcode, CalendarClock, BadgePercent, ListOrdered, PackageCheck, Trash2, ChartColumn, type LucideIcon,
+  PenLine, RotateCcw, ShoppingBasket, Gamepad2, Dumbbell, Layers, ReceiptText, Clock3, Building2, MonitorSmartphone, Star, Tags, PackageMinus, History, ScrollText, Activity, Warehouse, ArrowLeftRight, ClipboardCheck, ClipboardList, Handshake, Wallet, Receipt, HandCoins, LineChart, MessagesSquare, Search, Settings, ShoppingBag, ShoppingCart, Ticket, Truck, UserCog, Users, Barcode, CalendarClock, Joystick, Tag as TagIcon, CalendarDays, Trophy, Tv, ChartLine, BadgePercent, ListOrdered, PackageCheck, Trash2, ChartColumn, type LucideIcon,
 } from "lucide-react";
 import { activeHref, BOTTOM_NAV, BOTTOM_NAV_SIZE, MENU_HREF, NAV_GROUPS, type NavIcon, type NavItem } from "@/lib/dashboard-nav";
 import { cn } from "@/lib/cn";
@@ -14,6 +14,7 @@ export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   home: LayoutDashboard, orders: ShoppingBag, products: Package, categories: FolderTree, customers: Users, carts: ShoppingCart, couriers: Truck,
   returns: RotateCcw, coupons: Ticket, reviews: Star, brands: Tags, lowstock: PackageMinus, stock: History, audit: ScrollText, analytics: Activity, warehouse: Warehouse, transfer: ArrowLeftRight, stocktake: ClipboardCheck, purchase: ClipboardList, supplier: Handshake, wallet: Wallet, expense: Receipt, debt: HandCoins, pnl: LineChart, inbox: MessagesSquare, reports: BarChart3, services: Brush, content: PenLine, design: Palette, staff: UserCog, billing: CreditCard,
   settings: Settings, modules: Blocks, menu: LayoutGrid,
+  stations: Joystick, pricing: TagIcon, booking: CalendarDays, tournament: Trophy, tv: Tv, lreports: ChartLine,
   barcode: Barcode, expiry: CalendarClock, promo: BadgePercent, reorder: ListOrdered, prep: PackageCheck, waste: Trash2, mreports: ChartColumn,
   market: ShoppingBasket, lounge: Gamepad2, gym: Dumbbell, lines: Layers, receipt: ReceiptText, shift: Clock3, branch: Building2, pos: MonitorSmartphone,
 };
