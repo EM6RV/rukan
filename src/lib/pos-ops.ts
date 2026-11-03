@@ -19,6 +19,11 @@ export const saleLineSchema = z.object({
   unitPrice: money,
   discount: money.default(0),
   refId: id.nullish().transform((v) => v ?? null),
+  /** وحدة البيع (كرتونة…) */
+  unitId: id.nullish().transform((v) => v ?? null),
+  /** العرض التلقائي وخصمه كما حسبه الجهاز (السيرفر يعيد الحساب ويقارن) */
+  promotionId: id.nullish().transform((v) => v ?? null),
+  promoDiscount: money.default(0),
 });
 
 export const OP_SCHEMAS = {

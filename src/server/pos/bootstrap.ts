@@ -1,7 +1,9 @@
 // بيانات بداية الجهاز (تتخزن في IndexedDB باش الكاشير يشتغل بدون نت): المنتجات والأسعار والزباين وأرصدتهم
 // والموظفين (بالـ PIN hash للتبديل بدون نت) والوردية المفتوحة والإعدادات.
 import { and, eq, isNull } from "drizzle-orm";
+import { canUse } from "@/lib/entitlements";
 import { LINE_INFO } from "@/lib/product-lines";
+import { loadPromotions } from "../market/promotions";
 import { withBundleStock } from "../catalog/bundles";
 import { variantLabels } from "../storefront/queries";
 import { t } from "../tenant";
@@ -12,13 +14,23 @@ import { openShiftOf, type DeviceCtx } from "./sync";
 export type PosProduct = {
   variantId: string; productId: string; name: string; sku: string | null; price: number; stock: number;
   categoryIds: string[]; imageMediaId: string | null; isBundle: boolean;
+  /** الماركت: موزون (السعر للكيلو والمخزون بالجرام)، رقم الميزان، الزر السريع */
+  soldBy: "unit" | "weight"; plu: string | null; quick: number | null; quickColor: string | null;
+  /** أسعار نص الجملة والجملة للحبة */
+  semi: number | null; wholesale: number | null;
 };
+export type PosUnit = { id: string; productId: string; name: string; factor: number; price: number | null; semiPrice: number | null; wholesalePrice: number | null };
 
 export async function posBootstrap(dc: DeviceCtx, now = Date.now()) {
   const { scope, store, device, env } = dc;
   const [branch] = await scope.from(t.branches, eq(t.branches.id, device.branchId)).limit(1);
   const register = device.registerId ? (await scope.from(t.registers, eq(t.registers.id, device.registerId)).limit(1))[0] : undefined;
-  const [products, variantsRaw, cats, images, customers, staff, shift, settings] = await Promise.all([
+  const limits = dc.lines[device.line].limits ?? {};
+  const features = {
+    wholesale: canUse(limits, "wholesale"), promotions: canUse(limits, "promotions"), cameraScan: canUse(limits, "cameraScan"),
+    hardware: canUse(limits, "hardware"), batches: canUse(limits, "batches"),
+  };
+  const [products, variantsRaw, cats, images, customers, staff, shift, settings, unitsRaw, barcodes, levelRows, promotions] = await Promise.all([
     scope.from(t.products, and(isNull(t.products.deletedAt), eq(t.products.isVisible, true))!),
     scope.from(t.productVariants, eq(t.productVariants.isActive, true)),
     scope.from(t.productCategories),
@@ -27,6 +39,10 @@ export async function posBootstrap(dc: DeviceCtx, now = Date.now()) {
     posStaff(dc.db, store.id, device.branchId),
     openShiftOf(scope, device.id),
     scope.from(t.storeSettings).limit(1),
+    scope.from(t.productUnits),
+    scope.from(t.productBarcodes),
+    features.wholesale ? scope.from(t.variantPrices) : Promise.resolve([]),
+    features.promotions ? loadPromotions(scope) : Promise.resolve([]),
   ]);
   const live = new Map(products.map((p) => [p.id, p]));
   const variants = await withBundleStock(scope, products, variantsRaw.filter((v) => live.has(v.productId)));
@@ -39,8 +55,12 @@ export async function posBootstrap(dc: DeviceCtx, now = Date.now()) {
     return {
       variantId: v.id, productId: p.id, name: label ? `${p.name} — ${label}` : p.name, sku: v.sku, price: v.price ?? p.price, stock: v.stock,
       categoryIds: cats.filter((c) => c.productId === p.id).map((c) => c.categoryId), imageMediaId: v.imageMediaId ?? firstImage.get(p.id) ?? null, isBundle: p.kind === "bundle",
+      soldBy: p.soldBy, plu: p.pluCode, quick: p.quickPosition, quickColor: p.quickColor,
+      semi: levelRows.find((x) => x.variantId === v.id && x.level === "semi")?.price ?? null,
+      wholesale: levelRows.find((x) => x.variantId === v.id && x.level === "wholesale")?.price ?? null,
     };
   });
+  const liveVariants = new Set(items.map((i) => i.variantId));
   const bal = await customerBalances(scope);
   const access = dc.lines[device.line];
   return {
@@ -51,7 +71,11 @@ export async function posBootstrap(dc: DeviceCtx, now = Date.now()) {
     register: register ? { id: register.id, name: register.name } : null,
     access: { state: access.state, writable: access.writable, posWritable: access.posWritable, endsAt: access.state === "trial" ? access.trialEndsAt : access.periodEnd },
     config: env.config,
+    features,
     products: items,
+    units: unitsRaw.filter((u) => live.has(u.productId)).map((u): PosUnit => ({ id: u.id, productId: u.productId, name: u.name, factor: u.factor, price: u.price, semiPrice: u.semiPrice, wholesalePrice: u.wholesalePrice })),
+    barcodes: barcodes.filter((b) => liveVariants.has(b.variantId)).map((b) => ({ code: b.code, variantId: b.variantId, unitId: b.unitId })),
+    promotions: promotions.filter((p) => p.isActive && (p.endsAt === null || p.endsAt > now)),
     categories: (await scope.from(t.categories)).map((c) => ({ id: c.id, name: c.name })),
     customers: customers.map((c) => {
       const b = bal.get(c.id) ?? { debt: 0, wallet: 0, points: 0 };

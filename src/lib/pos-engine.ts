@@ -7,33 +7,36 @@ export type SaleLineInput = {
   isWeighed?: boolean;
   unitPrice: number;
   discount?: number;
+  /** خصم العرض التلقائي (منفصل عن خصم الكاشير) */
+  promoDiscount?: number;
 };
 
 /** إجمالي السطر قبل الخصم */
 export const lineGross = (l: SaleLineInput) => (l.isWeighed ? Math.round((l.unitPrice * l.quantity) / 1000) : l.unitPrice * l.quantity);
-/** إجمالي السطر بعد خصمه (ما ينزلش تحت الصفر) */
-export const lineNet = (l: SaleLineInput) => Math.max(0, lineGross(l) - Math.max(0, l.discount ?? 0));
+/** إجمالي السطر بعد خصمه وخصم العرض (ما ينزلش تحت الصفر) */
+export const lineNet = (l: SaleLineInput) => Math.max(0, lineGross(l) - Math.max(0, l.discount ?? 0) - Math.max(0, l.promoDiscount ?? 0));
 
 export type InvoiceDiscount = { kind: "amount" | "percent"; value: number } | null;
 
-export type SaleTotals = { subtotal: number; lineDiscounts: number; discount: number; total: number; lines: number[] };
+export type SaleTotals = { subtotal: number; lineDiscounts: number; promoDiscounts: number; discount: number; total: number; lines: number[] };
 
 /** إجماليات الفاتورة: مجموع السطور بعد خصمها، ناقص خصم الفاتورة (مبلغ أو نسبة، ما يتعداش المجموع) */
 export function computeTotals(lines: SaleLineInput[], invoiceDiscount: InvoiceDiscount = null): SaleTotals {
   const nets = lines.map(lineNet);
   const subtotal = nets.reduce((s, n) => s + n, 0);
   const lineDiscounts = lines.reduce((s, l) => s + Math.min(lineGross(l), Math.max(0, l.discount ?? 0)), 0);
+  const promoDiscounts = lines.reduce((s, l) => s + Math.min(Math.max(0, lineGross(l) - Math.max(0, l.discount ?? 0)), Math.max(0, l.promoDiscount ?? 0)), 0);
   let discount = 0;
   if (invoiceDiscount && invoiceDiscount.value > 0) {
     discount = invoiceDiscount.kind === "percent" ? Math.round((subtotal * Math.min(100, invoiceDiscount.value)) / 100) : invoiceDiscount.value;
   }
   discount = Math.min(discount, subtotal);
-  return { subtotal, lineDiscounts, discount, total: subtotal - discount, lines: nets };
+  return { subtotal, lineDiscounts, promoDiscounts, discount, total: subtotal - discount, lines: nets };
 }
 
-/** نسبة الخصم الكلي من سعر السطور قبل أي خصم (للمقارنة بحد موافقة المشرف) */
+/** نسبة خصم الكاشير من سعر السطور بعد العروض (للمقارنة بحد موافقة المشرف). العروض التلقائية ما تدخلش */
 export function discountPercentOf(lines: SaleLineInput[], totals: SaleTotals): number {
-  const gross = lines.reduce((s, l) => s + lineGross(l), 0);
+  const gross = lines.reduce((s, l) => s + lineGross(l), 0) - totals.promoDiscounts;
   if (gross <= 0) return 0;
   return ((totals.lineDiscounts + totals.discount) / gross) * 100;
 }

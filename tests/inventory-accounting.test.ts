@@ -101,7 +101,7 @@ describe("المخازن", () => {
     if (!locked.ok) throw new Error(locked.error);
     expect(await sendTransfer(s.scope, locked.data.id)).toEqual({ ok: false, error: expect.stringContaining("مقفول") });
     expect((await saveCounts(s.scope, st.data.id, [{ variantId: s.variantId, counted: 3 }])).ok).toBe(true);
-    expect(await closeStocktake(s.scope, st.data.id, s.userId)).toEqual({ ok: true, data: { adjusted: 1 } });
+    expect(await closeStocktake(s.scope, st.data.id, s.userId)).toMatchObject({ ok: true, data: { adjusted: 1 } });
     expect([await qty(s, w2.data.id), await stockOf(s)]).toEqual([3, 18]);
     expect((await s.scope.from(t.stockMovements, eq(t.stockMovements.reason, "stocktake")))[0]).toMatchObject({ delta: -2, warehouseId: w2.data.id });
     expect((await sendTransfer(s.scope, locked.data.id)).ok).toBe(true); // اتفتح القفل

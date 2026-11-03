@@ -63,10 +63,18 @@ const invoiceSchema = z.object({
   supplierId: z.string().min(1, "اختار المورد"),
   warehouseId: z.string().min(1).nullish().transform((v) => v ?? null),
   note: z.string().trim().max(300).nullish().transform((v) => v || null),
-  items: z.array(z.object({ variantId: z.string().min(1), quantity: z.number().int("الكمية رقم صحيح").min(1, "الكمية 1 على الأقل").max(1_000_000), unitCost: money("سعر التكلفة") })).min(1, "أضف صنف واحد على الأقل").max(100, "أصناف كثيرة"),
+  /** تاريخ استحقاق الدفع للمورد */
+  dueAt: z.number().int().positive().nullish().transform((v) => v ?? null),
+  items: z.array(z.object({
+    variantId: z.string().min(1), quantity: z.number().int("الكمية رقم صحيح").min(1, "الكمية 1 على الأقل").max(1_000_000), unitCost: money("سعر التكلفة"),
+    /** الشراء بالكرتونة: الكمية والتكلفة بالكرتونة، وكل كرتونة = unitFactor حبة */
+    unitFactor: z.number().int().min(1).max(100_000).default(1),
+    batchNo: z.string().trim().max(40).nullish().transform((v) => v || null),
+    expiresAt: z.number().int().positive().nullish().transform((v) => v ?? null),
+  })).min(1, "أضف صنف واحد على الأقل").max(100, "أصناف كثيرة"),
 });
 
-export function saveInvoice(scope: StoreScope, input: unknown): Promise<Result<{ id: string; number: number }>> {
+export function saveInvoice(scope: StoreScope, input: unknown, opts: { purchaseOrderId?: string | null } = {}): Promise<Result<{ id: string; number: number }>> {
   const p = invoiceSchema.safeParse(input);
   if (!p.success) return Promise.resolve(fail(firstError(p.error)));
   return attempt(() => scope.transaction(async (tx) => {
@@ -80,16 +88,18 @@ export function saveInvoice(scope: StoreScope, input: unknown): Promise<Result<{
       const [inv] = await tx.from(t.purchaseInvoices, eq(t.purchaseInvoices.id, id)).limit(1);
       if (!inv) throw new WarehouseError("ما لقينا الفاتورة.");
       if (inv.status !== "draft") throw new WarehouseError("الفاتورة اتستلمت: ما تتعدلش. لو في غلط سجّل مرتجع للمورد.");
-      await tx.update(t.purchaseInvoices, { supplierId: p.data.supplierId, warehouseId: p.data.warehouseId, note: p.data.note }, eq(t.purchaseInvoices.id, id));
+      await tx.update(t.purchaseInvoices, { supplierId: p.data.supplierId, warehouseId: p.data.warehouseId, note: p.data.note, dueAt: p.data.dueAt ? new Date(p.data.dueAt) : null }, eq(t.purchaseInvoices.id, id));
       await tx.delete(t.purchaseItems, eq(t.purchaseItems.invoiceId, id));
       number = inv.number;
     } else {
       const last = (await tx.from(t.purchaseInvoices).orderBy(t.purchaseInvoices.number)).at(-1);
       number = (last?.number ?? 0) + 1;
-      const [inv] = await tx.insert(t.purchaseInvoices, { number, supplierId: p.data.supplierId, warehouseId: p.data.warehouseId, note: p.data.note });
+      const [inv] = await tx.insert(t.purchaseInvoices, { number, supplierId: p.data.supplierId, warehouseId: p.data.warehouseId, note: p.data.note, dueAt: p.data.dueAt ? new Date(p.data.dueAt) : null, purchaseOrderId: opts.purchaseOrderId ?? null });
       id = inv!.id;
     }
-    await tx.insert(t.purchaseItems, p.data.items.map((i) => ({ invoiceId: id!, variantId: i.variantId, quantity: i.quantity, unitCost: i.unitCost })));
+    await tx.insert(t.purchaseItems, p.data.items.map((i) => ({
+      invoiceId: id!, variantId: i.variantId, quantity: i.quantity, unitCost: i.unitCost, unitFactor: i.unitFactor, batchNo: i.batchNo, expiresAt: i.expiresAt ? new Date(i.expiresAt) : null,
+    })));
     return ok({ id: id!, number });
   }));
 }
@@ -119,9 +129,15 @@ export function receiveInvoice(scope: StoreScope, invoiceId: string, receipts: {
       const [v] = await tx.from(t.productVariants, eq(t.productVariants.id, it.variantId)).limit(1);
       const [p] = v ? await tx.from(t.products, eq(t.products.id, v.productId)).limit(1) : [];
       if (!v || !p) throw new WarehouseError("منتج غير موجود.");
-      const newCost = weightedCost(v.stock, v.costPrice ?? p.costPrice, r.quantity, it.unitCost);
-      await applyWarehouseDelta(tx, { warehouseId: inv.warehouseId, variantId: it.variantId, delta: r.quantity, reason: "purchase", note: `فاتورة شراء #${inv.number}`, actorUserId });
+      // بالكرتونة: المخزون يزيد بالحبة، والتكلفة تتحسب للحبة
+      const baseQty = r.quantity * it.unitFactor, baseCost = Math.round(it.unitCost / it.unitFactor);
+      const newCost = weightedCost(v.stock, v.costPrice ?? p.costPrice, baseQty, baseCost);
+      await applyWarehouseDelta(tx, { warehouseId: inv.warehouseId, variantId: it.variantId, delta: baseQty, reason: "purchase", note: `فاتورة شراء #${inv.number}`, actorUserId });
       await tx.update(t.productVariants, { costPrice: newCost }, eq(t.productVariants.id, it.variantId));
+      // الدفعة والصلاحية (FEFO)
+      if (it.batchNo || it.expiresAt) {
+        await tx.insert(t.stockBatches, { variantId: it.variantId, batchNo: it.batchNo, expiresAt: it.expiresAt, quantity: baseQty, unitCost: baseCost, purchaseItemId: it.id, receivedAt: new Date() });
+      }
       await tx.update(t.purchaseItems, { receivedQuantity: it.receivedQuantity + r.quantity }, eq(t.purchaseItems.id, it.id));
       it.receivedQuantity += r.quantity;
       any = true;
@@ -159,7 +175,7 @@ export async function getInvoice(scope: StoreScope, id: string) {
   const vs = items.length ? await scope.from(t.productVariants, inArray(t.productVariants.id, items.map((i) => i.variantId))) : [];
   const ps = vs.length ? await scope.from(t.products, inArray(t.products.id, [...new Set(vs.map((v) => v.productId))])) : [];
   const pn = new Map(ps.map((p) => [p.id, p.name]));
-  return { ...inv, items: items.map((i) => ({ id: i.id, variantId: i.variantId, name: pn.get(vs.find((v) => v.id === i.variantId)?.productId ?? "") ?? "؟", quantity: i.quantity, received: i.receivedQuantity, unitCost: i.unitCost })) };
+  return { ...inv, items: items.map((i) => ({ id: i.id, variantId: i.variantId, name: pn.get(vs.find((v) => v.id === i.variantId)?.productId ?? "") ?? "؟", quantity: i.quantity, received: i.receivedQuantity, unitCost: i.unitCost, unitFactor: i.unitFactor, batchNo: i.batchNo, expiresAt: i.expiresAt?.getTime() ?? null })) };
 }
 
 // ===== دفعات الموردين =====

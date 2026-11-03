@@ -107,7 +107,7 @@ export async function bumpRow(tx: Core, warehouseId: string, variantId: string, 
 }
 
 /** يطبق تغيير كمية على مخزن (يغير الإجمالي أيضاً) مع حركة مخزون. delta موجب/سالب. */
-export async function applyWarehouseDelta(tx: Core, o: { warehouseId: string | null; variantId: string; delta: number; reason: "transfer" | "stocktake" | "purchase" | "purchase_return" | "order" | "return" | "cancel" | "manual"; note: string; actorUserId?: string | null; orderId?: string | null }) {
+export async function applyWarehouseDelta(tx: Core, o: { warehouseId: string | null; variantId: string; delta: number; reason: "transfer" | "stocktake" | "purchase" | "purchase_return" | "order" | "return" | "cancel" | "manual" | "writeoff" | "substitute"; note: string; actorUserId?: string | null; orderId?: string | null }) {
   const def = o.warehouseId ? (await tx.from(t.warehouses, eq(t.warehouses.id, o.warehouseId)).limit(1))[0] : null;
   const nonDefault = def && !def.isDefault ? def.id : null;
   if (nonDefault) await bumpRow(tx, nonDefault, o.variantId, o.delta);
@@ -202,15 +202,24 @@ export async function listTransfers(scope: StoreScope) {
 
 // ===== الجرد =====
 
-export function openStocktake(scope: StoreScope, input: { warehouseId: string; lock?: boolean; note?: string | null }): Promise<Result<{ id: string }>> {
+/** فتح جرد: كامل، أو جزئي بقسم (categoryId) أو رف (shelf) */
+export function openStocktake(scope: StoreScope, input: { warehouseId: string; lock?: boolean; note?: string | null; categoryId?: string | null; shelf?: string | null }): Promise<Result<{ id: string }>> {
   return attempt(() => scope.transaction(async (tx) => {
     const [w] = await tx.from(t.warehouses, eq(t.warehouses.id, input.warehouseId)).limit(1);
     assertOpen(w);
     if ((await tx.count(t.stocktakes, and(eq(t.stocktakes.warehouseId, input.warehouseId), eq(t.stocktakes.status, "open"))!)) > 0) throw new WarehouseError("فيه جرد مفتوح لهذا المخزن. كمّله أو أغلقه أول.");
-    const products = await tx.from(t.products, and(isNull(t.products.deletedAt), eq(t.products.kind, "simple"))!);
+    let products = await tx.from(t.products, and(isNull(t.products.deletedAt), eq(t.products.kind, "simple"))!);
+    const shelf = input.shelf?.trim() || null;
+    if (input.categoryId) {
+      const links = await tx.from(t.productCategories, eq(t.productCategories.categoryId, input.categoryId));
+      const ids = new Set(links.map((l) => l.productId));
+      products = products.filter((p) => ids.has(p.id));
+    }
+    if (shelf) products = products.filter((p) => p.shelf === shelf);
+    if ((input.categoryId || shelf) && !products.length) throw new WarehouseError("ما فيه منتجات في القسم أو الرف هذا.");
     const variants = products.length ? await tx.from(t.productVariants, inArray(t.productVariants.productId, products.map((p) => p.id))) : [];
     const qty = await quantitiesIn(tx, input.warehouseId, variants.map((v) => v.id));
-    const [st] = await tx.insert(t.stocktakes, { warehouseId: input.warehouseId, lockWarehouse: !!input.lock, note: input.note?.trim() || null });
+    const [st] = await tx.insert(t.stocktakes, { warehouseId: input.warehouseId, lockWarehouse: !!input.lock, note: input.note?.trim() || null, categoryId: input.categoryId ?? null, shelf });
     if (variants.length) await tx.insert(t.stocktakeItems, variants.map((v) => ({ stocktakeId: st!.id, variantId: v.id, expected: qty.get(v.id) ?? 0 })));
     if (input.lock) await tx.update(t.warehouses, { isLocked: true }, eq(t.warehouses.id, input.warehouseId));
     return ok({ id: st!.id });
@@ -233,23 +242,27 @@ export function saveCounts(scope: StoreScope, stocktakeId: string, counts: unkno
 }
 
 /** إقفال الجرد: الفرق بين المعدود والرصيد الحالي يتسجل كحركة بسبب «جرد» */
-export function closeStocktake(scope: StoreScope, stocktakeId: string, actorUserId?: string | null): Promise<Result<{ adjusted: number }>> {
+export function closeStocktake(scope: StoreScope, stocktakeId: string, actorUserId?: string | null): Promise<Result<{ adjusted: number; value: number }>> {
   return attempt(() => scope.transaction(async (tx) => {
     const [st] = await tx.from(t.stocktakes, eq(t.stocktakes.id, stocktakeId)).limit(1);
     if (!st || st.status !== "open") throw new WarehouseError("الجرد مقفول أو غير موجود.");
     const items = await tx.from(t.stocktakeItems, eq(t.stocktakeItems.stocktakeId, stocktakeId));
     const counted = items.filter((i) => i.counted !== null);
     const now = await quantitiesIn(tx, st.warehouseId, counted.map((i) => i.variantId));
-    let adjusted = 0;
+    let adjusted = 0, value = 0;
+    const vs = counted.length ? await tx.from(t.productVariants, inArray(t.productVariants.id, counted.map((i) => i.variantId))) : [];
+    const ps = vs.length ? await tx.from(t.products, inArray(t.products.id, [...new Set(vs.map((v) => v.productId))])) : [];
     for (const i of counted) {
       const diff = i.counted! - (now.get(i.variantId) ?? 0);
       if (diff === 0) continue;
       await applyWarehouseDelta(tx, { warehouseId: st.warehouseId, variantId: i.variantId, delta: diff, reason: "stocktake", note: `جرد: متوقع ${i.expected}، فعلي ${i.counted}`, actorUserId });
+      const v = vs.find((x) => x.id === i.variantId), p = ps.find((x) => x.id === v?.productId);
+      value += Math.round((diff * (v?.costPrice ?? p?.costPrice ?? 0)) / (p?.soldBy === "weight" ? 1000 : 1));
       adjusted++;
     }
-    await tx.update(t.stocktakes, { status: "closed", closedAt: new Date() }, eq(t.stocktakes.id, stocktakeId));
+    await tx.update(t.stocktakes, { status: "closed", closedAt: new Date(), settledBy: actorUserId ?? null }, eq(t.stocktakes.id, stocktakeId));
     if (st.lockWarehouse) await tx.update(t.warehouses, { isLocked: false }, eq(t.warehouses.id, st.warehouseId));
-    return ok({ adjusted });
+    return ok({ adjusted, value });
   }));
 }
 

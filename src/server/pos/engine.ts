@@ -6,10 +6,13 @@ import type { PosConfig } from "@/lib/pos-config";
 import { computeTotals, countCash, discountPercentOf, pointsEarned, settle } from "@/lib/pos-engine";
 import { saleItemId, type OpPayload } from "@/lib/pos-ops";
 import type { PayMethod } from "@/lib/constants";
+import { levelPrice, PRICE_LEVEL_LABELS, unitPrice } from "@/lib/market-pricing";
+import { applyPromotions } from "@/lib/promotions";
 import { postEntry } from "../accounting/ledger";
 import { expandStockLines } from "../catalog/bundles";
 import type { Permission } from "../permissions";
 import { t, type StoreScopeCore } from "../tenant";
+import { loadPromotions } from "../market/promotions";
 import { balanceOf, creditLimitOf, postCustomer, PosError, upsertCustomer } from "./customers";
 
 type Tx = StoreScopeCore;
@@ -22,6 +25,8 @@ export type PosEnv = {
   accounts: { cash: string | null; bank: string | null };
   /** موظفين النشاط وصلاحياتهم (للتحقق من الكاشير والمشرف) */
   members: Map<string, { name: string; can: (p: Permission) => boolean; branchIds: string[] | null }>;
+  /** مميزات باقة المنظومة اللي تأثر على البيع */
+  features?: { wholesale: boolean; promotions: boolean };
   now: number;
 };
 
@@ -165,17 +170,46 @@ export async function recordSale(tx: Tx, env: PosEnv, p: OpPayload<"sale">): Pro
   const variantIds = [...new Set(p.lines.map((l) => l.variantId).filter((v): v is string => !!v))];
   const variants = variantIds.length ? await tx.from(t.productVariants, inArray(t.productVariants.id, variantIds)) : [];
   const products = variants.length ? await tx.from(t.products, inArray(t.products.id, [...new Set(variants.map((v) => v.productId))])) : [];
+  const features = env.features ?? { wholesale: false, promotions: false };
+  const units = products.length ? await tx.from(t.productUnits, inArray(t.productUnits.productId, products.map((x) => x.id))) : [];
+  const levels = variantIds.length && p.priceLevel !== "retail" ? await tx.from(t.variantPrices, inArray(t.variantPrices.variantId, variantIds)) : [];
+  const lp = (vid: string, level: "semi" | "wholesale") => levels.find((x) => x.variantId === vid && x.level === level)?.price ?? null;
+
+  // مستوى السعر: زبون جملة، أو تبديل يدوي بموافقة مشرف
+  if (p.priceLevel !== "retail") {
+    if (!features.wholesale) review.push(`سعر ${PRICE_LEVEL_LABELS[p.priceLevel]} مش ضمن باقتك.`);
+    else if (customer?.priceLevel !== p.priceLevel) {
+      const by = approver(env, p.userId, p.approvedBy);
+      if (!by) review.push(`سعر ${PRICE_LEVEL_LABELS[p.priceLevel]} بدون زبون ${PRICE_LEVEL_LABELS[p.priceLevel]} ولا موافقة مشرف.`);
+      else audits.push({ action: "pos.price_level", actorUserId: by, entityType: "sale", entityId: p.clientId, meta: { level: p.priceLevel, cashier: p.userId } });
+    }
+  }
+
   const lines = p.lines.map((l) => {
     const v = l.variantId ? variants.find((x) => x.id === l.variantId) : undefined;
     const prod = v ? products.find((x) => x.id === v.productId) : undefined;
     if (l.kind === "product" && l.variantId && !v) review.push(`منتج «${l.name}» مش موجود (انحذف؟).`);
-    if (v && p.priceLevel === "retail" && !l.isWeighed) {
-      const current = (v.price ?? prod?.price ?? 0) * l.unitFactor;
+    if (v && prod && l.kind === "product") {
+      const unit = l.unitId ? units.find((u) => u.id === l.unitId && u.productId === prod.id) : undefined;
+      if (l.unitId && !unit) review.push(`وحدة «${l.name}» مش موجودة.`);
+      if (unit && unit.factor !== l.unitFactor) review.push(`معامل وحدة «${l.name}» تغيّر (${l.unitFactor} والحالي ${unit.factor}).`);
+      if (l.isWeighed && prod.soldBy !== "weight") review.push(`«${l.name}» اتباع بالوزن وهو مش موزون.`);
+      const prices = { retail: v.price ?? prod.price, semi: lp(v.id, "semi"), wholesale: lp(v.id, "wholesale") };
+      const current = l.isWeighed ? levelPrice(prices, p.priceLevel) : unitPrice(prices, unit ?? (l.unitFactor > 1 ? { factor: l.unitFactor } : null), p.priceLevel);
       if (current !== l.unitPrice) review.push(`سعر «${l.name}» في الفاتورة ${l.unitPrice} والحالي ${current}.`);
     }
     if ((l.discount ?? 0) > (l.isWeighed ? Math.round((l.unitPrice * l.quantity) / 1000) : l.unitPrice * l.quantity)) throw new RejectError(`خصم «${l.name}» أكبر من سعره.`);
     return { ...l, variant: v, product: prod };
   });
+
+  // العروض التلقائية: نعيد حسابها بوقت البيع ونقارن بالجهاز (اللي مشى هو اللي اتحسب في الجهاز)
+  const devicePromo = lines.reduce((a, l) => a + (l.promoDiscount ?? 0), 0);
+  if (devicePromo > 0 || features.promotions) {
+    const promos = features.promotions && p.priceLevel === "retail" ? await loadPromotions(tx) : [];
+    const expected = applyPromotions(lines.map((l) => ({ variantId: l.kind === "product" && l.variant ? l.variant.id : null, quantity: l.quantity, unitFactor: l.unitFactor, isWeighed: l.isWeighed, unitPrice: l.unitPrice })), promos, p.at);
+    const serverPromo = expected.discounts.reduce((a, n) => a + n, 0);
+    if (devicePromo > serverPromo) review.push(`خصم العروض في الفاتورة ${devicePromo} والمحسوب ${serverPromo} (عرض منتهي أو متغير؟).`);
+  }
 
   const totals = computeTotals(lines, p.invoiceDiscount ?? null);
   // النقاط: تتصرف كخصم
@@ -236,6 +270,7 @@ export async function recordSale(tx: Tx, env: PosEnv, p: OpPayload<"sale">): Pro
       id: saleItemId(saleId, i), saleId, kind: l.kind, variantId: l.variant ? l.variant.id : null, name: l.name, quantity: l.quantity, isWeighed: l.isWeighed,
       unitFactor: l.unitFactor, baseQty: l.kind === "product" && l.variant ? baseQty : 0, unitPrice: l.unitPrice, discount: l.discount ?? 0, total: totals.lines[i]!,
       unitCost: l.variant ? (l.variant.costPrice ?? l.product?.costPrice ?? null) : null, refId: l.refId ?? null,
+      unitId: l.unitId ?? null, promotionId: l.promoDiscount ? (l.promotionId ?? null) : null, promoDiscount: l.promoDiscount ?? 0,
     });
     if (l.kind === "product" && l.variant) {
       const neg = await moveStock(tx, { variantId: l.variant.id, baseQty, sign: -1, reason: "pos_sale", warehouseId, note: `فاتورة ${number}`, actorUserId: p.userId });

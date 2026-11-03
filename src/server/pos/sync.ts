@@ -3,6 +3,7 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Db } from "@/db";
 import { storeMembers, stores, users } from "@/db/schema/platform";
+import { canUse } from "@/lib/entitlements";
 import { POS_DEFAULTS, type PosConfig } from "@/lib/pos-config";
 import { OP_SCHEMAS, type OpKind, type OpResult } from "@/lib/pos-ops";
 import { defaultAccountId } from "../accounting/ledger";
@@ -51,7 +52,10 @@ export async function loadDeviceContext(db: Db, token: string | null | undefined
   const accounts = accounting ? { cash: await defaultAccountId(scope, "cash"), bank: await defaultAccountId(scope, "bank") } : { cash: null, bank: null };
   return {
     db, store, device, scope, lines,
-    env: { storeId: store.id, device: { id: device.id, branchId: device.branchId, registerId: device.registerId, line: device.line }, config: posConfigOf(settings[0]?.posConfig), accounts, members },
+    env: {
+      storeId: store.id, device: { id: device.id, branchId: device.branchId, registerId: device.registerId, line: device.line }, config: posConfigOf(settings[0]?.posConfig), accounts, members,
+      features: { wholesale: canUse(lines[device.line].limits ?? {}, "wholesale"), promotions: canUse(lines[device.line].limits ?? {}, "promotions") },
+    },
   };
 }
 
