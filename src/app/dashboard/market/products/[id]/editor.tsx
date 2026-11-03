@@ -46,7 +46,7 @@ export function MarketProductEditor({ data, wholesale, writable }: { data: Data;
           </Select>
           <Input label="رقم الصنف في الميزان (PLU)" inputMode="numeric" dir="ltr" value={plu} onChange={(e) => setPlu(e.target.value.replace(/\D/g, "").slice(0, 6))} disabled={soldBy !== "weight"} hint="نفس الرقم المبرمج في الميزان" />
           <Input label="الرف / المكان" value={shelf} maxLength={30} onChange={(e) => setShelf(e.target.value)} placeholder="مثلاً A3" hint="للجرد الجزئي والتجهيز" />
-          <Input label="ترتيبه في الأزرار السريعة" inputMode="numeric" value={quick} onChange={(e) => setQuick(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="فاضي = مش سريع" />
+          <Input label="ترتيبه في الأزرار السريعة" inputMode="numeric" value={quick} onChange={(e) => setQuick(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="فاضي = مش سريع" hint="صورة الزر = أول صورة للمنتج" />
           <div className="sm:col-span-2 lg:col-span-4">
             <p className="mb-1.5 text-sm font-medium">لون الزر السريع</p>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="لون الزر">

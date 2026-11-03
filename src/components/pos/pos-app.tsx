@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 import { formatMoney, inputToDirham } from "@/lib/money";
 import { levelPrice, PRICE_LEVEL_LABELS, type PriceLevel } from "@/lib/market-pricing";
+import { mediaUrl } from "@/lib/media-url";
 import { receiptMessage } from "@/lib/pos-engine";
 import type { PosProduct } from "@/server/pos/bootstrap";
 import { toWhatsappNumber } from "@/lib/phone";
@@ -188,6 +189,8 @@ export function PosApp() {
               <li key={p.variantId}>
                 <button type="button" onClick={() => tap(p)} style={cat === "quick" && p.quickColor ? { borderColor: p.quickColor, borderInlineStartWidth: 6 } : undefined}
                   className="flex h-full min-h-24 w-full flex-col justify-between rounded-xl border border-line bg-surface p-3 text-start transition-transform hover:border-gold active:scale-[0.97]">
+                  {/* الأزرار السريعة بالصور (الصورة تتخزن في الجهاز وتبان بدون نت) */}
+                  {cat === "quick" && p.imageMediaId && <img src={mediaUrl(p.imageMediaId, 160)} alt="" loading="lazy" draggable={false} className="mb-2 aspect-square w-full rounded-lg bg-surface-2 object-cover" />}
                   <span className="line-clamp-2 font-medium">{p.name}</span>
                   <span className="flex items-end justify-between gap-2">
                     <b className="tabular-nums">{m(p.soldBy === "weight" ? levelPrice({ retail: p.price, semi: p.semi, wholesale: p.wholesale }, pos.level) : p.price)}{p.soldBy === "weight" && <span className="text-xs font-normal text-muted"> /كغ</span>}</b>

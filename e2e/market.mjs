@@ -123,6 +123,16 @@ check("باركود الكرتونة يدخل الكرتونة", (await cart()).
 await scan(SCALE);
 check("باركود الميزان يدخل الوزن", (await cart()).includes("1.25 كغ"));
 check("الأزرار السريعة", (await page.getByRole("tab", { name: /سريع/ }).count()) === 1);
+{
+  const c = db();
+  const hasImage = Number((await c.execute({ sql: "SELECT count(*) AS n FROM product_images WHERE product_id = ?", args: [first.id] })).rows[0].n) > 0;
+  c.close();
+  await page.getByRole("tab", { name: /سريع/ }).click();
+  const imgs = await page.locator("section[aria-label='المنتجات'] ul img").count();
+  check("الأزرار السريعة بالصور", hasImage ? imgs >= 1 : imgs === 0, `صورة المنتج: ${hasImage}`);
+  await page.screenshot({ path: `${SHOT}/market-quick.png` });
+  await page.getByRole("tab", { name: "الكل" }).click();
+}
 let shown = false;
 for (let i = 0; i < 20 && !shown; i++) { shown = (await display.locator("main").innerText()).includes("الإجمالي"); if (!shown) await page.waitForTimeout(250); }
 check("شاشة الزبون تعرض الفاتورة", shown);
