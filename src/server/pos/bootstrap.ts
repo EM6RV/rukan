@@ -4,6 +4,7 @@ import { eq, isNull } from "drizzle-orm";
 import { canUse } from "@/lib/entitlements";
 import { LINE_INFO } from "@/lib/product-lines";
 import { loadPromotions } from "../market/promotions";
+import { loungeBootstrap } from "../lounge/bootstrap";
 import { withBundleStock } from "../catalog/bundles";
 import { variantLabels } from "../storefront/queries";
 import { t } from "../tenant";
@@ -79,11 +80,12 @@ export async function posBootstrap(dc: DeviceCtx, now = Date.now()) {
     promotions: promotions.filter((p) => p.isActive && (p.endsAt === null || p.endsAt > now)),
     categories: (await scope.from(t.categories)).map((c) => ({ id: c.id, name: c.name })),
     customers: customers.map((c) => {
-      const b = bal.get(c.id) ?? { debt: 0, wallet: 0, points: 0 };
-      return { id: c.id, name: c.name, phone: c.phone, debt: b.debt, wallet: b.wallet, points: b.points, creditLimit: c.creditLimit, priceLevel: c.priceLevel };
+      const b = bal.get(c.id) ?? { debt: 0, wallet: 0, points: 0, minutes: 0 };
+      return { id: c.id, name: c.name, phone: c.phone, debt: b.debt, wallet: b.wallet, points: b.points, minutes: b.minutes, creditLimit: c.creditLimit, priceLevel: c.priceLevel };
     }),
     staff: staff.map((s) => ({ userId: s.userId, name: s.name, role: s.role, pinHash: s.pinHash, canPos: env.members.get(s.userId)?.can("pos") ?? false, canApprove: env.members.get(s.userId)?.can("pos_approve") ?? false }))
       .filter((s) => s.canPos || s.canApprove),
+    lounge: device.line === "lounge" ? await loungeBootstrap(scope, device.branchId, now, { hourPacks: canUse(limits, "hourPacks"), bookings: canUse(limits, "bookings") }) : null,
     openShift: shift ? { id: shift.id, openedAt: shift.openedAt.getTime(), openedBy: shift.openedBy, openingFloat: shift.openingFloat } : null,
   };
 }

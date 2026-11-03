@@ -12,6 +12,7 @@ import { postEntry } from "../accounting/ledger";
 import { expandStockLines } from "../catalog/bundles";
 import type { Permission } from "../permissions";
 import { t, type StoreScopeCore } from "../tenant";
+import { afterLoungeSale } from "../lounge/engine";
 import { loadPromotions } from "../market/promotions";
 import { balanceOf, creditLimitOf, postCustomer, PosError, upsertCustomer } from "./customers";
 
@@ -26,7 +27,7 @@ export type PosEnv = {
   /** موظفين النشاط وصلاحياتهم (للتحقق من الكاشير والمشرف) */
   members: Map<string, { name: string; can: (p: Permission) => boolean; branchIds: string[] | null }>;
   /** مميزات باقة المنظومة اللي تأثر على البيع */
-  features?: { wholesale: boolean; promotions: boolean };
+  features?: { wholesale: boolean; promotions: boolean; hourPacks?: boolean };
   now: number;
 };
 
@@ -278,6 +279,10 @@ export async function recordSale(tx: Tx, env: PosEnv, p: OpPayload<"sale">): Pro
     }
   }
   if (applied.length) await tx.insert(t.salePayments, applied.map((x) => ({ saleId, method: x.method, amount: x.amount, ref: x.ref ?? null })));
+  // الصالة: الجلسات المدفوعة ودقايق الباقة، وباقات الساعات المباعة
+  if (p.lines.some((l) => l.kind === "service" && l.refId)) {
+    await afterLoungeSale(tx, env, { saleId, customerId, userId: p.userId, at: p.at, clientId: p.clientId, minutesUsed: p.minutesUsed ?? 0, review, lines: p.lines.map((l) => ({ kind: l.kind, refId: l.refId ?? null, unitPrice: l.unitPrice, quantity: l.quantity, name: l.name })) });
+  }
 
   // الزبون: الدين والمحفظة والنقاط
   if (customerId) {

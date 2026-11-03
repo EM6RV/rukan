@@ -1,5 +1,6 @@
 // إعدادات الكاشير لكل نشاط (تتخزن في store_settings.pos_config)
 import { DEFAULT_SCALE, type ScaleConfig } from "./barcode";
+import { DEFAULT_LOUNGE_RULES, type LoungeRules } from "./lounge-pricing";
 
 export type PosConfig = {
   /** عرض ورق الطابعة الحرارية */
@@ -20,9 +21,11 @@ export type PosConfig = {
   scale?: ScaleConfig;
   /** اقتراح الشراء: يغطي كم يوم من البيع */
   reorderCoverDays?: number;
+  /** الصالة: التقريب والحد الأدنى ورسوم البداية، ومهلة تأخير الحجز (دقايق) */
+  lounge?: LoungeRules & { bookingGrace: number };
 };
 
 export const POS_DEFAULTS = {
   paperWidth: 58, maxDiscountPercent: 10, loyaltyPercent: 0, pointValue: 100, defaultCreditLimit: null, debtAlertDays: 30, showLogo: true,
-  scale: DEFAULT_SCALE, reorderCoverDays: 14,
+  scale: DEFAULT_SCALE, reorderCoverDays: 14, lounge: { ...DEFAULT_LOUNGE_RULES, bookingGrace: 15 },
 } as const satisfies Required<PosConfig>;

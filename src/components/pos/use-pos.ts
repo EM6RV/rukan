@@ -387,7 +387,7 @@ export function usePos() {
     if (!cashierId) return null;
     const id = newId();
     await op({ kind: "customer.create", payload: { clientId: id, at: Date.now(), userId: cashierId, name, phone } });
-    const c: Customer = { id, name, phone, debt: 0, wallet: 0, points: 0, creditLimit: null, priceLevel: "retail" };
+    const c: Customer = { id, name, phone, debt: 0, wallet: 0, points: 0, minutes: 0, creditLimit: null, priceLevel: "retail" };
     await patchBoot((b) => ({ ...b, customers: [...b.customers, c] }));
     return c;
   }, [cashierId, op, patchBoot]);

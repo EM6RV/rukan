@@ -46,6 +46,8 @@ export const OP_SCHEMAS = {
     note: z.string().trim().max(300).nullish(),
     sourceType: z.string().max(30).nullish(),
     sourceId: id.nullish(),
+    /** الصالة: دقايق من رصيد باقة الزبون تغطي جزء من وقت الجلسة */
+    minutesUsed: z.number().int().min(0).max(1_000_000).default(0),
   }),
   "sale.return": z.object({
     clientId, at, userId: id, shiftId: id.nullish(), saleId: id,
@@ -57,6 +59,13 @@ export const OP_SCHEMAS = {
   "debt.pay": z.object({ clientId, at, userId: id, shiftId: id.nullish(), customerId: id, amount: money.refine((n) => n > 0, "المبلغ لازم يكون أكبر من صفر"), method: z.enum(["cash", "card", "transfer"]).default("cash") }),
   "wallet.topup": z.object({ clientId, at, userId: id, shiftId: id.nullish(), customerId: id, amount: money.refine((n) => n > 0, "المبلغ لازم يكون أكبر من صفر"), method: z.enum(["cash", "card", "transfer"]).default("cash") }),
   attendance: z.object({ clientId, at, userId: id, kind: z.enum(["in", "out"]) }),
+  /** حدث في جلسة صالة (sessionId = clientId حدث البداية) */
+  "lounge.event": z.object({
+    clientId, at, userId: id, sessionId: id,
+    type: z.enum(["start", "controllers", "pause", "resume", "match", "move", "extend", "item", "end", "cancel"]),
+    data: z.record(z.string(), z.unknown()).optional(),
+    approvedBy: id.nullish(),
+  }),
   /** عملية حساسة اتوافق عليها بدون نت (حذف سطر بعد الطباعة، فتح الدرج…) تتسجل في سجل التدقيق */
   audit: z.object({ clientId, at, userId: id, action: z.string().regex(/^[a-z_.]{3,40}$/), approvedBy: id.nullish(), meta: z.record(z.string(), z.unknown()).optional() }),
 } as const;

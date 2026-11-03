@@ -5,6 +5,8 @@ import { cities, media, stores, users } from "./platform";
 import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/constants";
 import { PAY_METHODS } from "@/lib/constants";
 import type { PosConfig } from "@/lib/pos-config";
+import { STATION_KINDS } from "@/lib/line-setup";
+import type { SessionEvent } from "@/lib/lounge-pricing";
 
 const storeIdCol = () =>
   text("store_id").notNull().references(() => stores.id, { onDelete: "cascade" });
@@ -1376,7 +1378,8 @@ export const customerLedger = sqliteTable(
     id: pk(),
     storeId: storeIdCol(),
     customerId: text("customer_id").notNull(),
-    account: text("account", { enum: ["debt", "wallet", "points"] }).notNull(),
+    /** minutes = رصيد دقايق الصالة (باقات الساعات) */
+    account: text("account", { enum: ["debt", "wallet", "points", "minutes"] }).notNull(),
     amount: integer("amount").notNull(),
     kind: text("kind", { enum: ["sale", "payment", "topup", "spend", "refund", "adjust", "earn", "redeem", "opening"] }).notNull(),
     method: text("method", { enum: PAY_METHODS }),
@@ -1625,5 +1628,217 @@ export const stocktakeCounts = sqliteTable(
     index("stocktake_counts_idx").on(t.storeId, t.stocktakeId, t.variantId),
     scopedFk("stc_stocktake_fk", [t.storeId, t.stocktakeId], [stocktakes.storeId, stocktakes.id], "cascade"),
     scopedFk("stc_variant_fk", [t.storeId, t.variantId], [productVariants.storeId, productVariants.id]),
+  ],
+);
+
+// =====================================================================
+// ===== رُكن بلاي: الأجهزة والأسعار والجلسات والحجوزات والبطولات =====
+// =====================================================================
+
+/** الأجهزة والطاولات (PS5، بلياردو…) في كل فرع، عادية أو VIP، بمكتبة ألعابها */
+export const stations = sqliteTable(
+  "stations",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    branchId: text("branch_id").notNull(),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: STATION_KINDS }).notNull(),
+    room: text("room", { enum: ["normal", "vip"] }).notNull().default("normal"),
+    seats: integer("seats").notNull().default(2),
+    screen: text("screen"),
+    color: text("color"),
+    games: text("games", { mode: "json" }).$type<string[]>().notNull().default([]),
+    /** maintenance = خارج الخدمة (ما يقبلش جلسات) */
+    status: text("status", { enum: ["active", "maintenance"] }).notNull().default("active"),
+    position: integer("position").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("stations_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("stations_name_uq").on(t.storeId, t.branchId, t.name),
+    scopedFk("stn_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
+  ],
+);
+
+/**
+ * أسعار الصالة: بالساعة (حسب عدد اليدات) أو بالماتش، لنوع جهاز و/أو غرفة، بوقت وأيام (الصبح/الليل/الخميس، Happy Hour).
+ * لكل لحظة ينطبق أخص سعر (والأولوية لو تساووا).
+ */
+export const loungeRates = sqliteTable(
+  "lounge_rates",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    mode: text("mode", { enum: ["hour", "match"] }).notNull(),
+    stationKind: text("station_kind", { enum: STATION_KINDS }),
+    room: text("room", { enum: ["normal", "vip"] }),
+    controllers: integer("controllers"),
+    price: integer("price").notNull(),
+    days: text("days", { mode: "json" }).$type<number[]>().notNull().default([]),
+    fromMinute: integer("from_minute").notNull().default(0),
+    toMinute: integer("to_minute").notNull().default(1440),
+    priority: integer("priority").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("lounge_rates_store_id_uq").on(t.storeId, t.id)],
+);
+
+/** سجل صيانة كل جهاز بتكلفته */
+export const stationMaintenance = sqliteTable(
+  "station_maintenance",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    stationId: text("station_id").notNull(),
+    issue: text("issue").notNull(),
+    cost: integer("cost").notNull().default(0),
+    status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+    note: text("note"),
+    actorUserId: text("actor_user_id"),
+    openedAt: integer("opened_at", { mode: "timestamp_ms" }).notNull(),
+    closedAt: integer("closed_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    index("station_maintenance_idx").on(t.storeId, t.stationId),
+    scopedFk("sm2_station_fk", [t.storeId, t.stationId], [stations.storeId, stations.id], "cascade"),
+  ],
+);
+
+/**
+ * جلسة لعب: سجل أحداث (بداية، تغيير اليدات، إيقاف، ماتش، نقل، تمديد، أصناف البار، نهاية) يتجمع من الأجهزة بدون نت،
+ * والسيرفر يعيد حساب المبلغ من الأحداث. الدفع يصير بفاتورة عادية (sourceType = lounge_session).
+ */
+export const loungeSessions = sqliteTable(
+  "lounge_sessions",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    branchId: text("branch_id").notNull(),
+    stationId: text("station_id").notNull(),
+    customerId: text("customer_id"),
+    mode: text("mode", { enum: ["hour", "match"] }).notNull().default("hour"),
+    limitKind: text("limit_kind", { enum: ["open", "time", "amount"] }).notNull().default("open"),
+    limitValue: integer("limit_value"),
+    status: text("status", { enum: ["running", "paused", "ended", "paid", "cancelled"] }).notNull().default("running"),
+    events: text("events", { mode: "json" }).$type<SessionEvent[]>().notNull().default([]),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+    minutes: integer("minutes").notNull().default(0),
+    matches: integer("matches").notNull().default(0),
+    charge: integer("charge").notNull().default(0),
+    minutesUsed: integer("minutes_used").notNull().default(0),
+    saleId: text("sale_id"),
+    groupId: text("group_id"),
+    bookingId: text("booking_id"),
+    startedBy: text("started_by"),
+    deviceId: text("device_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("lounge_sessions_store_id_uq").on(t.storeId, t.id),
+    index("lounge_sessions_status_idx").on(t.storeId, t.status, t.startedAt),
+    scopedFk("ls_station_fk", [t.storeId, t.stationId], [stations.storeId, stations.id]),
+    scopedFk("ls_branch_fk", [t.storeId, t.branchId], [branches.storeId, branches.id]),
+    scopedFk("ls_customer_fk", [t.storeId, t.customerId], [customers.storeId, customers.id]),
+  ],
+);
+
+/** الحجوزات: جهاز بوقت، من اللوحة أو الصفحة العامة. بدون تداخل، ومهلة تأخير قبل الإلغاء */
+export const loungeBookings = sqliteTable(
+  "lounge_bookings",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    stationId: text("station_id").notNull(),
+    customerId: text("customer_id"),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull(),
+    endsAt: integer("ends_at", { mode: "timestamp_ms" }).notNull(),
+    status: text("status", { enum: ["pending", "confirmed", "arrived", "cancelled", "no_show"] }).notNull().default("pending"),
+    source: text("source", { enum: ["dashboard", "public"] }).notNull().default("dashboard"),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("lounge_bookings_idx").on(t.storeId, t.stationId, t.startsAt),
+    scopedFk("lb_station_fk", [t.storeId, t.stationId], [stations.storeId, stations.id], "cascade"),
+    scopedFk("lb_customer_fk", [t.storeId, t.customerId], [customers.storeId, customers.id]),
+  ],
+);
+
+/** باقات الساعات المسبقة (10 ساعات بسعر خاص) تتشحن في رصيد دقايق الزبون */
+export const loungePacks = sqliteTable(
+  "lounge_packs",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    minutes: integer("minutes").notNull(),
+    price: integer("price").notNull(),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("lounge_packs_store_id_uq").on(t.storeId, t.id)],
+);
+
+export const tournaments = sqliteTable(
+  "tournaments",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    name: text("name").notNull(),
+    game: text("game").notNull(),
+    format: text("format", { enum: ["knockout", "league"] }).notNull().default("knockout"),
+    maxPlayers: integer("max_players").notNull().default(16),
+    entryFee: integer("entry_fee").notNull().default(0),
+    prizes: text("prizes"),
+    startsAt: integer("starts_at", { mode: "timestamp_ms" }),
+    status: text("status", { enum: ["registration", "running", "finished", "cancelled"] }).notNull().default("registration"),
+    publicSignup: integer("public_signup", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("tournaments_store_id_uq").on(t.storeId, t.id)],
+);
+
+export const tournamentPlayers = sqliteTable(
+  "tournament_players",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    tournamentId: text("tournament_id").notNull(),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    paid: integer("paid", { mode: "boolean" }).notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("tournament_players_store_id_uq").on(t.storeId, t.id),
+    uniqueIndex("tournament_players_phone_uq").on(t.storeId, t.tournamentId, t.phone),
+    scopedFk("tp_tournament_fk", [t.storeId, t.tournamentId], [tournaments.storeId, tournaments.id], "cascade"),
+  ],
+);
+
+export const tournamentMatches = sqliteTable(
+  "tournament_matches",
+  {
+    id: pk(),
+    storeId: storeIdCol(),
+    tournamentId: text("tournament_id").notNull(),
+    round: integer("round").notNull(),
+    slot: integer("slot").notNull(),
+    player1Id: text("player1_id"),
+    player2Id: text("player2_id"),
+    score1: integer("score1"),
+    score2: integer("score2"),
+    winnerId: text("winner_id"),
+  },
+  (t) => [
+    uniqueIndex("tournament_matches_slot_uq").on(t.storeId, t.tournamentId, t.round, t.slot),
+    scopedFk("tm_tournament_fk", [t.storeId, t.tournamentId], [tournaments.storeId, tournaments.id], "cascade"),
   ],
 );

@@ -8,9 +8,10 @@ import { fail, ok, type Result } from "../catalog/result";
 import { t, type StoreScope, type StoreScopeCore } from "../tenant";
 
 type Core = Pick<StoreScopeCore, "from" | "insert" | "update" | "aggregate">;
-export type CustomerAccount = "debt" | "wallet" | "points";
-export type Balances = { debt: number; wallet: number; points: number };
-const ZERO: Balances = { debt: 0, wallet: 0, points: 0 };
+export type CustomerAccount = "debt" | "wallet" | "points" | "minutes";
+/** minutes = رصيد دقايق الصالة (باقات الساعات) */
+export type Balances = { debt: number; wallet: number; points: number; minutes: number };
+const ZERO: Balances = { debt: 0, wallet: 0, points: 0, minutes: 0 };
 
 export class PosError extends Error {}
 

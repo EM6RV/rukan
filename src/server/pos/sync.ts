@@ -15,6 +15,7 @@ import { isModuleOn } from "../modules";
 import { hasPermission, isAssignable } from "../permissions";
 import { forStore, t, type StoreScope } from "../tenant";
 import type { Store } from "../types";
+import { loungeEvent } from "../lounge/engine";
 import { hashDeviceToken } from "./branches";
 import { PosError } from "./customers";
 import {
@@ -54,7 +55,7 @@ export async function loadDeviceContext(db: Db, token: string | null | undefined
     db, store, device, scope, lines,
     env: {
       storeId: store.id, device: { id: device.id, branchId: device.branchId, registerId: device.registerId, line: device.line }, config: posConfigOf(settings[0]?.posConfig), accounts, members,
-      features: { wholesale: canUse(lines[device.line].limits ?? {}, "wholesale"), promotions: canUse(lines[device.line].limits ?? {}, "promotions") },
+      features: { wholesale: canUse(lines[device.line].limits ?? {}, "wholesale"), promotions: canUse(lines[device.line].limits ?? {}, "promotions"), hourPacks: canUse(lines[device.line].limits ?? {}, "hourPacks") },
     },
   };
 }
@@ -88,6 +89,7 @@ const HANDLERS: Record<OpKind, Handler> = {
   "debt.pay": ((tx, env, p) => customerMoney(tx, env, "debt.pay", p)) as Handler,
   "wallet.topup": ((tx, env, p) => customerMoney(tx, env, "wallet.topup", p)) as Handler,
   attendance: attendance as Handler,
+  "lounge.event": loungeEvent as Handler,
   audit: (async (_tx, _env, p: { userId: string; action: string; approvedBy?: string | null; meta?: Record<string, unknown>; clientId: string }) =>
     ({ data: {}, audits: [{ action: `pos.${p.action}`, actorUserId: p.userId, entityType: "device", meta: { ...p.meta, approvedBy: p.approvedBy ?? null } }] })) as Handler,
 };

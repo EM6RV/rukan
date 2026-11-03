@@ -196,7 +196,7 @@ describe("المزامنة", () => {
     expect(r.map((x) => x.status)).toEqual(["applied", "applied", "applied", "applied", "applied", "applied"]);
     expect(r[2]!.data).toMatchObject({ needsReview: true }); // 6 > حد 5
     const bal = (await customerBalances(forStore(db, s.storeId))).get(cust)!;
-    expect(bal).toEqual({ debt: 4_000, wallet: 4_000, points: 6 + 1 });
+    expect(bal).toEqual({ debt: 4_000, wallet: 4_000, points: 6 + 1, minutes: 0 });
     // الكاش المتوقع: سداد الدين + شحن المحفظة
     const close = await applyOps(dc, [op("shift.close", { userId: s.cashierId, shiftId, denominations: { "5000": 1, "1000": 1 } })]);
     expect(close[0]!.data).toMatchObject({ expected: 7_000, counted: 6_000, difference: -1_000 });
