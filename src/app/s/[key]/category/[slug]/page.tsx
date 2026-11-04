@@ -1,17 +1,14 @@
-import { BASE_TEMPLATE } from "@/lib/plan-limits";
-import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getKit } from "@/components/store/templates";
 import { cn } from "@/lib/cn";
 import { mediaUrl } from "@/lib/media-url";
-import { FilterBar, parseFilters } from "@/components/store/filter-bar";
-import { getCatalog, getFacets } from "@/server/storefront/data";
+import { getCatalog } from "@/server/storefront/data";
 import { decodeKey, getRequestContext, loadStore } from "@/server/storefront/request";
 import type { CatalogSort } from "@/server/storefront/types";
 
-type Props = { params: Promise<{ key: string; slug: string }>; searchParams: Promise<{ sort?: string; page?: string; min?: string; max?: string; stock?: string; opt?: string; brand?: string; tag?: string }> };
+type Props = { params: Promise<{ key: string; slug: string }>; searchParams: Promise<{ sort?: string; page?: string }> };
 
 const SORTS: { key: CatalogSort; label: string }[] = [
   { key: "newest", label: "الأحدث" }, { key: "price_asc", label: "الأقل سعراً" }, { key: "price_desc", label: "الأعلى سعراً" },
@@ -34,21 +31,14 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (!sf || !cat) notFound();
 
   const { base } = await getRequestContext(key);
-  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : BASE_TEMPLATE);
+  const kit = getKit(sf.limits.allTemplates ? sf.template : "simple");
   const sort = SORTS.some((s) => s.key === sp.sort) ? (sp.sort as CatalogSort) : "newest";
   const page = Math.max(1, Number(sp.page) || 1);
-  const f = parseFilters(sp);
-  const [result, facets] = await Promise.all([getCatalog(sf.id, { categorySlug: slug, sort, page, ...f.query }), getFacets(sf.id)]);
+  const result = await getCatalog(sf.id, { categorySlug: slug, sort, page });
   const url = (over: { sort?: CatalogSort; page?: number }) => {
     const q = new URLSearchParams();
     const s = over.sort ?? sort;
     if (s !== "newest") q.set("sort", s);
-    if (f.active.min) q.set("min", f.active.min);
-    if (f.active.max) q.set("max", f.active.max);
-    if (f.active.stock) q.set("stock", "1");
-    if (f.active.opt) q.set("opt", f.active.opt);
-    if (f.active.brand) q.set("brand", f.active.brand);
-    if (f.active.tag) q.set("tag", f.active.tag);
     if ((over.page ?? 1) > 1) q.set("page", String(over.page));
     return `${base}/category/${encodeURIComponent(slug)}${q.size ? `?${q}` : ""}`;
   };
@@ -63,16 +53,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           <span className="flex-1" />
           {SORTS.map((s) => <Link key={s.key} href={url({ sort: s.key })} scroll={false} className={cn(kit.cls.chip, sort === s.key && kit.cls.chipOn)}>{s.label}</Link>)}
         </div>
-        <FilterBar action={`${base}/category/${encodeURIComponent(slug)}`} cls={kit.cls} facets={facets} active={f.active} keep={sort !== "newest" ? { sort } : {}} />
       </header>
 
       {result.items.length === 0 ? (
         <div className={`${kit.cls.panel} text-center`}>ما فيه منتجات في هذا القسم حالياً.</div>
       ) : (
-        <>
-        <h2 className="sr-only">المنتجات</h2>
         <div className={kit.cls.productGrid}>{result.items.map((p, i) => <kit.ProductCard key={p.id} product={p} priority={i < 4} />)}</div>
-        </>
       )}
 
       {result.pageCount > 1 && (

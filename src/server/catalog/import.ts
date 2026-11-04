@@ -18,7 +18,7 @@ const ALIASES = {
   stock: ["المخزون", "الكمية", "stock", "quantity", "qty"],
   category: ["القسم", "الفئة", "category"],
   description: ["الوصف", "description"],
-  sku: ["الكود", "كود المنتج", "الباركود", "باركود", "sku", "barcode", "ean"],
+  sku: ["الكود", "كود المنتج", "sku"],
   visible: ["ظاهر", "الحالة", "visible", "status"],
 } as const;
 type Field = keyof typeof ALIASES;

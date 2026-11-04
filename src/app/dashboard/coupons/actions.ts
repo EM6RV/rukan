@@ -4,14 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Result } from "@/server/catalog/result";
 import { deleteCoupon, saveCoupon, setCouponActive } from "@/server/marketing/coupons";
-import { auditStore } from "@/server/store-audit";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
 async function run<T>(fn: (ctx: StoreContext) => Promise<Result<T>>): Promise<Result<T>> {
   const auth = await actionContext("marketing", { write: true });
   if (!auth.ok) return auth;
   const r = await fn(auth.ctx);
-  if (r.ok) { void auditStore(auth.ctx, "marketing.write"); revalidatePath("/dashboard/coupons"); }
+  if (r.ok) revalidatePath("/dashboard/coupons");
   return r;
 }
 

@@ -57,7 +57,7 @@ describe("الموظفين", () => {
     expect(await err({ role: "admin" })).toContain("الصلاحية");
   });
 
-  it("حد الباقة: 1 و3 وبلا حد (المالك ما يتحسبش)", async () => {
+  it("حد الباقة: بداية 1، نمو 3، احترافي بلا حد (المالك ما يتحسبش)", async () => {
     const o = await owner("st-4");
     const add = (limits: { maxStaff: number | null }) => addStaff(db, o.storeId, o.userId, { name: "موظف جديد", phone: phone(), password: PW, role: "manager" }, limits);
     expect((await add({ maxStaff: 1 })).ok).toBe(true);

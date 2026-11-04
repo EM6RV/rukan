@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileUp, Plus, Table2 } from "lucide-react";
+import { FileUp, Plus } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { listCategories } from "@/server/catalog/categories";
 import { listProducts, productQuota } from "@/server/catalog/products";
@@ -46,7 +46,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
         <div className="flex gap-2">
-          <ButtonLink href="/dashboard/products/grid" variant="outline"><Table2 className="size-4" /> تعديل سريع</ButtonLink>
           <ButtonLink href="/dashboard/products/import" variant="outline" aria-disabled={!ctx.access.writable}><FileUp className="size-4" /> استيراد</ButtonLink>
           {atLimit || !ctx.access.writable
             ? <span className="inline-flex h-11 cursor-not-allowed items-center gap-2 rounded-md bg-gold/40 px-5 text-[15px] font-semibold text-navy/60"><Plus className="size-4" /> منتج جديد</span>

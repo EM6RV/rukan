@@ -42,9 +42,7 @@ export function OrderSummary({ order, panelClass }: { order: TrackedOrder; panel
       <section className={cn(panelClass, "space-y-4")}>
         <h2 className="text-lg font-bold">حالة الطلبية</h2>
         <OrderTimeline status={order.status} history={order.history} />
-        {order.shipmentNumber && (
-          <p className="text-sm">{order.shippingCompany ? `شركة الشحن: ${order.shippingCompany} · ` : ""}رقم الشحنة: <b dir="ltr">{order.shipmentNumber}</b>{order.trackingUrl && <> · <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">تتبع الشحنة</a></>}</p>
-        )}
+        {order.shipmentNumber && <p className="text-sm">رقم الشحنة: <b dir="ltr">{order.shipmentNumber}</b></p>}
       </section>
 
       <section className={cn(panelClass, "space-y-4")}>
@@ -53,7 +51,7 @@ export function OrderSummary({ order, panelClass }: { order: TrackedOrder; panel
           {order.items.map((i, idx) => (
             <li key={idx} className="flex items-center gap-3 py-3 text-sm first:pt-0">
               <span className="size-14 shrink-0 overflow-hidden bg-(--sp-soft)">{i.imageMediaId && <MediaImage id={i.imageMediaId} alt="" sizes="56px" widths={[160]} />}</span>
-              <span className="min-w-0 flex-1"><span className="line-clamp-2 font-medium">{i.name}</span>{i.variantLabel && <span className="block text-xs text-(--sp-muted)">{i.variantLabel}</span>}{i.personalization && <span className="block text-xs text-(--sp-muted)">✎ {i.personalization}</span>}<span className="text-xs text-(--sp-muted)">الكمية: {i.quantity}</span></span>
+              <span className="min-w-0 flex-1"><span className="line-clamp-2 font-medium">{i.name}</span>{i.variantLabel && <span className="block text-xs text-(--sp-muted)">{i.variantLabel}</span>}<span className="text-xs text-(--sp-muted)">الكمية: {i.quantity}</span></span>
               <span className="font-semibold">{formatMoney(i.unitPrice * i.quantity)}</span>
             </li>
           ))}

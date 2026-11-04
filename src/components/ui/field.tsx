@@ -30,7 +30,7 @@ export function Field({
   );
 }
 
-type InputProps = React.ComponentProps<"input"> & { label?: string; hint?: string; error?: string };
+type InputProps = React.InputHTMLAttributes<HTMLInputElement> & { label?: string; hint?: string; error?: string };
 
 export function Input({ label, hint, error, className, id, ...props }: InputProps) {
   const auto = useId();

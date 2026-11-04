@@ -1,7 +1,4 @@
-import { BASE_TEMPLATE } from "@/lib/plan-limits";
-import { canUse } from "@/lib/entitlements";
 import Link from "next/link";
-import { TrustStrip } from "@/components/store/trust-strip";
 import { getKit } from "@/components/store/templates";
 import { safeJsonLd } from "@/lib/text";
 import { mediaSrcSet, mediaUrl } from "@/lib/media-url";
@@ -16,7 +13,7 @@ export default async function StoreHome({ params }: Props) {
   const sf = await loadStore(key);
   if (!sf) notFound();
   const { base, origin } = await getRequestContext(key);
-  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : BASE_TEMPLATE);
+  const kit = getKit(sf.limits.allTemplates ? sf.template : "simple");
   const href = (p: string) => `${base}${p}`;
 
   const [featured, newest] = await Promise.all([
@@ -36,19 +33,16 @@ export default async function StoreHome({ params }: Props) {
       {sections.map((sec) => {
         if (sec.type === "hero") {
           return (
-            <div key={sec.id} className="space-y-0">
-            <kit.Hero title={str(sec.config.title) ?? sf.name} subtitle={str(sec.config.subtitle)} ctaHref={href("/search")} ctaLabel={str(sec.config.ctaLabel) ?? "تسوّق الآن"}
+            <kit.Hero key={sec.id} title={str(sec.config.title) ?? sf.name} subtitle={str(sec.config.subtitle)} ctaHref={href("/search")} ctaLabel={str(sec.config.ctaLabel) ?? "تسوّق الآن"}
               imageMediaId={typeof sec.config.imageMediaId === "string" ? sec.config.imageMediaId : null} />
-            <div className="relative z-10 px-3 md:px-8"><TrustStrip freeOver={sf.settings.freeDeliveryOver} whatsapp={!!sf.settings.whatsapp} /></div>
-            </div>
           );
         }
         if (sec.type === "categories" && sf.categories.length > 0) {
           return (
-            <section key={sec.id} className="sf-reveal" aria-label="الأقسام">
+            <section key={sec.id} aria-label="الأقسام">
               <kit.SectionTitle title={str(sec.config.title) ?? "تسوّق حسب القسم"} />
               {/* بالموبايل: صف أفقي قابل للسحب (بدل شبكة عمودين تترك خانة فاضية لما العدد فردي) */}
-              <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:flex sm:flex-wrap sm:justify-center sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:sm:w-[calc(33.333%-0.667rem)] [&>*]:lg:w-[calc(25%-0.75rem)]">
+              <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
                 {sf.categories.slice(0, 8).map((c) => <div key={c.id} className="w-[42%] shrink-0 snap-start sm:w-auto"><kit.CategoryTile name={c.name} href={href(`/category/${encodeURIComponent(c.slug)}`)} imageMediaId={c.imageMediaId} /></div>)}
               </div>
             </section>
@@ -56,7 +50,7 @@ export default async function StoreHome({ params }: Props) {
         }
         if (sec.type === "featured" && featured.items.length > 0) {
           return (
-            <section key={sec.id} className="sf-reveal" aria-label="منتجات مميزة">
+            <section key={sec.id} aria-label="منتجات مميزة">
               <kit.SectionTitle title={str(sec.config.title) ?? "منتجات مميزة"} href={href("/search")} />
               <div className={kit.cls.productGrid}>{featured.items.map((p, i) => <kit.ProductCard key={p.id} product={p} priority={i < 2} />)}</div>
             </section>
@@ -71,11 +65,11 @@ export default async function StoreHome({ params }: Props) {
               {str(sec.config.title) && <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12 text-lg font-bold text-white md:p-6 md:text-2xl">{sec.config.title as string}</div>}
             </div>
           );
-          return <section key={sec.id} className="sf-reveal" aria-label={str(sec.config.title) ?? "إعلان"}>{to ? (to.startsWith("http") ? <a href={to} target="_blank" rel="noopener noreferrer">{img}</a> : <Link href={to}>{img}</Link>) : img}</section>;
+          return <section key={sec.id} aria-label={str(sec.config.title) ?? "إعلان"}>{to ? (to.startsWith("http") ? <a href={to} target="_blank" rel="noopener noreferrer">{img}</a> : <Link href={to}>{img}</Link>) : img}</section>;
         }
         if (sec.type === "text" && str(sec.config.body)) {
           return (
-            <section key={sec.id} aria-label={str(sec.config.title) ?? "نص"} className="sf-reveal mx-auto max-w-3xl text-center">
+            <section key={sec.id} aria-label={str(sec.config.title) ?? "نص"} className="mx-auto max-w-3xl text-center">
               {str(sec.config.title) && <h2 className={`${kit.cls.heading} mb-3`}>{sec.config.title as string}</h2>}
               <p className="whitespace-pre-line text-[17px] leading-8">{sec.config.body as string}</p>
             </section>

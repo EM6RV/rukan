@@ -43,26 +43,16 @@ export type ProductDetail = {
   options: { id: string; name: string; values: { id: string; value: string; colorHex: string | null }[] }[];
   variants: { id: string; valueIds: string[]; sku: string | null; price: number; compareAt: number | null; stock: number }[];
   categories: { id: string; slug: string; name: string }[];
-  brand: { name: string; slug: string } | null;
-  tags: string[];
-  isBundle: boolean;
-  personalization: { label: string; maxChars: number; price: number } | null;
   updatedAt: number;
 };
 
 export type CartLine = {
-  variantId: string; productId: string; slug: string; name: string; variantLabel: string | null; note: string | null;
+  variantId: string; productId: string; slug: string; name: string; variantLabel: string | null;
   price: number; compareAt: number | null; stock: number; quantity: number; image: string | null;
 };
 
 export type DeliveryRate = { cityId: string; city: string; fee: number; eta: string | null };
 
 export type CatalogSort = "newest" | "price_asc" | "price_desc";
-export type CatalogQuery = {
-  categorySlug?: string; q?: string; featured?: boolean; sort?: CatalogSort; page?: number; pageSize?: number;
-  /** فلاتر (الأسعار بالدرهم: 1 د.ل = 1000) */
-  minPrice?: number; maxPrice?: number; inStock?: boolean; optionValue?: string; brandSlug?: string; tag?: string;
-};
-/** قيم الفلاتر المتاحة في المتجر (مقاسات، ألوان…) */
-export type CatalogFacets = { options: { name: string; values: string[] }[]; brands: { slug: string; name: string }[]; tags: string[] };
+export type CatalogQuery = { categorySlug?: string; q?: string; featured?: boolean; sort?: CatalogSort; page?: number; pageSize?: number };
 export type CatalogPage = { items: CardProduct[]; total: number; page: number; pageCount: number };

@@ -1,24 +1,14 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { stores } from "@/db/schema/platform";
-import { writeAudit } from "@/server/audit";
 import { deleteAnnouncement, saveAnnouncement } from "@/server/admin/announcements";
-import { saveAddon, savePlan } from "@/server/admin/plans";
+import { savePlan } from "@/server/admin/plans";
 import { SITE_TAG } from "@/server/admin/site-cache";
-import { savePlatformConfig, savePromo, setFreePlanEnabled } from "@/server/admin/settings";
+import { savePlatformConfig } from "@/server/admin/settings";
 import { resetSiteContent, saveSiteContent } from "@/server/admin/site-content";
-import { adminStartTrial, changePlan, extendTrial, recordPayment, setSuspended, type TouchedStore } from "@/server/admin/subscriptions";
-import { deleteBundle, saveBundle } from "@/server/admin/bundles";
-import { saveLineConfig, setLineBeta } from "@/server/admin/settings";
-import { PRODUCT_LINES } from "@/lib/product-lines";
+import { changePlan, extendTrial, recordPayment, setSuspended, type TouchedStore } from "@/server/admin/subscriptions";
 import { adminResetPassword } from "@/server/admin/users";
-import { getEnv } from "@/lib/env";
-import { toWhatsappNumber } from "@/lib/phone";
-import { waLink } from "@/lib/whatsapp";
-import { dismissResetRequest, issueResetLink } from "@/server/auth/password-reset";
 import { adminSetDomainStatus } from "@/server/domains";
 import { adminContext } from "@/server/auth/admin-action";
 import type { Result } from "@/server/catalog/result";
@@ -43,27 +33,15 @@ const touch = (s: TouchedStore) => invalidateStore(s);
 export async function recordPaymentAction(input: unknown) {
   return run(({ db, userId }) => recordPayment(db, input, { id: userId }), (d) => touch(d.store));
 }
-const lineArg = z.enum(PRODUCT_LINES).default("store");
-export async function extendTrialAction(storeId: unknown, days: unknown, line?: unknown) {
-  const s = z.object({ storeId: id, line: lineArg }).safeParse({ storeId, line });
-  if (!s.success) return bad();
-  return run(({ db, userId }) => extendTrial(db, s.data.storeId, days, { id: userId }, Date.now(), s.data.line), (d) => touch(d.store));
-}
-/** إيقاف/تفعيل النشاط كامل، أو منظومة وحدة لو line محددة */
-export async function setSuspendedAction(storeId: unknown, suspended: unknown, reason: unknown, line?: unknown) {
-  const p = z.object({ storeId: id, suspended: z.boolean(), reason: z.string().max(200).nullish(), line: z.enum(PRODUCT_LINES).optional() }).safeParse({ storeId, suspended, reason, line: line ?? undefined });
-  if (!p.success) return bad();
-  return run(({ db, userId }) => setSuspended(db, p.data.storeId, p.data.suspended, { id: userId }, p.data.reason, Date.now(), p.data.line), (d) => touch(d.store));
-}
-export async function adminStartTrialAction(storeId: unknown, line: unknown) {
-  const p = z.object({ storeId: id, line: z.enum(PRODUCT_LINES) }).safeParse({ storeId, line });
-  if (!p.success) return bad();
-  return run(({ db, userId }) => adminStartTrial(db, p.data.storeId, p.data.line, { id: userId }), (d) => touch(d.store));
-}
-export async function setLineBetaAction(storeId: unknown, lines: unknown) {
+export async function extendTrialAction(storeId: unknown, days: unknown) {
   const s = id.safeParse(storeId);
   if (!s.success) return bad();
-  return run(({ db, userId }) => setLineBeta(db, s.data, lines, userId));
+  return run(({ db, userId }) => extendTrial(db, s.data, days, { id: userId }), (d) => touch(d.store));
+}
+export async function setSuspendedAction(storeId: unknown, suspended: unknown, reason: unknown) {
+  const p = z.object({ storeId: id, suspended: z.boolean(), reason: z.string().max(200).nullish() }).safeParse({ storeId, suspended, reason });
+  if (!p.success) return bad();
+  return run(({ db, userId }) => setSuspended(db, p.data.storeId, p.data.suspended, { id: userId }, p.data.reason), (d) => touch(d.store));
 }
 export async function changePlanAction(storeId: unknown, planId: unknown) {
   const p = z.object({ storeId: id, planId: id }).safeParse({ storeId, planId });
@@ -75,22 +53,6 @@ export async function changePlanAction(storeId: unknown, planId: unknown) {
 export async function savePlanAction(input: unknown) {
   // الباقات تظهر في الموقع التسويقي أيضاً
   return run(({ db, userId }) => savePlan(db, input, userId), (d) => { d.affectedStores.forEach(touch); revalidateTag(SITE_TAG, { expire: 0 }); revalidatePath("/"); });
-}
-
-export async function saveBundleAction(input: unknown) {
-  return run(({ db, userId }) => saveBundle(db, input, userId));
-}
-export async function deleteBundleAction(bundleId: unknown) {
-  const p = id.safeParse(bundleId);
-  if (!p.success) return bad();
-  return run(({ db, userId }) => deleteBundle(db, p.data, userId));
-}
-export async function saveLineConfigAction(input: unknown) {
-  return run(({ db, userId }) => saveLineConfig(db, input, userId));
-}
-
-export async function saveAddonAction(input: unknown) {
-  return run(({ db, userId }) => saveAddon(db, input, userId), (d) => d.affectedStores.forEach(touch));
 }
 
 // ===== الإعلانات =====
@@ -114,13 +76,6 @@ export async function resetSiteContentAction() {
 export async function savePlatformConfigAction(input: unknown) {
   return run(({ db, userId }) => savePlatformConfig(db, input, userId), refreshSite);
 }
-/** إطلاق/إيقاف الباقة المجانية: تطلع (أو تختفي) فوراً في الأسعار والمقارنة والتسجيل */
-export async function setFreePlanAction(enabled: unknown) {
-  return run(({ db, userId }) => setFreePlanEnabled(db, enabled, userId), refreshSite);
-}
-export async function savePromoAction(input: unknown) {
-  return run(({ db, userId }) => savePromo(db, input, userId), refreshSite);
-}
 
 
 // ===== الدومين الخاص (اعتماد يدوي للدعم) =====
@@ -130,41 +85,9 @@ export async function adminDomainStatusAction(domainId: unknown, status: unknown
   return run(({ db, userId }) => adminSetDomainStatus(db, p.data.domainId, p.data.status, userId), (d) => { touch({ id: d.storeId, slug: d.domain }); });
 }
 
-// ===== صندوق الرسائل (تجربة لمتاجر معينة) =====
-export async function setInboxBetaAction(storeId: unknown, enabled: unknown) {
-  const p = z.object({ storeId: id, enabled: z.boolean() }).safeParse({ storeId, enabled });
-  if (!p.success) return bad();
-  return run(async ({ db, userId }) => {
-    const rows = await db.update(stores).set({ inboxBeta: p.data.enabled }).where(eq(stores.id, p.data.storeId)).returning({ id: stores.id, slug: stores.slug });
-    if (!rows[0]) return { ok: false as const, error: "ما لقينا المتجر." };
-    await writeAudit(db, { actorUserId: userId, storeId: p.data.storeId, action: p.data.enabled ? "store.inbox_beta_on" : "store.inbox_beta_off" });
-    return { ok: true as const, data: { id: rows[0].id, slug: rows[0].slug } };
-  }, (d) => touch(d));
-}
-
 // ===== كلمة سر المالك (نسيها) =====
 export async function adminResetPasswordAction(userId: unknown, storeId: unknown, password: unknown) {
   const p = z.object({ userId: id, storeId: id.nullish() }).safeParse({ userId, storeId });
   if (!p.success) return bad();
   return run(({ db, userId: actor }) => adminResetPassword(db, p.data.userId, password, { id: actor }, p.data.storeId ?? null));
-}
-
-// ===== طلبات استرجاع كلمة السر =====
-/** يصدر رابط (يرجع هنا مرة وحدة بس) مع رابط واتساب جاهز لرقم البياع */
-export async function issueResetLinkAction(requestId: unknown) {
-  const p = id.safeParse(requestId);
-  if (!p.success) return bad();
-  return run(async ({ db, userId }) => {
-    const r = await issueResetLink(db, p.data, { id: userId });
-    if (!r.ok) return r;
-    const url = `${getEnv().APP_URL.replace(/\/$/, "")}/reset-password/${r.data.token}`;
-    const to = toWhatsappNumber(r.data.user.phone);
-    const text = `السلام عليكم ${r.data.user.name}، هذا رابط استرجاع كلمة السر لحسابك في رُكن (صالح ساعة ولمرة وحدة): ${url}`;
-    return { ok: true as const, data: { url, expiresAt: r.data.expiresAt, whatsappUrl: to ? waLink(to, text) : null } };
-  });
-}
-export async function dismissResetAction(requestId: unknown) {
-  const p = id.safeParse(requestId);
-  if (!p.success) return bad();
-  return run(({ db, userId }) => dismissResetRequest(db, p.data, { id: userId }));
 }

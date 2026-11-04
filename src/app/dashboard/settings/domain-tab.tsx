@@ -32,7 +32,7 @@ export function DomainTab({ allowed, canManage, target, current }: DomainProps &
   const remove = useAct();
 
   if (!allowed) {
-    return <Card className="bg-surface-2"><CardBody className="flex items-start gap-3"><Lock className="mt-0.5 size-5 shrink-0" aria-hidden /><div><p className="font-semibold">الدومين الخاص متاح في الباقات الأعلى</p><p className="text-sm text-muted">اربط متجرك بدومينك (مثل shop.example.com) بدل رابط rukn.ly. ترقّى من صفحة «الاشتراك».</p></div></CardBody></Card>;
+    return <Card className="border-gold"><CardBody className="flex items-start gap-3"><Lock className="mt-0.5 size-5 shrink-0" aria-hidden /><div><p className="font-semibold">الدومين الخاص متاح في الباقة الاحترافية</p><p className="text-sm text-muted">اربط متجرك بدومينك (مثل shop.example.com) بدل رابط rukn.ly. ترقّى من صفحة «الاشتراك».</p></div></CardBody></Card>;
   }
   if (!canManage) return <Card><CardBody className="text-sm text-muted">إدارة الدومين الخاص لمالك المتجر فقط.</CardBody></Card>;
 

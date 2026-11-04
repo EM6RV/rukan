@@ -1,5 +1,3 @@
-import { BASE_TEMPLATE } from "@/lib/plan-limits";
-import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CheckoutForm } from "@/components/store/checkout-form";
@@ -12,7 +10,7 @@ export const metadata: Metadata = { title: "إتمام الطلب", robots: { in
 export default async function CheckoutPage({ params }: { params: Promise<{ key: string }> }) {
   const sf = await loadStore((await params).key);
   if (!sf) notFound();
-  const kit = getKit(canUse(sf.limits, "allTemplates") ? sf.template : BASE_TEMPLATE);
+  const kit = getKit(sf.limits.allTemplates ? sf.template : "simple");
   const rates = await getDeliveryRates(sf.id);
   return (
     <div className={`${kit.cls.container} space-y-8 py-8 md:py-12`}>

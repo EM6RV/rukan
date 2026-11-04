@@ -13,8 +13,7 @@ const read = (p: string) => readFileSync(p, "utf8");
 
 const ACTION_FILES = all.filter((p) => /actions?\.ts$/.test(p) || /-actions\.ts$/.test(p));
 const ROUTES = all.filter((p) => p.endsWith("/route.ts"));
-// lineActionContext = actionContext + اشتراك المنظومة (نفس التحقق وزيادة)
-const AUTH_CALL = /(actionContext|lineActionContext|adminContext|getCurrentUser|requireAdmin|requireStoreContext|runOwner\(|\brun\()/;
+const AUTH_CALL = /(actionContext|adminContext|getCurrentUser|requireAdmin|requireStoreContext|runOwner\(|\brun\()/;
 
 /** أكشنات عامة مقصودة (واجهة المتجر للزباين بدون حساب، والدخول/التسجيل): لازم تكون محمية بـ rate limit بدل الصلاحيات */
 const PUBLIC_ACTIONS: Record<string, RegExp> = {
@@ -25,20 +24,9 @@ const PUBLIC_ACTIONS: Record<string, RegExp> = {
 /** مسارات API عامة مقصودة وسبب كونها آمنة */
 const PUBLIC_ROUTES: Record<string, RegExp> = {
   "src/app/api/health/route.ts": /./, // فحص صحة بدون بيانات
-  "src/app/admin/manifest.webmanifest/route.ts": /adminManifest/, // manifest تطبيق الأدمن: JSON ثابت بدون بيانات
   "src/app/api/media/[id]/route.ts": /isPrivate/, // الصور العامة فقط؛ الخاصة (إيصالات) تتحقق من العضوية
   "src/app/api/s/[key]/receipt/route.ts": /hitRateLimit/, // رفع إيصال من الزبون: rate limit + CSRF
   "src/app/s/[key]/robots.txt/route.ts": /./, "src/app/s/-/sitemap.xml/route.ts": /./, "src/app/s/[key]/sitemap.xml/route.ts": /./,
-  "src/app/s/[key]/hit/route.ts": /hitRateLimit/, // عدّاد زيارات عام: rate limit، بدون بيانات شخصية
-  "src/app/s/[key]/quick/[slug]/route.ts": /isStoreOpen/, // عرض سريع: نفس بيانات صفحة المنتج العامة من كاش المتجر المفتوح
-  "src/app/s/[key]/suggest/route.ts": /isStoreOpen/,
-  "src/app/api/pos/bootstrap/route.ts": /deviceContext\(/, // جهاز تشغيل مفعّل (توكن بصلاحية محدودة بفرعه)
-  "src/app/api/pos/sync/route.ts": /deviceContext\([\s\S]*hitRateLimit/, // جهاز مفعّل + rate limit + CSRF
-  "src/app/api/pos/sales/route.ts": /deviceContext\([\s\S]*hitRateLimit/,
-  "src/app/api/gym/kiosk/route.ts": /deviceContext\([\s\S]*kind !== "kiosk"[\s\S]*hitRateLimit/, // الكشك: توكن جهاز «kiosk» (دخول بس) + rate limit + CSRF
-  "src/app/api/gym/portal/[key]/route.ts": /hitRateLimit[\s\S]*portalMember/, // صفحة العضو: دخول بهاتف+كلمة سر، جلسة hash، rate limit + CSRF، محدودة بعضو واحد
-  "src/app/api/lounge/public/[key]/route.ts": /publicLine\([\s\S]*hitRateLimit/, // الصفحة العامة للصالة: حجز بانتظار التأكيد وتسجيل بطولة، rate limit بالـ IP والرقم + CSRF
-  "src/app/api/lounge/wall/route.ts": /deviceContext\([\s\S]*kind !== "wall"[\s\S]*hitRateLimit/, // شاشة الحائط: توكن جهاز «wall» (عرض بس) + rate limit // جهاز مفعّل: فواتير فرعه بس // اقتراحات بحث عامة: منتجات ظاهرة فقط من كاش المتجر المفتوح
 };
 
 describe("حارس صلاحيات الـ server actions", () => {
@@ -55,7 +43,7 @@ describe("حارس صلاحيات الـ server actions", () => {
       return;
     }
     const isAdmin = (name as string).startsWith("src/app/admin/");
-    expect(src, `${name}: لازم يستعمل ${isAdmin ? "adminContext" : "actionContext/getCurrentUser"}`).toMatch(isAdmin ? /adminContext\(/ : /(actionContext|lineActionContext|getCurrentUser)\(/);
+    expect(src, `${name}: لازم يستعمل ${isAdmin ? "adminContext" : "actionContext/getCurrentUser"}`).toMatch(isAdmin ? /adminContext\(/ : /(actionContext|getCurrentUser)\(/);
     const parts = src.split(/export async function /).slice(1);
     expect(parts.length, `${name}: ما فيه دوال مصدّرة؟`).toBeGreaterThan(0);
     for (const part of parts) {
@@ -81,14 +69,14 @@ describe("حارس مسارات الـ API", () => {
     if (PUBLIC_ROUTES[name as string]) {
       expect(src, `${name}: الحماية المعلنة ناقصة`).toMatch(PUBLIC_ROUTES[name as string]!);
     } else {
-      expect(src, `${name}: مسار بدون تحقق صلاحية ولا هو في قائمة العام`).toMatch(/(actionContext|lineActionContext|adminContext|getCurrentUser|requireAdmin)\(/);
+      expect(src, `${name}: مسار بدون تحقق صلاحية ولا هو في قائمة العام`).toMatch(/(actionContext|adminContext|getCurrentUser|requireAdmin)\(/);
     }
     // أي مسار يغيّر بيانات (POST/PUT/DELETE/PATCH) لازم يفحص الأصل (CSRF)
     if (/export async function (POST|PUT|PATCH|DELETE)/.test(src)) expect(src, `${name}: يغيّر بيانات بدون sameOriginError`).toMatch(/sameOriginError\(/);
   });
 
   it("مسارات GET الحساسة مفحوصة (تصدير/نبضة)", () => {
-    for (const p of ROUTES.filter((r) => /export|pulse/.test(r))) expect(read(p)).toMatch(/(actionContext|lineActionContext)\(/);
+    for (const p of ROUTES.filter((r) => /export|pulse/.test(r))) expect(read(p)).toMatch(/actionContext\(/);
   });
 });
 
@@ -115,7 +103,7 @@ describe("حماية إضافية", () => {
 
   it("كل صفحات dashboard تحدد صلاحيتها (requireStoreContext بصلاحية صريحة)", () => {
     for (const p of all.filter((f) => /dashboard\/.+page\.tsx$/.test(f) && !f.includes("/onboarding/"))) {
-      expect(read(p), `${rel(p)} بدون requireStoreContext`).toMatch(/(requireStoreContext\(|requireLineContext\("[a-z]+", )("[a-z]+")/);
+      expect(read(p), `${rel(p)} بدون requireStoreContext`).toMatch(/requireStoreContext\(("[a-z]+")/);
     }
   });
 });

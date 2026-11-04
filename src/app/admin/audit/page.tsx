@@ -18,7 +18,6 @@ const ACTIONS: Record<string, string> = {
   "site.content": "تعديل محتوى الموقع", "site.content_reset": "إعادة محتوى الموقع للأصل", "platform.settings": "تعديل إعدادات المنصة",
   "domain.add": "إضافة دومين خاص", "domain.verify": "تحقق دومين خاص", "domain.remove": "حذف دومين خاص", "domain.admin_status": "اعتماد دومين يدوياً",
   "user.reset_password": "إعادة تعيين كلمة سر",
-  "password.reset_issue": "إصدار رابط استرجاع كلمة سر", "password.reset_dismiss": "تجاهل طلب استرجاع كلمة سر", "password.reset_done": "استرجاع كلمة سر (تم)",
   "staff.add": "إضافة موظف", "staff.remove": "حذف موظف", "staff.role": "تغيير صلاحية موظف", "staff.password": "تغيير كلمة سر موظف",
 };
 

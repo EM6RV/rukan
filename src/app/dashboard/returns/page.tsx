@@ -33,7 +33,7 @@ export default async function ReturnsPage({ searchParams }: { searchParams: Prom
           <ul className="space-y-2">
             {r.items.map((x) => (
               <li key={x.id}>
-                <Link href={`/dashboard/orders/${x.orderId}`} className="block rounded-xl border border-line bg-surface p-4 shadow-soft transition-colors hover:border-fg/25">
+                <Link href={`/dashboard/orders/${x.orderId}`} className="block rounded-xl border border-line bg-surface p-4 shadow-soft transition-colors hover:border-gold/60">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold"><span dir="ltr">#{x.orderNumber}</span> · {x.customerName}</p>
                     <Badge tone="danger">{RETURN_REASON_LABELS[x.reason as keyof typeof RETURN_REASON_LABELS] ?? x.reason}</Badge>

@@ -64,7 +64,7 @@ describe("الكوبونات", () => {
 
   it("الباقة بدون كوبونات ترفض", async () => {
     const s = await shop("cp-3");
-    expect(await saveCoupon(s.scope, { code: "FREE10", type: "percent", value: 10 }, OFF)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
+    expect(await saveCoupon(s.scope, { code: "FREE10", type: "percent", value: 10 }, OFF)).toEqual({ ok: false, error: expect.stringContaining("نمو") });
   });
 
   it("كوبون مستخدم: الكود ثابت، العدد ما ينزلش عن المستخدم، ما يتمسحش", async () => {
@@ -116,7 +116,7 @@ describe("Pixels", () => {
     expect(await get()).toMatchObject({ metaPixelId: null, tiktokPixelId: null });
     expect(await savePixelSettings(db, s.id, { metaPixelId: "12'); alert(1);//" }, ON)).toEqual({ ok: false, error: expect.stringContaining("Meta Pixel") });
     expect((await savePixelSettings(db, s.id, { tiktokPixelId: "ab" }, ON)).ok).toBe(false);
-    expect(await savePixelSettings(db, s.id, { metaPixelId: "1234567890" }, OFF)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
+    expect(await savePixelSettings(db, s.id, { metaPixelId: "1234567890" }, OFF)).toEqual({ ok: false, error: expect.stringContaining("الاحترافية") });
   });
 });
 

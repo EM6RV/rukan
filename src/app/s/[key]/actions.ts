@@ -1,12 +1,9 @@
 "use server";
 
-import { canUse } from "@/lib/entitlements";
 import { getDb } from "@/db";
 import { z } from "zod";
 import { phoneSchema } from "@/lib/validation";
 import { getClientIp } from "@/server/auth/current";
-import { captureCart } from "@/server/marketing/abandoned-carts";
-import { submitReview } from "@/server/reviews";
 import { checkCoupon, createOrder, trackOrder, type CreatedOrder, type TrackedOrder } from "@/server/orders/create";
 import { hitRateLimit } from "@/server/ratelimit";
 import { invalidateStore } from "@/server/storefront/data";
@@ -15,7 +12,7 @@ import { isStoreOpen, loadStore } from "@/server/storefront/request";
 import type { CartLine } from "@/server/storefront/types";
 import { forStore } from "@/server/tenant";
 
-const cartItems = z.array(z.object({ variantId: z.string().min(1).max(40), quantity: z.number().int().min(1).max(20), note: z.string().max(200).nullish() })).max(50);
+const cartItems = z.array(z.object({ variantId: z.string().min(1).max(40), quantity: z.number().int().min(1).max(20) })).max(50);
 
 async function openStore(key: string) {
   const sf = await loadStore(key);
@@ -34,7 +31,7 @@ export async function checkCouponAction(key: string, code: string, items: unknow
   const sf = await openStore(key);
   const parsed = cartItems.safeParse(items);
   if (!sf || !parsed.success) return { ok: false, error: "السلة غير صحيحة" };
-  if (!canUse(sf.limits, "coupons")) return { ok: false, error: "كود الخصم غير متاح في هذا المتجر" };
+  if (!sf.limits.coupons) return { ok: false, error: "كود الخصم غير متاح في هذا المتجر" };
   const ip = (await getClientIp()) ?? "unknown";
   const limit = await hitRateLimit(getDb(), `coupon:${sf.id}:${ip}`, { limit: 20, windowMs: 10 * 60_000 });
   if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
@@ -84,35 +81,4 @@ export async function trackOrderAction(key: string, orderNumber: string, rawPhon
   if (!Number.isInteger(number) || number <= 0) return NOT_FOUND;
   const order = await trackOrder(forStore(getDb(), sf.id), number, rawPhone);
   return order ? { ok: true, order } : NOT_FOUND;
-}
-
-/**
- * يحفظ سلة الزبون لما يكتب رقمه (علشان البياع يذكّره لو ما كمّل). عام لكن محمي: حد لكل IP وحد لكل رقم،
- * ونتجاهل الأخطاء بصمت علشان ما نزعجش الزبون. الأسعار تتحسب من القاعدة.
- */
-export async function captureCartAction(key: string, input: unknown): Promise<{ ok: boolean }> {
-  const sf = await openStore(key);
-  const parsed = z.object({ phone: z.string(), name: z.string().max(80).nullish(), items: cartItems }).safeParse(input);
-  // المتجر اللي باقته ما فيهاش السلات المتروكة: ما نحفظوش أرقام الزباين أصلاً
-  if (!sf || !parsed.success || !canUse(sf.limits, "abandonedCarts")) return { ok: false };
-  const db = getDb();
-  const ip = (await getClientIp()) ?? "unknown";
-  const byIp = await hitRateLimit(db, `cart:ip:${sf.id}:${ip}`, { limit: 30, windowMs: 60 * 60_000 });
-  const phone = phoneSchema.safeParse(parsed.data.phone);
-  if (!byIp.allowed || !phone.success) return { ok: false };
-  const byPhone = await hitRateLimit(db, `cart:phone:${sf.id}:${phone.data}`, { limit: 12, windowMs: 60 * 60_000 });
-  if (!byPhone.allowed) return { ok: false };
-  const r = await captureCart(forStore(db, sf.id), { ...parsed.data, phone: phone.data });
-  return { ok: r.ok };
-}
-
-/** تقييم منتج من مشترٍ موثّق (رقم الطلبية + الهاتف). يدخل بانتظار موافقة البياع. */
-export async function submitReviewAction(key: string, input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
-  const sf = await openStore(key);
-  if (!sf) return { ok: false, error: "المتجر مقفول مؤقتاً. جرّب بعد شوية." };
-  const ip = (await getClientIp()) ?? "unknown";
-  const limit = await hitRateLimit(getDb(), `review:${sf.id}:${ip}`, { limit: 8, windowMs: 60 * 60_000 });
-  if (!limit.allowed) return { ok: false, error: "محاولات كثيرة. استنى شوية وجرّب مرة ثانية." };
-  const r = await submitReview(forStore(getDb(), sf.id), input);
-  return r.ok ? { ok: true } : r;
 }
