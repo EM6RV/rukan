@@ -1,3 +1,4 @@
+import { postEntry } from "../accounting/ledger";
 import { and, count, desc, eq, inArray, sql, type SQLWrapper } from "drizzle-orm";
 import { z } from "zod";
 import { normalizeLibyanPhone } from "@/lib/phone";
@@ -72,7 +73,7 @@ export async function courierBalance(scope: StoreScope, courierId: string): Prom
 const moneySchema = z.number({ error: "المبلغ لازم يكون رقم" }).int("المبلغ غير صحيح").max(1_000_000_000, "المبلغ كبير بزيادة");
 
 /** «استلمت الفلوس»: المندوب سلّم كاش للبياع، يتنقص من اللي عنده. */
-export function recordSettlement(scope: StoreScope, input: { courierId: string; amount: number; note?: string | null }, actorUserId: string | null): Promise<Result<{ balance: number }>> {
+export function recordSettlement(scope: StoreScope, input: { courierId: string; amount: number; note?: string | null }, actorUserId: string | null, ledgerAccountId: string | null = null): Promise<Result<{ balance: number }>> {
   const amount = moneySchema.min(1, "اكتب مبلغ أكبر من صفر").safeParse(input.amount);
   if (!amount.success) return Promise.resolve(fail(amount.error.issues[0]!.message));
   return scope.transaction(async (tx) => {
@@ -83,6 +84,8 @@ export function recordSettlement(scope: StoreScope, input: { courierId: string; 
     const balance = g("collected") - g("settlement") + g("adjustment");
     if (amount.data > balance) return fail(`المبلغ أكبر من الكاش اللي عند المندوب (${balance / 1000} د.ل).`);
     await tx.insert(t.courierCashEntries, { courierId: input.courierId, type: "settlement", amount: amount.data, note: input.note?.trim() || "تسوية: استلام كاش من المندوب", actorUserId });
+    // وحدة الحسابات شغّالة: الفلوس تدخل الخزنة (أو الحساب المختار) في نفس العملية
+    if (ledgerAccountId) await postEntry(tx, { accountId: ledgerAccountId, amount: amount.data, kind: "courier_settlement", refType: "courier", refId: c.id, memo: `تسوية من ${c.name}`, actorUserId });
     return ok({ balance: balance - amount.data });
   });
 }

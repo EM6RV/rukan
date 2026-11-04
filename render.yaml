@@ -14,7 +14,7 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
-      # --- الدومين (غيّرها لدومينك) ---
+      # --- الدومين (غيّرها لدومينك). لو لسا على دومين Render المجاني: APP_URL=https://<خدمتك>.onrender.com و ROOT_DOMAIN=<خدمتك>.onrender.com (المتاجر تكون /s/slug) ---
       - key: APP_URL
         value: https://rukn.ly
       - key: ROOT_DOMAIN
@@ -34,6 +34,13 @@ services:
       - key: R2_SECRET_ACCESS_KEY
         sync: false
       - key: R2_BUCKET
+        sync: false
+      # --- إشعارات الطلبيات (اختياري): ولّد المفاتيح بـ pnpm push:keys وحطها هنا ---
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
         sync: false
       # --- حساب الأدمن (يُنشأ مرة وحدة؛ احذف ADMIN_PASSWORD بعد أول تشغيل) ---
       - key: ADMIN_NAME

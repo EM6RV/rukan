@@ -2,12 +2,12 @@
 
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
 
-export type CartItem = { variantId: string; quantity: number };
+export type CartItem = { variantId: string; quantity: number; note?: string };
 type Cart = {
   items: CartItem[];
   count: number;
   ready: boolean;
-  add: (variantId: string, quantity?: number) => void;
+  add: (variantId: string, quantity?: number, note?: string) => void;
   setQuantity: (variantId: string, quantity: number) => void;
   remove: (variantId: string) => void;
   clear: () => void;
@@ -23,7 +23,7 @@ const read = (text: string): CartItem[] => {
     return raw
       .filter((i): i is CartItem => !!i && typeof i.variantId === "string" && Number.isInteger(i.quantity) && i.quantity > 0)
       .slice(0, 50)
-      .map((i) => ({ variantId: i.variantId, quantity: Math.min(i.quantity, MAX_QTY) }));
+      .map((i) => ({ variantId: i.variantId, quantity: Math.min(i.quantity, MAX_QTY), ...(typeof i.note === "string" && i.note.trim() ? { note: i.note.trim().slice(0, 200) } : {}) }));
   } catch {
     return [];
   }
@@ -58,9 +58,10 @@ export function CartProvider({ storeId, children }: { storeId: string; children:
   const value = useMemo<Cart>(() => ({
     items, ready,
     count: items.reduce((s, i) => s + i.quantity, 0),
-    add: (variantId, quantity = 1) => {
+    add: (variantId, quantity = 1, note) => {
       const found = items.find((i) => i.variantId === variantId);
-      commit(found ? items.map((i) => (i === found ? { ...i, quantity: Math.min(MAX_QTY, i.quantity + quantity) } : i)) : [...items, { variantId, quantity: Math.min(MAX_QTY, quantity) }]);
+      const n = note?.trim() ? { note: note.trim().slice(0, 200) } : {};
+      commit(found ? items.map((i) => (i === found ? { ...i, ...n, quantity: Math.min(MAX_QTY, i.quantity + quantity) } : i)) : [...items, { variantId, quantity: Math.min(MAX_QTY, quantity), ...n }]);
     },
     setQuantity: (variantId, quantity) => commit(items.map((i) => (i.variantId === variantId ? { ...i, quantity: Math.max(1, Math.min(MAX_QTY, quantity)) } : i))),
     remove: (variantId) => commit(items.filter((i) => i.variantId !== variantId)),

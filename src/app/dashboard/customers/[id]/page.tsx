@@ -10,6 +10,12 @@ import { formatMoney } from "@/lib/money";
 import { getCustomerDetail } from "@/server/orders/customers";
 import { requireStoreContext } from "@/server/store-context";
 import { FlagForm } from "./flag-form";
+import { LedgerPanel } from "./ledger-panel";
+import { formatDate } from "@/lib/datetime";
+import { toWhatsappNumber } from "@/lib/phone";
+import { waLink } from "@/lib/whatsapp";
+import { balanceOf, customerStatement, LEDGER_KIND_LABELS, statementMessage } from "@/server/pos/customers";
+import { OPS_LINES } from "@/lib/product-lines";
 
 export const metadata: Metadata = { title: "بيانات الزبون" };
 
@@ -19,6 +25,11 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   const d = await getCustomerDetail(ctx.scope, id);
   if (!d) notFound();
   const { customer: c, orders } = d;
+  // دفتر الدين والمحفظة: يبان لو فيه منظومة تشغيل (كاشير/صالة/نادي) أو حركات
+  const showLedger = OPS_LINES.some((l) => ctx.lines[l].subscribed);
+  const [bal, statement] = showLedger ? await Promise.all([balanceOf(ctx.scope, c.id), customerStatement(ctx.scope, c.id, "debt", 100)]) : [null, []];
+  const wa = toWhatsappNumber(c.phone);
+  const statementLink = bal && wa ? waLink(wa, statementMessage({ shopName: ctx.store.name, customerName: c.name, balance: bal.debt, entries: statement.map((e) => ({ at: formatDate(e.at), label: LEDGER_KIND_LABELS[e.kind], amount: e.amount })) }, formatMoney)) : null;
 
   return (
     <div className="space-y-5">
@@ -33,6 +44,10 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         ))}
       </div>
       <Card><CardBody><FlagForm id={c.id} flag={c.flag} notes={c.notes ?? ""} writable={ctx.access.writable} /></CardBody></Card>
+      {bal && (
+        <LedgerPanel customerId={c.id} balances={bal} creditLimit={c.creditLimit} priceLevel={c.priceLevel} whatsapp={statementLink} writable={ctx.access.writable}
+          entries={statement.map((e) => ({ id: e.id, at: formatDate(e.at), label: LEDGER_KIND_LABELS[e.kind], method: e.method, amount: e.amount, balanceAfter: e.balanceAfter, note: e.note }))} />
+      )}
       <Card>
         <CardHeader title="طلبياته" />
         <ul className="divide-y divide-line">

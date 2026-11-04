@@ -26,21 +26,21 @@ const newUser = async () =>
 
 beforeAll(async () => {
   ({ db, close } = await makeTestDb());
-  await db.insert(plans).values({ slug: "growth", nameAr: "نمو", priceMonthly: 1, priceYearly: 1, limits: ALL });
+  await db.insert(plans).values({ slug: "growth", nameAr: "نمو", prices: { m1: 1 }, limits: ALL });
   await db.insert(cities).values([{ nameAr: "طرابلس", region: "west" }, { nameAr: "بنغازي", region: "east" }, { nameAr: "سبها", region: "south" }]);
 });
 afterAll(() => close());
 
 describe("إنشاء المتجر", () => {
-  it("ينشئ المتجر بمحتوى افتراضي كامل وتجربة 14 يوم وباقة نمو", async () => {
+  it("ينشئ المتجر بمحتوى افتراضي كامل وتجربة 3 أيام وباقة التجربة (نمو)", async () => {
     const u = await newUser();
     const r = await createStoreForUser(db, { userId: u.id, name: "عطور سارة", slug: "sara-perfume" });
     if (!r.ok) throw new Error(r.error);
     const store = (await db.select().from(stores).where(eq(stores.id, r.data.storeId)).get())!;
     expect(store).toMatchObject({ slug: "sara-perfume", status: "trial", onboardingStep: 2, onboardedAt: null, nextOrderNumber: 1001 });
     const days = (store.trialEndsAt!.getTime() - Date.now()) / 86_400_000;
-    expect(days).toBeGreaterThan(13.9);
-    expect(days).toBeLessThanOrEqual(14);
+    expect(days).toBeGreaterThan(2.9);
+    expect(days).toBeLessThanOrEqual(3);
     expect(store.planId).not.toBeNull();
 
     const member = await db.select().from(storeMembers).where(eq(storeMembers.storeId, store.id)).get();
@@ -49,7 +49,7 @@ describe("إنشاء المتجر", () => {
     const s = forStore(db, store.id);
     expect((await s.from(t.storePages)).map((p) => p.slug).sort()).toEqual(["about", "contact", "privacy", "returns", "shipping"]);
     expect((await s.from(t.storeHomeSections)).map((x) => x.type)).toEqual(["hero", "categories", "featured"]);
-    expect((await s.from(t.whatsappTemplates)).length).toBe(7);
+    expect((await s.from(t.whatsappTemplates)).length).toBe(8);
     const pm = await s.from(t.storePaymentMethods);
     expect(pm.find((m) => m.method === "cod")!.isEnabled).toBe(true);
     expect(pm.find((m) => m.method === "bank_transfer")!.isEnabled).toBe(false);
@@ -102,12 +102,12 @@ describe("خطوات المعالج", () => {
     expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ name: "اسم جديد", slug: "flow-renamed" });
 
     const type = await saveBusinessType(db, id, "perfume", ALL);
-    expect(type).toMatchObject({ ok: true, data: { template: "elegant" } });
+    expect(type).toMatchObject({ ok: true, data: { template: "makhmal" } });
     expect((await forStore(db, id).from(t.storeSettings))[0]).toMatchObject({ primaryColor: "#2B1B3D", accentColor: "#C19E58" });
 
     const [logo] = await db.insert(media).values({ storeId: id, mime: "image/webp", size: 1, driver: "turso" }).returning();
-    expect((await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: logo!.id }, ALL)).ok).toBe(true);
-    expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ template: "bold", logoMediaId: logo!.id });
+    expect((await saveIdentity(db, id, { template: "nabd", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: logo!.id }, ALL)).ok).toBe(true);
+    expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ template: "nabd", logoMediaId: logo!.id });
 
     const tripoli = await cityId("طرابلس");
     expect((await saveDelivery(db, id, { cityId: tripoli, feeInCity: 10_000, feeOther: 25_000, freeDeliveryOver: 300_000, bankTransfer: true, bankName: "الجمهورية", accountNumber: "123" })).ok).toBe(true);
@@ -141,17 +141,17 @@ describe("خطوات المعالج", () => {
     expect(await forStore(db, id).count(t.deliveryRates)).toBe(3);
   });
 
-  it("باقة بداية: قالب «جريء» ممنوع، والاقتراح يرجع للبسيط", async () => {
+  it("باقة بدون كل القوالب: قالب «جريء» ممنوع، والاقتراح يرجع للبسيط", async () => {
     const id = await fresh("starter-store");
-    expect(await saveBusinessType(db, id, "clothing", STARTER)).toMatchObject({ ok: true, data: { template: "simple" } });
-    expect(await saveIdentity(db, id, { template: "bold", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("نمو") });
-    expect((await saveIdentity(db, id, { template: "simple", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).ok).toBe(true);
+    expect(await saveBusinessType(db, id, "clothing", STARTER)).toMatchObject({ ok: true, data: { template: "naqa" } });
+    expect(await saveIdentity(db, id, { template: "nabd", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
+    expect((await saveIdentity(db, id, { template: "naqa", primaryColor: "#111111", accentColor: "#E4572E", logoMediaId: null }, STARTER)).ok).toBe(true);
   });
 
   it("لوجو من متجر ثاني يترفض، ومدينة غلط تترفض", async () => {
     const [a, b] = [await fresh("owner-a-1"), await fresh("owner-b-1")];
     const [foreign] = await db.insert(media).values({ storeId: b, mime: "image/webp", size: 1, driver: "turso" }).returning();
-    expect(await saveIdentity(db, a, { template: "simple", primaryColor: "#111111", accentColor: "#222222", logoMediaId: foreign!.id }, ALL)).toEqual({ ok: false, error: expect.stringContaining("اللوجو") });
+    expect(await saveIdentity(db, a, { template: "naqa", primaryColor: "#111111", accentColor: "#222222", logoMediaId: foreign!.id }, ALL)).toEqual({ ok: false, error: expect.stringContaining("اللوجو") });
     expect((await saveDelivery(db, a, { cityId: "nope", feeInCity: 1, feeOther: 1, freeDeliveryOver: null, bankTransfer: false })).ok).toBe(false);
   });
 
@@ -196,9 +196,9 @@ describe("إعدادات المتجر", () => {
   });
 
   it("عام: اسم ونشاط وقالب وألوان مع حد الباقة", async () => {
-    const base = { name: "اسم محدث", businessType: "beauty", template: "elegant", primaryColor: "#7A2E4A", accentColor: "#E3B7A0", logoMediaId: null };
+    const base = { name: "اسم محدث", businessType: "beauty", template: "makhmal", primaryColor: "#7A2E4A", accentColor: "#E3B7A0", logoMediaId: null };
     expect((await saveGeneralSettings(db, id, base, ALL)).ok).toBe(true);
-    expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ name: "اسم محدث", businessType: "beauty", template: "elegant" });
+    expect((await db.select().from(stores).where(eq(stores.id, id)).get())).toMatchObject({ name: "اسم محدث", businessType: "beauty", template: "makhmal" });
     expect((await saveGeneralSettings(db, id, base, STARTER)).ok).toBe(false);
     expect((await saveGeneralSettings(db, id, { ...base, primaryColor: "red" }, ALL)).ok).toBe(false);
     expect((await saveGeneralSettings(db, id, { ...base, businessType: "x" }, ALL)).ok).toBe(false);
@@ -264,5 +264,12 @@ describe("أدوات صغيرة", () => {
   it("رابط المتجر", () => {
     expect(storeUrl("sara", { ROOT_DOMAIN: "rukn.ly", APP_URL: "https://rukn.ly" })).toBe("https://sara.rukn.ly");
     expect(storeUrl("sara", { ROOT_DOMAIN: "localhost:3000", APP_URL: "http://localhost:3000/" })).toBe("http://localhost:3000/s/sara");
+    // الإعدادات غلط (rukn.ly) لكن البياع فاتح اللوحة من دومين Render المجاني: الرابط يتبني على نفس الأصل
+    const wrong = { ROOT_DOMAIN: "rukn.ly", APP_URL: "https://rukn.ly" };
+    expect(storeUrl("sara", wrong, { host: "rukn-abc.onrender.com", proto: "https" })).toBe("https://rukn-abc.onrender.com/s/sara");
+    expect(storeUrl("sara", wrong, { host: "localhost:3000", proto: "http" })).toBe("http://localhost:3000/s/sara");
+    // فاتح من الدومين الأساسي الصحيح: ساب دومين عادي
+    expect(storeUrl("sara", wrong, { host: "rukn.ly", proto: "https" })).toBe("https://sara.rukn.ly");
+    expect(storeUrl("sara", wrong, { host: "www.rukn.ly", proto: "https" })).toBe("https://sara.rukn.ly");
   });
 });

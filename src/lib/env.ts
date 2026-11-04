@@ -20,6 +20,17 @@ const schema = z.object({
   TRUST_CLOUDFLARE: z.enum(["1", "0"]).optional(),
   // هدف CNAME للدومينات الخاصة (مثلاً rukn-web.onrender.com). الافتراضي: cname.ROOT_DOMAIN
   CUSTOM_DOMAIN_TARGET: z.string().optional(),
+  // إشعارات Web Push (اختيارية): نولّد المفاتيح بـ: pnpm push:keys. بدونها الإشعارات تتعطل بهدوء.
+  // التحقق من الهاتف بكود: off (الافتراضي، التسجيل يمشي بدون كود) | sms | whatsapp | console (للتجربة المحلية بس: يطبع الكود)
+  PHONE_VERIFY_CHANNEL: z.enum(["off", "sms", "whatsapp", "console"]).default("off"),
+  SMS_PROVIDER: z.string().optional(),
+  SMS_API_KEY: z.string().optional(),
+  SMS_SENDER: z.string().optional(),
+  WHATSAPP_OTP_TOKEN: z.string().optional(),
+  WHATSAPP_OTP_PHONE_ID: z.string().optional(),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
   // استثناءات الإنتاج المقصودة
   ALLOW_LOCAL_DB: z.enum(["1", "0"]).optional(),
   STRICT_PRODUCTION: z.enum(["1", "0"]).optional(),

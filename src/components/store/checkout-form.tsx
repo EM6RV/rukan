@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/money";
 import { trackPixel } from "@/lib/pixels";
 import type { DeliveryRate } from "@/server/storefront/types";
-import { checkCouponAction, placeOrderAction } from "@/app/s/[key]/actions";
+import { captureCartAction, checkCouponAction, placeOrderAction } from "@/app/s/[key]/actions";
 import { useResolvedCart } from "./cart-view";
 import { useStore } from "./store-context";
 import { getKit } from "./templates";
@@ -67,6 +67,18 @@ function CheckoutInner({ initial, rates, payments, defaultCityId }: { initial: S
   const total = afterDiscount + (fee ?? 0);
   const bank = payments.find((p) => p.method === "bank_transfer");
   const bankCfg = (bank?.config ?? {}) as { bankName?: string; accountHolder?: string; accountNumber?: string; note?: string };
+
+  // لما الزبون يكتب رقمه ويطلع من الخانة: نحفظ سلته (للتذكير لو ما كمّل). مرة لكل رقم/سلة.
+  const captured = useRef("");
+  function captureCart() {
+    const digits = phone.replace(/[\s-]/g, "");
+    if (!/^(\+?218|0)?9[1-5]\d{7}$/.test(digits) || lines.length === 0) return;
+    const items = lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
+    const sig = digits + JSON.stringify(items);
+    if (captured.current === sig) return;
+    captured.current = sig;
+    void captureCartAction(store.key, { phone: digits, name: name.trim() || null, items }).catch(() => {});
+  }
 
   const tracked = useRef(false);
   useEffect(() => {
@@ -144,8 +156,8 @@ function CheckoutInner({ initial, rates, payments, defaultCityId }: { initial: S
           <div className={field}><label htmlFor="co-name" className={label}>الاسم</label><input id="co-name" required minLength={2} maxLength={80} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className={kit.cls.input} /></div>
           <div className={field}>
             <label htmlFor="co-phone" className={label}>رقم الهاتف</label>
-            <input id="co-phone" required type="tel" inputMode="tel" autoComplete="tel" dir="ltr" placeholder="09X XXX XXXX" value={phone} onChange={(e) => setPhone(e.target.value)} className={cn(kit.cls.input, "text-right")} />
-            <p className="text-xs text-(--sp-muted)">رقم ليبي: 091 / 092 / 093 / 094 / 095 أو +218</p>
+            <input id="co-phone" required type="tel" inputMode="tel" autoComplete="tel" dir="ltr" placeholder="09X XXX XXXX" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={captureCart} className={cn(kit.cls.input, "text-right")} />
+            <p className="text-xs text-(--sp-muted)">رقم ليبي: 091 / 092 / 093 / 094 / 095 أو +218. لو ما كمّلت الطلب، ممكن المتجر يتواصل معاك على واتساب لتذكيرك بسلتك.</p>
           </div>
           <div className={field}>
             <label htmlFor="co-city" className={label}>المدينة</label>
@@ -203,7 +215,7 @@ function CheckoutInner({ initial, rates, payments, defaultCityId }: { initial: S
                 {l.image && <MediaImage id={l.image} alt="" sizes="56px" widths={[160]} />}
                 <span className="absolute end-0 top-0 min-w-5 bg-(--sp) px-1 text-center text-[11px] font-bold leading-5 text-(--sp-fg)">{l.quantity}</span>
               </span>
-              <span className="min-w-0 flex-1"><span className="line-clamp-1 font-medium">{l.name}</span>{l.variantLabel && <span className="block text-xs text-(--sp-muted)">{l.variantLabel}</span>}</span>
+              <span className="min-w-0 flex-1"><span className="line-clamp-1 font-medium">{l.name}</span>{l.variantLabel && <span className="block text-xs text-(--sp-muted)">{l.variantLabel}</span>}{l.note && <span className="block text-xs text-(--sp-muted)">✎ {l.note}</span>}</span>
               <span className="font-semibold">{formatMoney(l.price * l.quantity)}</span>
             </li>
           ))}

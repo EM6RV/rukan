@@ -30,7 +30,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       <div><h1 className="text-2xl">الزبائن</h1><p className="text-muted">قائمة تتبني تلقائياً من الطلبيات. علّم الزبون المزعج باش تنتبه له.</p></div>
       <nav aria-label="تصفية الزبائن" className="flex flex-wrap gap-2">
         {[{ key: undefined, label: "الكل" }, { key: "problematic", label: "مزعجين" }, { key: "returns", label: "كثير الإرجاع" }].map((t) => (
-          <Link key={t.label} href={href({ flag: t.key, page: undefined })} aria-current={flag === t.key ? "page" : undefined} className={cn("rounded-full border px-3.5 py-1.5 text-sm font-medium", flag === t.key ? "border-gold bg-gold/20" : "border-line bg-surface text-muted hover:text-fg")}>{t.label}</Link>
+          <Link key={t.label} href={href({ flag: t.key, page: undefined })} aria-current={flag === t.key ? "page" : undefined} className={cn("rounded-full border px-3.5 py-1.5 text-sm font-medium", flag === t.key ? "border-fg/60 bg-surface-2" : "border-line bg-surface text-muted hover:text-fg")}>{t.label}</Link>
         ))}
       </nav>
       <form method="get" action="/dashboard/customers" className="flex gap-2">
@@ -44,7 +44,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         <ul className="space-y-2">
           {r.items.map((c) => (
             <li key={c.id}>
-              <Link href={`/dashboard/customers/${c.id}`} className="grid gap-1 rounded-xl border border-line bg-surface p-4 shadow-soft transition-colors hover:border-gold/60 sm:grid-cols-[1fr_auto] sm:items-center">
+              <Link href={`/dashboard/customers/${c.id}`} className="grid gap-1 rounded-xl border border-line bg-surface p-4 shadow-soft transition-colors hover:border-fg/25 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-2 font-semibold">{c.name}{c.flag === "problematic" && <Badge tone="danger"><TriangleAlert className="size-3" aria-hidden /> مزعج</Badge>}{c.returnedCount >= 2 && c.returnedCount * 10 >= c.ordersCount * 3 && <Badge tone="gold">كثير الإرجاع</Badge>}</p>
                   <p dir="ltr" className="text-start text-sm text-muted">{c.phone}</p>

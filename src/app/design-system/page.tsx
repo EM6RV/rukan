@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Inbox } from "lucide-react";
+import { Banknote, Bell, Inbox, Package, Search, Settings, ShoppingBag, Truck } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { EmptyState, Skeleton, Spinner } from "@/components/ui/feedback";
+import { EmptyState, Skeleton, SkeletonRow, SkeletonStats, Spinner } from "@/components/ui/feedback";
+import { StatCard } from "@/components/ui/stat-card";
+import { UsageMeter } from "@/components/ui/usage-meter";
 import { Input, PasswordInput, PhoneInput, Select, Textarea } from "@/components/ui/field";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -36,6 +38,15 @@ export default function DesignSystemPage() {
           {swatches.map(([name, cls]) => (
             <div key={name} className="text-center text-sm"><div className={`${cls} size-16 rounded-lg shadow-soft ring-1 ring-line`} />{name}</div>
           ))}
+        </CardBody></Card>
+
+        <Card><CardHeader title="المسافات" description="مقاييس ثابتة بس: 4 / 8 / 12 / 16 / 24 / 32 / 48" /><CardBody className="flex flex-wrap items-end gap-4">
+          {[1, 2, 3, 4, 6, 8, 12].map((n) => <div key={n} className="text-center text-xs text-muted"><div className="mb-1 bg-teal/30" style={{ width: n * 4, height: n * 4 }} />{n * 4}</div>)}
+        </CardBody></Card>
+
+        <Card><CardHeader title="الأيقونات" description="مكتبة lucide، سُمك 1.75، ومقاسين: 16 للنص و20 للقوائم" /><CardBody className="flex flex-wrap gap-4 text-fg">
+          {[ShoppingBag, Package, Truck, Banknote, Bell, Search, Settings].map((I, i) => <I key={i} className="size-5" aria-hidden />)}
+          {[ShoppingBag, Package, Truck, Banknote].map((I, i) => <I key={`s${i}`} className="size-4 text-muted" aria-hidden />)}
         </CardBody></Card>
 
         <Card><CardHeader title="الخطوط" /><CardBody className="space-y-2">
@@ -72,8 +83,20 @@ export default function DesignSystemPage() {
           </TBody>
         </Table>
 
-        <Card><CardHeader title="تحميل وحالة فاضية" /><CardBody className="space-y-4">
+        <section aria-label="بطاقات الأرقام" className="space-y-3">
+          <h2 className="text-lg">بطاقات الأرقام والاستهلاك</h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard icon={<Inbox />} label="طلبيات جديدة" value={4} href="#" />
+            <StatCard tone="teal" icon={<Banknote />} label="فلوسك عند المندوبين" value={formatMoney(382_000)} hint="+ 152 د.ل في الطريق" />
+            <StatCard icon={<Package />} label="المنتجات" value={48} usage={{ used: 48, limit: 50, unit: "منتج" }} />
+          </div>
+          <Card><CardBody className="space-y-4"><UsageMeter used={12} limit={200} unit="منتج" /><UsageMeter used={50} limit={50} unit="منتج" /><UsageMeter used={3} limit={null} unit="موظف" /></CardBody></Card>
+        </section>
+
+        <Card><CardHeader title="تحميل وحالة فاضية" description="كل صفحة عندها هيكل تحميل بنفس شكل المحتوى" /><CardBody className="space-y-4">
           <div className="flex items-center gap-3"><Spinner /><Skeleton className="h-4 w-48" /></div>
+          <SkeletonStats n={2} />
+          <SkeletonRow thumb />
           <EmptyState icon={<Inbox className="size-6" />} title="ما فيه طلبيات" description="الطلبيات الجديدة تظهر هنا." action={<Button size="sm">إضافة منتج</Button>} />
         </CardBody></Card>
 

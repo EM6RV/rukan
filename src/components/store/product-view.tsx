@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Minus, Plus, Share2, ShoppingBag } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { mediaUrl } from "@/lib/media-url";
+import { formatMoney } from "@/lib/money";
 import { discountPercent } from "@/lib/pricing";
 import { trackPixel } from "@/lib/pixels";
 import type { ProductDetail } from "@/server/storefront/types";
+import { FavoriteButton } from "./favorites";
 import { useCart } from "./cart-context";
 import { useStore } from "./store-context";
 import { getKit } from "./templates";
@@ -18,6 +21,13 @@ import { MediaImage, Price } from "./ui";
 function Gallery({ images, name, frame }: { images: string[]; name: string; frame: string }) {
   const track = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
+  const [zoom, setZoom] = useState(false);
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setZoom(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoom]);
 
   const go = (i: number) => {
     const el = track.current;
@@ -37,9 +47,9 @@ function Gallery({ images, name, frame }: { images: string[]; name: string; fram
   return (
     <div className="space-y-3">
       <div className={cn("relative overflow-hidden", frame)}>
-        <div ref={track} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-roledescription="معرض صور" role="group">
+        <div ref={track} tabIndex={0} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-roledescription="معرض صور" role="group">
           {images.map((id, i) => (
-            <div key={id} className="aspect-square w-full shrink-0 snap-center md:aspect-[4/5]">
+            <div key={id} className="aspect-square w-full shrink-0 cursor-zoom-in snap-center md:aspect-[4/5]" onClick={() => setZoom(true)}>
               <MediaImage id={id} alt={`${name} - صورة ${i + 1}`} priority={i === 0} sizes="(min-width: 1024px) 50vw, 100vw" widths={[640, 960, 1280]} />
             </div>
           ))}
@@ -50,6 +60,13 @@ function Gallery({ images, name, frame }: { images: string[]; name: string; fram
           </div>
         )}
       </div>
+      {zoom && (
+        <div role="dialog" aria-modal="true" aria-label="تكبير الصورة" className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/85 p-4" onClick={() => setZoom(false)}>
+          { }
+          <img src={mediaUrl(images[index] ?? images[0]!, 1600)} alt={name} className="max-h-full max-w-full object-contain" />
+          <button type="button" aria-label="إغلاق" className="absolute end-4 top-4 flex size-11 items-center justify-center rounded-full bg-white/90 text-xl text-black">×</button>
+        </div>
+      )}
       {images.length > 1 && (
         <div className="hidden gap-2 lg:flex">
           {images.map((id, i) => (
@@ -64,7 +81,7 @@ function Gallery({ images, name, frame }: { images: string[]; name: string; fram
   );
 }
 
-export function ProductView({ product }: { product: ProductDetail }) {
+export function ProductView({ product, quick = false }: { product: ProductDetail; quick?: boolean }) {
   const store = useStore();
   const kit = getKit(store.template);
   const cart = useCart();
@@ -79,6 +96,8 @@ export function ProductView({ product }: { product: ProductDetail }) {
   const [selected, setSelected] = useState<Record<string, string>>(initial);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [note, setNote] = useState("");
+  const pz = product.personalization;
 
   const variant = useMemo(() => {
     const ids = Object.values(selected);
@@ -91,7 +110,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
 
   const stock = variant?.stock ?? 0;
   const maxQty = Math.max(1, Math.min(stock, 20));
-  const price = variant?.price ?? product.price;
+  const price = (variant?.price ?? product.price) + (pz && note.trim() ? pz.price : 0);
   const compareAt = variant ? variant.compareAt : product.compareAt;
   const canBuy = !!variant && stock > 0;
 
@@ -100,7 +119,7 @@ export function ProductView({ product }: { product: ProductDetail }) {
   function addToCart(goCheckout: boolean) {
     if (!variant || stock <= 0) return;
     const q = Math.min(qty, maxQty);
-    cart.add(variant.id, q);
+    cart.add(variant.id, q, pz ? note : undefined);
     trackPixel({ name: "AddToCart", value: price * q, id: product.id, contentName: product.name, quantity: q });
     if (goCheckout) return router.push(store.href("/checkout"));
     setAdded(true);
@@ -136,8 +155,10 @@ export function ProductView({ product }: { product: ProductDetail }) {
       <div className="space-y-6">
         <div className="space-y-3">
           {pct && <span className={cn("inline-block", kit.cls.badge)}>خصم {pct}%</span>}
-          <h1 className={cn(kit.cls.heading, "!text-2xl md:!text-4xl")}>{product.name}</h1>
+          {quick ? <h2 className={cn(kit.cls.heading, "!text-2xl")}>{product.name}</h2> : <h1 className={cn(kit.cls.heading, "!text-2xl md:!text-4xl")}>{product.name}</h1>}
           <Price price={price} compareAt={compareAt} size="lg" />
+          {product.brand && <p className="text-sm text-(--sp-muted)">من <Link href={store.href(`/search?brand=${encodeURIComponent(product.brand.slug)}`)} className="font-semibold underline-offset-4 hover:underline">{product.brand.name}</Link></p>}
+          {product.tags.length > 0 && <ul className="flex flex-wrap gap-2" aria-label="وسوم">{product.tags.map((tg) => <li key={tg}><Link href={store.href(`/search?tag=${encodeURIComponent(tg)}`)} className="rounded-full bg-(--sp-soft) px-3 py-1 text-xs">#{tg}</Link></li>)}</ul>}
         </div>
 
         {product.options.map((o) => {
@@ -167,6 +188,14 @@ export function ProductView({ product }: { product: ProductDetail }) {
           );
         })}
 
+        {pz && (
+          <div className="space-y-2">
+            <label htmlFor={quick ? "pz-q" : "pz"} className="text-sm font-semibold">{pz.label}{pz.price > 0 && <span className="font-normal text-(--sp-muted)"> (+ {formatMoney(pz.price)})</span>} <span className="font-normal text-(--sp-muted)">اختياري</span></label>
+            <input id={quick ? "pz-q" : "pz"} value={note} maxLength={pz.maxChars} onChange={(e) => setNote(e.target.value)} className={kit.cls.input} placeholder={`حتى ${pz.maxChars} حرف`} />
+            <p className="text-xs text-(--sp-muted)">{note.length}/{pz.maxChars}</p>
+          </div>
+        )}
+        {product.isBundle && <p className="text-sm font-semibold text-(--sa-text)">باقة مجمعة بسعر خاص</p>}
         {variant && stock > 0 && stock <= 5 && <p className="text-sm font-semibold text-(--sa-text)">باقي {stock} فقط!</p>}
         {(!variant || stock <= 0) && <p role="status" className="text-sm font-semibold text-red-700">{variant ? "نفد من المخزون" : "هذا الاختيار غير متوفر"}</p>}
 
@@ -194,14 +223,20 @@ export function ProductView({ product }: { product: ProductDetail }) {
             <div className="whitespace-pre-line leading-8">{product.description}</div>
           </div>
         )}
-        <button type="button" onClick={share} className="inline-flex items-center gap-2 text-sm font-medium text-(--sp-muted) hover:text-(--sp)"><Share2 className="size-4" /> مشاركة المنتج</button>
+        <div className="flex items-center gap-3">
+          <FavoriteButton product={{ id: product.id, slug: product.slug, name: product.name, price: product.price, compareAt: product.compareAt, thumb: product.images[0] ?? null }} />
+          <button type="button" onClick={share} className="inline-flex items-center gap-2 text-sm font-medium text-(--sp-muted) hover:text-(--sp)"><Share2 className="size-4" /> مشاركة المنتج</button>
+          {store.pages.some((p) => p.slug === "size-guide") && product.options.some((o) => /مقاس|size/i.test(o.name)) && (
+            <a href={store.href("/page/size-guide")} className="text-sm font-medium underline underline-offset-4">دليل المقاسات</a>
+          )}
+        </div>
       </div>
 
       {/* شريط الشراء الثابت على الموبايل */}
-      <div className={cn("fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-(--sp-line) bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur transition-transform lg:hidden", ctaVisible && "pointer-events-none translate-y-full")} aria-hidden={ctaVisible}>
+      {!quick && <div className={cn("fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-(--sp-line) bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur transition-transform lg:hidden", ctaVisible && "pointer-events-none translate-y-full")} inert={ctaVisible}>
         <div className="min-w-0 flex-1"><Price price={price} compareAt={compareAt} size="md" /></div>
         <button type="button" onClick={() => addToCart(false)} disabled={!canBuy} className={cn(kit.cls.btn, "!h-11 shrink-0 !px-6")}>{canBuy ? "أضف للسلة" : "نفد"}</button>
-      </div>
+      </div>}
     </div>
   );
 }

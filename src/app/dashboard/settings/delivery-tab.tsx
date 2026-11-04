@@ -7,20 +7,24 @@ import { Input } from "@/components/ui/field";
 import { Toggle } from "@/components/ui/toggle";
 import { REGION_LABELS } from "@/lib/constants";
 import { dirhamToInput, inputToDirham } from "@/lib/money";
-import { saveDeliveryAction } from "./actions";
+import { errorClass, useAct } from "@/components/dashboard/use-act";
+import { saveCouriersSettingAction, saveDeliveryAction } from "./actions";
 import { Footer, useSave } from "./settings-shared";
 
 export type DeliveryProps = {
   freeDeliveryOver: number | null;
+  useCouriers: boolean;
   rows: { cityId: string; cityName: string; region: string; fee: number; etaText: string; isActive: boolean }[];
 };
 
-export function DeliveryTab({ rows, freeDeliveryOver, writable }: DeliveryProps & { writable: boolean }) {
+export function DeliveryTab({ rows, freeDeliveryOver, useCouriers, writable }: DeliveryProps & { writable: boolean }) {
   const [list, setList] = useState(() => rows.map((r) => ({ ...r, fee: dirhamToInput(r.fee) })));
   const [free, setFree] = useState(dirhamToInput(freeDeliveryOver));
   const [bulk, setBulk] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const { save, pending, error } = useSave(saveDeliveryAction);
+  const [couriersOn, setCouriersOn] = useState(useCouriers);
+  const couriersAct = useAct();
   const patch = (id: string, p: Partial<(typeof list)[number]>) => setList((l) => l.map((r) => (r.cityId === id ? { ...r, ...p } : r)));
 
   function submit() {
@@ -38,6 +42,16 @@ export function DeliveryTab({ rows, freeDeliveryOver, writable }: DeliveryProps 
 
   const regions = [...new Set(list.map((r) => r.region))];
   return (
+    <div className="space-y-4">
+    <Card><CardBody className="space-y-3">
+      <Toggle
+        label="أستعمل مندوبين أو شركة توصيل"
+        hint="شغّالة: تظهر صفحة «المندوبون والكاش» وتسليم الطلبية لمندوب وكاش المندوبين. مقفلة: تخفيها وتسلّم الطلبيات مباشرة (تأكيد ← تم التوصيل). ما نمسح مندوبين ولا كاش قديم."
+        checked={couriersOn} disabled={!writable || couriersAct.pending}
+        onChange={(v) => { setCouriersOn(v); couriersAct.act(() => saveCouriersSettingAction({ useCouriers: v }), v ? "شغّلنا المندوبين والكاش" : "قفلنا المندوبين والكاش", undefined); }}
+      />
+      {couriersAct.error && <p role="alert" className={errorClass}>{couriersAct.error}</p>}
+    </CardBody></Card>
     <Card><CardBody>
       <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -65,5 +79,6 @@ export function DeliveryTab({ rows, freeDeliveryOver, writable }: DeliveryProps 
         <Footer pending={pending} error={localError ?? error} disabled={!writable} />
       </form>
     </CardBody></Card>
+    </div>
   );
 }

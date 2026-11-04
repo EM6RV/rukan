@@ -5,7 +5,7 @@ import { isDeployed, productionProblems, type Env } from "@/lib/env";
 import { sameOriginError } from "@/server/origin";
 import { resolveHost } from "@/lib/host";
 
-const base: Env = { NODE_ENV: "production", APP_URL: "https://rukn.ly", ROOT_DOMAIN: "rukn.ly", DATABASE_URL: "libsql://x.turso.io", DATABASE_AUTH_TOKEN: "tok", STORAGE_DRIVER: "turso", ADMIN_NAME: "a", TRUSTED_PROXY_HOPS: 1 };
+const base: Env = { NODE_ENV: "production", APP_URL: "https://rukn.ly", ROOT_DOMAIN: "rukn.ly", DATABASE_URL: "libsql://x.turso.io", DATABASE_AUTH_TOKEN: "tok", STORAGE_DRIVER: "turso", ADMIN_NAME: "a", TRUSTED_PROXY_HOPS: 1, PHONE_VERIFY_CHANNEL: "off" };
 const render = { RENDER: "true" };
 
 describe("عنوان العميل خلف البروكسي", () => {

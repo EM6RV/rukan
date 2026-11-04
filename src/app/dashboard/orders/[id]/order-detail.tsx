@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, Check, CheckCircle2, ChevronDown, FileText, MessageCircle, PackageCheck, Printer, RotateCcw, Truck, TriangleAlert } from "lucide-react";
 import { OrderStatusBadge, PaymentBadge } from "@/components/dashboard/order-status";
@@ -10,6 +10,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Input, Select, Textarea } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { SHIPPING_COMPANIES } from "@/lib/shipping-companies";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/constants";
 import { formatDateTimeYear } from "@/lib/datetime";
 import { dirhamToInput, formatMoney, inputToDirham } from "@/lib/money";
@@ -17,15 +18,15 @@ import { RETURN_REASONS, RETURN_REASON_LABELS } from "@/lib/order-flow";
 import { changeStatusAction, paymentStatusAction, registerReturnAction, reviewReceiptAction, updateOrderAction } from "../actions";
 
 type Props = {
-  writable: boolean; isCourier: boolean; statuses: OrderStatus[]; canReturn: boolean;
+  writable: boolean; isCourier: boolean; showCourier: boolean; statuses: OrderStatus[]; canReturn: boolean;
   messages: { key: string; label: string; href: string }[];
   couriers: { id: string; name: string }[];
   order: {
     id: string; number: number; status: OrderStatus; createdAt: number; customerName: string; customerPhone: string; cityName: string; address: string; notes: string | null;
     paymentMethod: string; paymentStatus: string; subtotal: number; discount: number; deliveryFee: number; total: number; couponCode: string | null;
-    courierId: string | null; shipmentNumber: string | null; internalNotes: string | null; source: string | null;
+    courierId: string | null; shipmentNumber: string | null; shippingCompany: string | null; internalNotes: string | null; source: string | null;
   };
-  items: { id: string; name: string; variantLabel: string | null; unitPrice: number; quantity: number; imageMediaId: string | null; remaining: number }[];
+  items: { id: string; name: string; variantLabel: string | null; unitPrice: number; quantity: number; imageMediaId: string | null; personalization: string | null; remaining: number }[];
   history: { id: string; from: OrderStatus | null; to: OrderStatus; note: string | null; at: number; actor: string | null }[];
   receipts: { id: string; status: "pending" | "approved" | "rejected"; url: string; at: number }[];
   returns: { id: string; reason: string; note: string | null; restocked: boolean; shippingLoss: number; at: number; items: { name: string; quantity: number }[] }[];
@@ -62,12 +63,28 @@ export function OrderDetailView(p: Props) {
   const [modal, setModal] = useState<null | { type: "status"; to: OrderStatus } | { type: "return" } | { type: "edit" }>(null);
   const close = () => setModal(null);
   const locked = !p.writable;
+  const router = useRouter();
+  const { toast } = useToast();
+  // تغيير الحالة يبان فوراً (والنافذة تنقفل)، ويرجع مع رسالة لو السيرفر رفض
+  const [status, setOptimisticStatus] = useOptimistic(order.status);
+  const [, startStatus] = useTransition();
+  const quickStatus = (to: OrderStatus, note: string) => {
+    close();
+    startStatus(async () => {
+      setOptimisticStatus(to);
+      let r: Res;
+      try { r = await changeStatusAction({ orderId: order.id, to, note, courierId: order.courierId ?? null, shipmentNumber: order.shipmentNumber ?? "" }); } catch { r = { ok: false, error: "ما قدرنا نوصل للسيرفر. تأكد من الإنترنت وجرّب مرة ثانية." }; }
+      if (!r.ok) return toast(r.error ?? "صار خطأ", "error");
+      toast(`الطلبية صارت «${ORDER_STATUS_LABELS[to]}»`);
+      router.refresh();
+    });
+  };
 
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="flex flex-wrap items-center gap-3 text-2xl"><span dir="ltr">#{order.number}</span><OrderStatusBadge status={order.status} /></h1>
+          <h1 className="flex flex-wrap items-center gap-3 text-2xl"><span dir="ltr">#{order.number}</span><OrderStatusBadge status={status} /></h1>
           <p className="text-sm text-muted">{formatDateTimeYear(order.createdAt)}{order.source ? ` · من ${order.source}` : ""}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -83,7 +100,7 @@ export function OrderDetailView(p: Props) {
         <div className="flex items-center gap-2 rounded-lg bg-gold/20 px-4 py-3 text-sm font-medium"><TriangleAlert className="size-5 shrink-0" aria-hidden /> الزبون هذا رجّع {p.customer.returnedCount} طلبيات من {p.customer.ordersCount}.</div>
       )}
 
-      {(p.statuses.length > 0 || p.canReturn || p.messages.length > 0) && (
+      {status === order.status && (p.statuses.length > 0 || p.canReturn || p.messages.length > 0) && (
         <Card><CardBody className="flex flex-wrap items-center gap-2">
           {p.statuses.map((s) => (
             <Button key={s} disabled={locked} variant={s === "cancelled" ? "outline" : s === "delivered" ? "secondary" : "primary"} onClick={() => setModal({ type: "status", to: s })}>
@@ -104,7 +121,7 @@ export function OrderDetailView(p: Props) {
               {p.items.map((i) => (
                 <li key={i.id} className="flex items-center gap-3 p-4">
                   {i.imageMediaId ? <img src={`/api/media/${i.imageMediaId}?w=160`} alt="" className="size-14 shrink-0 rounded-md bg-surface-2 object-cover" /> : <div className="size-14 shrink-0 rounded-md bg-surface-2" />}
-                  <div className="min-w-0 flex-1"><p className="truncate font-medium">{i.name}</p>{i.variantLabel && <p className="text-sm text-muted">{i.variantLabel}</p>}<p className="text-sm text-muted">{formatMoney(i.unitPrice)} × {i.quantity}</p></div>
+                  <div className="min-w-0 flex-1"><p className="truncate font-medium">{i.name}</p>{i.variantLabel && <p className="text-sm text-muted">{i.variantLabel}</p>}{i.personalization && <p className="text-sm font-medium text-gold-fg">✎ {i.personalization}</p>}<p className="text-sm text-muted">{formatMoney(i.unitPrice)} × {i.quantity}</p></div>
                   <span className="font-semibold">{formatMoney(i.unitPrice * i.quantity)}</span>
                 </li>
               ))}
@@ -146,17 +163,17 @@ export function OrderDetailView(p: Props) {
               {order.notes && <div className="rounded-md bg-surface-2 p-3"><p className="text-xs text-muted">ملاحظة الزبون</p><p>{order.notes}</p></div>}
               <div className="flex flex-wrap gap-1.5"><PaymentBadge method={order.paymentMethod} status={order.paymentStatus} /></div>
               {!p.isCourier && order.paymentStatus !== "paid" && order.status !== "cancelled" && order.status !== "returned" && <MarkPaid orderId={order.id} disabled={locked} />}
-              <div className="border-t border-line pt-3">
+              {p.showCourier && <div className="border-t border-line pt-3">
                 <p className="text-xs text-muted">المندوب</p>
                 <p>{p.courierName ?? "ما تعيّنش"}{order.shipmentNumber ? <span className="text-muted"> · شحنة <span dir="ltr">{order.shipmentNumber}</span></span> : null}</p>
-              </div>
+              </div>}
             </CardBody>
           </Card>
           {!p.isCourier && <InternalNotes orderId={order.id} value={order.internalNotes ?? ""} disabled={locked} />}
         </aside>
       </div>
 
-      {modal?.type === "status" && <StatusModal key={modal.to} to={modal.to} order={order} couriers={p.couriers} onClose={close} />}
+      {modal?.type === "status" && <StatusModal key={modal.to} to={modal.to} order={order} couriers={p.couriers} onClose={close} onQuick={modal.to === "with_courier" ? undefined : (note) => quickStatus(modal.to, note)} />}
       {modal?.type === "return" && <ReturnModal order={order} items={p.items} onClose={close} />}
       {modal?.type === "edit" && <EditModal order={order} onClose={close} />}
     </div>
@@ -236,7 +253,7 @@ function History({ history }: { history: Props["history"] }) {
         {[...history].reverse().map((h, i, arr) => (
           <li key={h.id} className="relative flex gap-3 pb-5 last:pb-0">
             {i < arr.length - 1 && <span aria-hidden className="absolute start-[0.4375rem] top-4 h-full w-px bg-line" />}
-            <span aria-hidden className="relative mt-1 size-3.5 shrink-0 rounded-full border-2 border-gold bg-surface" />
+            <span aria-hidden className="relative mt-1 size-3.5 shrink-0 rounded-full border-2 border-teal bg-surface" />
             <div className="min-w-0 text-sm">
               <p className="font-medium">{h.from === null ? "تم إنشاء الطلبية" : h.from === h.to ? (h.note ?? ORDER_STATUS_LABELS[h.to]) : `${ORDER_STATUS_LABELS[h.from]} ← ${ORDER_STATUS_LABELS[h.to]}`}</p>
               {h.from !== null && h.from !== h.to && h.note && <p className="text-muted">{h.note}</p>}
@@ -261,9 +278,11 @@ function InternalNotes({ orderId, value, disabled }: { orderId: string; value: s
   );
 }
 
-function StatusModal({ to, order, couriers, onClose }: { to: OrderStatus; order: Props["order"]; couriers: Props["couriers"]; onClose: () => void }) {
+/** onQuick: الحالات اللي ما فيهاش خانات لازمة تتنفذ بشكل متفائل من الأب (النافذة تنقفل فوراً) */
+function StatusModal({ to, order, couriers, onClose, onQuick }: { to: OrderStatus; order: Props["order"]; couriers: Props["couriers"]; onClose: () => void; onQuick?: (note: string) => void }) {
   const [courierId, setCourierId] = useState(order.courierId ?? "");
   const [shipment, setShipment] = useState(order.shipmentNumber ?? "");
+  const [company, setCompany] = useState(order.shippingCompany ?? "");
   const [note, setNote] = useState("");
   const { act, pending, error } = useAct();
   const cash = order.paymentMethod === "cod" && order.paymentStatus !== "paid";
@@ -271,7 +290,7 @@ function StatusModal({ to, order, couriers, onClose }: { to: OrderStatus; order:
   return (
     <Modal
       open onClose={onClose} title={title}
-      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button variant={to === "cancelled" ? "danger" : "primary"} loading={pending} onClick={() => act(() => changeStatusAction({ orderId: order.id, to, note, courierId: courierId || null, shipmentNumber: shipment }), `الطلبية صارت «${ORDER_STATUS_LABELS[to]}»`, onClose)}>{to === "cancelled" ? "إلغاء الطلبية" : "تأكيد"}</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose} disabled={pending}>إلغاء</Button><Button variant={to === "cancelled" ? "danger" : "primary"} loading={pending} onClick={() => (onQuick ? onQuick(note) : act(() => changeStatusAction({ orderId: order.id, to, note, courierId: courierId || null, shipmentNumber: shipment, shippingCompany: company || null }), `الطلبية صارت «${ORDER_STATUS_LABELS[to]}»`, onClose))}>{to === "cancelled" ? "إلغاء الطلبية" : "تأكيد"}</Button></>}
     >
       <div className="space-y-4">
         {to === "with_courier" && (
@@ -279,6 +298,7 @@ function StatusModal({ to, order, couriers, onClose }: { to: OrderStatus; order:
             {couriers.length === 0 ? <p className="rounded-md bg-gold/20 px-3 py-2 text-sm">ما عندكش مندوبين. ضيف مندوب من صفحة «المندوبين» أول.</p> : (
               <Select label="المندوب" value={courierId} onChange={(e) => setCourierId(e.target.value)}><option value="">اختار المندوب</option>{couriers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
             )}
+            <Select label="شركة الشحن (اختياري)" value={company} onChange={(e) => setCompany(e.target.value)}><option value="">بدون</option>{SHIPPING_COMPANIES.map((c) => <option key={c.id} value={c.id}>{c.nameAr}</option>)}</Select>
             <Input label="رقم الشحنة (اختياري)" dir="ltr" className="text-right" value={shipment} maxLength={60} onChange={(e) => setShipment(e.target.value)} />
           </>
         )}
@@ -320,13 +340,13 @@ function ReturnModal({ order, items, onClose }: { order: Props["order"]; items: 
           <fieldset className="space-y-2"><legend className="mb-1 text-sm font-medium">الكميات المرتجعة</legend>
             {items.filter((i) => i.remaining > 0).map((i) => (
               <div key={i.id} className="flex items-center justify-between gap-3 rounded-md bg-surface-2 p-2.5 text-sm">
-                <span className="min-w-0 truncate">{i.name}{i.variantLabel ? ` (${i.variantLabel})` : ""}</span>
+                <span className="min-w-0 truncate">{i.name}{i.variantLabel ? ` (${i.variantLabel})` : ""}{i.personalization ? ` ✎ ${i.personalization}` : ""}</span>
                 <input aria-label={`كمية ${i.name}`} type="number" min={0} max={i.remaining} value={qty[i.id] ?? 0} onChange={(e) => setQty((q) => ({ ...q, [i.id]: Math.max(0, Math.min(i.remaining, Math.floor(Number(e.target.value)) || 0)) }))} className="h-9 w-20 rounded-md border border-line bg-surface px-2 text-center" />
               </div>
             ))}
           </fieldset>
         ) : <p className="rounded-md bg-surface-2 px-3 py-2 text-sm">الطلبية كلها ترجع (رفض الاستلام) وتتحول «مرتجعة».</p>}
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-[var(--color-gold)]" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> رجّع المنتجات للمخزون (خليها مقفولة لو المنتج تالف)</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-[var(--color-teal)]" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> رجّع المنتجات للمخزون (خليها مقفولة لو المنتج تالف)</label>
         <Input label="تكلفة التوصيل الضايعة (د.ل)" inputMode="decimal" value={loss} onChange={(e) => setLoss(e.target.value)} hint="اللي دفعتها لشركة التوصيل وما رجعتش" />
         <Textarea label="ملاحظة (اختياري)" rows={2} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
         <ErrorLine error={localError ?? error} />

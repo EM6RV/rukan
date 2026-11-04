@@ -1,3 +1,4 @@
+import { canUse } from "@/lib/entitlements";
 import type { Metadata } from "next";
 import { StorePreview } from "@/components/dashboard/store-preview";
 import type { InitialSection } from "@/components/dashboard/sections-editor";
@@ -26,7 +27,7 @@ export default async function DesignPage({ searchParams }: { searchParams: Promi
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <DesignTabs
-          writable={ctx.access.writable} allTemplates={ctx.limits.allTemplates} defaultTab={tab === "home" ? "home" : "identity"} sections={initial}
+          writable={ctx.access.writable} allTemplates={canUse(ctx.limits, "allTemplates")} defaultTab={tab === "home" ? "home" : "identity"} sections={initial}
           design={{ template: ctx.store.template, primary: s?.primaryColor ?? "#0D263E", accent: s?.accentColor ?? "#C19E58", fontKey: isStoreFont(font) ? font : "ibm-plex", logo: ctx.store.logoMediaId ? { id: ctx.store.logoMediaId, url: `/api/media/${ctx.store.logoMediaId}?w=320` } : null }}
         />
         <StorePreview slug={ctx.store.slug} mode="aside" />

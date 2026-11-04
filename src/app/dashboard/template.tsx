@@ -1,4 +1,6 @@
-/** حركة دخول ناعمة لكل صفحة في اللوحة (تتكرر مع كل تنقل). تتعطل تلقائياً مع «تقليل الحركة». */
+import { ViewTransition } from "react";
+
+/** انتقال ناعم بين صفحات اللوحة (View Transitions): المحتوى الجديد يبان فوراً بدون ما يتأخر بحركة دخول. */
 export default function DashboardTemplate({ children }: { children: React.ReactNode }) {
-  return <div className="animate-[fade-up_0.28s_ease-out_both]">{children}</div>;
+  return <ViewTransition default="page">{children}</ViewTransition>;
 }

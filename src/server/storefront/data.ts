@@ -2,8 +2,9 @@ import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { getDb } from "@/db";
 import { forStore } from "../tenant";
+import { listApprovedReviews } from "../reviews";
 import {
-  loadPage, loadStorefront, queryDeliveryRates, resolveDomainSlug, queryProductDetail, queryProducts, queryRelated, querySitemap,
+  loadPage, loadStorefront, queryDeliveryRates, resolveDomainSlug, queryFacets, queryProductDetail, queryProducts, queryRelated, querySitemap,
 } from "./queries";
 import type { CatalogQuery, Storefront } from "./types";
 
@@ -57,3 +58,9 @@ export const getDeliveryRates = (storeId: string) =>
 
 export const getSitemap = (storeId: string) =>
   unstable_cache(async () => querySitemap(forStore(getDb(), storeId)), ["sitemap", storeId], { tags: [storeTag(storeId)], revalidate: REVALIDATE })();
+
+export const getFacets = (storeId: string) =>
+  unstable_cache(async () => queryFacets(forStore(getDb(), storeId)), ["facets", storeId], { tags: [storeTag(storeId)], revalidate: REVALIDATE })();
+
+export const getReviews = (storeId: string, productId: string) =>
+  unstable_cache(async () => listApprovedReviews(forStore(getDb(), storeId), productId), ["reviews", storeId, productId], { tags: [storeTag(storeId)], revalidate: REVALIDATE })();

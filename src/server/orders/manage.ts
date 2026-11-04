@@ -1,8 +1,12 @@
 import { and, count, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/constants";
+import { SHIPPING_COMPANY_IDS } from "@/lib/shipping-companies";
 import { LOCKED_STATUSES, RETURN_REASONS, TRANSITIONS, canTransition } from "@/lib/order-flow";
 import { normalizeLibyanPhone } from "@/lib/phone";
+import { postEntry } from "../accounting/ledger";
+import { expandStockLines } from "../catalog/bundles";
+import { bumpRow } from "../inventory/warehouses";
 import { fail, ok, type Result } from "../catalog/result";
 import { t, type StoreScope, type StoreScopeCore } from "../tenant";
 
@@ -40,11 +44,15 @@ async function bumpCustomer(tx: Tx, customerId: string, d: { orders?: number; de
   if (Object.keys(set).length) await tx.update(t.customers, set as never, eq(col.id, customerId));
 }
 
-async function addStock(tx: Tx, items: { variantId: string; quantity: number }[], reason: "return" | "cancel", orderId: string, note: string, actor: string | null) {
-  for (const i of items) {
-    if (i.quantity <= 0) continue;
-    await tx.update(t.productVariants, { stock: sql`${t.productVariants.stock} + ${i.quantity}` as unknown as number }, eq(t.productVariants.id, i.variantId));
-    await tx.insert(t.stockMovements, { variantId: i.variantId, delta: i.quantity, reason, orderId, note, actorUserId: actor });
+async function addStock(tx: Tx, items: { variantId: string; quantity: number }[], reason: "return" | "cancel", orderId: string, note: string, actor: string | null, warehouseId: string | null = null) {
+  for (const item of items) {
+    if (item.quantity <= 0) continue;
+    // الباقة المجمعة: يرجع مخزون مكوناتها مش الباقة نفسها
+    for (const i of await expandStockLines(tx, item.variantId, item.quantity)) {
+      await tx.update(t.productVariants, { stock: sql`${t.productVariants.stock} + ${i.quantity}` as unknown as number }, eq(t.productVariants.id, i.variantId));
+      if (warehouseId) await bumpRow(tx, warehouseId, i.variantId, i.quantity); // رجّع للمخزن اللي انسحبت منه
+      await tx.insert(t.stockMovements, { variantId: i.variantId, delta: i.quantity, reason, orderId, note, actorUserId: actor, warehouseId });
+    }
   }
 }
 
@@ -61,6 +69,7 @@ export type StatusInput = {
   note?: string | null;
   courierId?: string | null;
   shipmentNumber?: string | null;
+  shippingCompany?: string | null;
   /** لو المستخدم مندوب: يتعامل مع طلبياته بس */
   restrictCourierId?: string | null;
 };
@@ -87,6 +96,7 @@ export function changeOrderStatus(scope: StoreScope, input: StatusInput): Promis
         if (!courier || !courier.isActive) throw new OrderOpError("المندوب غير موجود أو موقوف.");
         set.courierId = courierId;
         if (input.shipmentNumber !== undefined) set.shipmentNumber = input.shipmentNumber?.trim() || null;
+        if (input.shippingCompany !== undefined) set.shippingCompany = SHIPPING_COMPANY_IDS.includes(input.shippingCompany as never) ? input.shippingCompany : null;
       }
 
       if (to === "delivered") {
@@ -100,7 +110,7 @@ export function changeOrderStatus(scope: StoreScope, input: StatusInput): Promis
 
       if (to === "cancelled") {
         const items = await tx.from(t.orderItems, eq(t.orderItems.orderId, order.id));
-        await addStock(tx, items, "cancel", order.id, `إلغاء طلبية #${order.number}`, input.actorUserId);
+        await addStock(tx, items, "cancel", order.id, `إلغاء طلبية #${order.number}`, input.actorUserId, order.warehouseId);
         if (order.couponId) {
           await tx.update(t.coupons, { usedCount: sql`max(0, ${t.coupons.usedCount} - 1)` as unknown as number }, eq(t.coupons.id, order.couponId));
           await tx.delete(t.couponRedemptions, eq(t.couponRedemptions.orderId, order.id));
@@ -125,6 +135,7 @@ const detailsSchema = z.object({
   notes: z.string().trim().max(300).nullish(),
   internalNotes: z.string().trim().max(1000, "الملاحظات الداخلية طويلة").nullish(),
   shipmentNumber: z.string().trim().max(60).nullish(),
+  shippingCompany: z.enum(SHIPPING_COMPANY_IDS).nullish(),
   courierId: z.string().min(1).nullish(),
   deliveryFee: z.number().int().min(0).max(1_000_000_000).optional(),
 });
@@ -151,6 +162,7 @@ export function updateOrderDetails(scope: StoreScope, orderId: string, patch: un
       if (p.notes !== undefined) set.notes = p.notes || null;
       if (p.internalNotes !== undefined) set.internalNotes = p.internalNotes || null;
       if (p.shipmentNumber !== undefined) set.shipmentNumber = p.shipmentNumber || null;
+      if (p.shippingCompany !== undefined) set.shippingCompany = p.shippingCompany ?? null;
       if (p.courierId !== undefined) {
         if (p.courierId) {
           const [c] = await tx.from(t.couriers, eq(t.couriers.id, p.courierId)).limit(1);
@@ -251,7 +263,7 @@ export function registerReturn(scope: StoreScope, input: unknown, actorUserId: s
       await tx.insert(t.returnItems, [...wanted].map(([orderItemId, quantity]) => ({ returnId: ret!.id, orderItemId, quantity })));
 
       if (p.restock) {
-        await addStock(tx, [...wanted].map(([id, quantity]) => ({ variantId: items.find((i: OrderItem) => i.id === id)!.variantId, quantity })), "return", order.id, `مرتجع طلبية #${order.number}`, actorUserId);
+        await addStock(tx, [...wanted].map(([id, quantity]) => ({ variantId: items.find((i: OrderItem) => i.id === id)!.variantId, quantity })), "return", order.id, `مرتجع طلبية #${order.number}`, actorUserId, order.warehouseId);
       }
 
       const refund = [...wanted].reduce((s, [id, q]) => s + items.find((i) => i.id === id)!.unitPrice * q, 0);
@@ -272,14 +284,18 @@ export function registerReturn(scope: StoreScope, input: unknown, actorUserId: s
 
 // ===== إيصالات التحويل =====
 
-export function reviewReceipt(scope: StoreScope, receiptId: string, decision: "approved" | "rejected", actorUserId: string | null): Promise<Result> {
+export function reviewReceipt(scope: StoreScope, receiptId: string, decision: "approved" | "rejected", actorUserId: string | null, ledgerAccountId: string | null = null): Promise<Result> {
   return attempt(() =>
     scope.transaction(async (tx) => {
       const [r] = await tx.from(t.paymentReceipts, eq(t.paymentReceipts.id, receiptId)).limit(1);
       if (!r) throw new OrderOpError("ما لقينا الإيصال. يمكن انحذف، حدّث الصفحة.");
       const order = await loadOrder(tx, r.orderId);
       await tx.update(t.paymentReceipts, { status: decision }, eq(t.paymentReceipts.id, r.id));
-      if (decision === "approved") await tx.update(t.orders, { paymentStatus: "paid" }, eq(t.orders.id, order.id));
+      if (decision === "approved") {
+        await tx.update(t.orders, { paymentStatus: "paid" }, eq(t.orders.id, order.id));
+        // وحدة الحسابات شغّالة: التحويل المصرفي يدخل حساب البنك (مرة وحدة لكل طلبية)
+        if (ledgerAccountId && order.paymentStatus !== "paid") await postEntry(tx, { accountId: ledgerAccountId, amount: order.total, kind: "bank_transfer", refType: "order", refId: order.id, memo: `تحويل طلبية #${order.number}`, actorUserId });
+      }
       await history(tx, order, order.status, order.status, decision === "approved" ? "تم قبول إيصال التحويل" : "تم رفض إيصال التحويل", actorUserId);
     }),
   );
@@ -299,6 +315,8 @@ export type OrderFilters = {
   pageSize?: number;
   /** تقييد المندوب بطلبياته */
   restrictCourierId?: string | null;
+  /** حد «طلبيات في الشهر»: الطلبيات اللي ترتيبها فوقه تتعلّم مقفولة وبياناتها مخفية */
+  maxOrdersPerMonth?: number | null;
 };
 
 const likeTerm = (q: string) => `%${q.trim().replace(/[\\%_]/g, "\\$&")}%`;
@@ -323,9 +341,11 @@ function baseConditions(f: OrderFilters) {
 }
 
 export type OrderListItem = {
-  id: string; number: number; customerName: string; customerPhone: string; cityName: string; total: number;
+  id: string; number: number; customerName: string; customerPhone: string; cityName: string; address: string; total: number;
   status: OrderStatus; paymentMethod: string; paymentStatus: string; courierId: string | null; courierName: string | null;
   createdAt: number; flagged: boolean; itemCount: number;
+  /** فوق حد الباقة الشهري: بيانات الزبون مخفية لين البياع يرقّي */
+  locked: boolean;
 };
 
 export async function listOrders(scope: StoreScope, f: OrderFilters = {}) {
@@ -350,14 +370,17 @@ export async function listOrders(scope: StoreScope, f: OrderFilters = {}) {
     customerIds.length ? scope.from(t.customers, inArray(t.customers.id, customerIds)) : [],
     rows.length ? scope.from(t.orderItems, inArray(t.orderItems.orderId, rows.map((r) => r.id))) : [],
   ]);
-  const items2: OrderListItem[] = rows.map((r) => ({
-    id: r.id, number: r.number, customerName: r.customerName, customerPhone: r.customerPhone, cityName: r.cityName, total: r.total,
+  const items2: OrderListItem[] = rows.map((r) => {
+    const locked = f.maxOrdersPerMonth != null && r.monthRank !== null && r.monthRank > f.maxOrdersPerMonth;
+    return {
+    id: r.id, number: r.number, customerName: locked ? "طلبية مقفولة" : r.customerName, customerPhone: locked ? "" : r.customerPhone, cityName: locked ? "—" : r.cityName, address: locked ? "" : r.address, total: r.total, locked,
     status: r.status, paymentMethod: r.paymentMethod, paymentStatus: r.paymentStatus,
     courierId: r.courierId, courierName: couriers.find((c) => c.id === r.courierId)?.name ?? null,
     createdAt: r.createdAt.getTime(),
     flagged: customers.find((c) => c.id === r.customerId)?.flag === "problematic",
     itemCount: items.filter((i) => i.orderId === r.id).reduce((s, i) => s + i.quantity, 0),
-  }));
+  };
+  });
   return { items: items2, total, page, pageCount, counts, allCount: Object.values(counts).reduce((s, n) => s + (n ?? 0), 0) };
 }
 
