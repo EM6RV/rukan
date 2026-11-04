@@ -37,3 +37,15 @@ export async function makeCity(db: Db, name = "طرابلس") {
 }
 
 export { plans };
+
+/**
+ * للاختبارات اللي تعدّل حالة اشتراك المتجر مباشرة: يحدّث سطر «store» في line_subscriptions وأعمدة stores (النسخة) مع بعض.
+ */
+export async function patchStoreSub(db: Db, storeId: string, patch: Partial<Pick<typeof stores.$inferInsert, "status" | "planId" | "billingCycle" | "trialEndsAt" | "currentPeriodEnd">>) {
+  const { and, eq } = await import("drizzle-orm");
+  const { lineSubscriptions } = await import("@/db/schema/platform");
+  if (Object.keys(patch).length) {
+    await db.update(stores).set(patch).where(eq(stores.id, storeId));
+    await db.update(lineSubscriptions).set(patch).where(and(eq(lineSubscriptions.storeId, storeId), eq(lineSubscriptions.line, "store")));
+  }
+}

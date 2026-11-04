@@ -1,0 +1,77 @@
+// منظومات رُكن: الأدمن يطلق ماركت وفِت، وبياع جديد يسجل بالمنظومتين ويكمّل المعالج القصير لكل وحدة
+import { mkdirSync } from "node:fs";
+import { BASE, check, finish, launch } from "./lib.mjs";
+const ADMIN_PHONE = process.env.ADMIN_PHONE ?? "0910000000";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "ci-admin-password-123";
+const SHOT = process.env.SHOT ?? "e2e/shots";
+mkdirSync(SHOT, { recursive: true });
+const browser = await launch();
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "ar", isMobile: true, hasTouch: true });
+const page = await ctx.newPage();
+const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+
+// الأدمن يطلق ماركت وفِت
+await page.goto(`${BASE}/login`);
+await page.fill('input[name="phone"]', ADMIN_PHONE); await page.fill('input[name="password"]', ADMIN_PASSWORD);
+await page.click('button[type="submit"]'); await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+await page.goto(`${BASE}/admin/settings`);
+const sets = page.locator("fieldset", { hasText: "رُكن ماركت" });
+await sets.locator("select").first().selectOption("live");
+await page.locator("fieldset", { hasText: "رُكن فِت" }).locator("select").first().selectOption("live");
+await page.locator("form", { hasText: "رُكن ماركت" }).getByRole("button", { name: "حفظ" }).click();
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${SHOT}/admin-settings.png`, fullPage: true });
+await page.goto(`${BASE}/admin/plans`); await page.getByRole("tab", { name: /رُكن فِت/ }).click(); await page.waitForTimeout(300);
+check("الأدمن: باقات فِت", await page.getByText("gym-growth").count() > 0);
+await page.screenshot({ path: `${SHOT}/admin-plans.png`, fullPage: true });
+await ctx.clearCookies();
+
+// تسجيل بياع جديد: ماركت + فِت
+await page.goto(`${BASE}/register`);
+const phone = `092${String(Date.now()).slice(-7)}`; // رقم جديد في كل تشغيل
+await page.fill('input[name="name"]', "سالم التاجر"); await page.fill('input[name="phone"]', phone); await page.fill('input[name="password"]', "test-pass-123");
+await page.click('button[type="submit"]'); await page.waitForURL(/onboarding/);
+await page.waitForSelector("text=شن نوع نشاطك؟");
+await page.screenshot({ path: `${SHOT}/ob-lines.png`, fullPage: true });
+check("لاونج قريباً (مقفول)", await page.getByRole("button", { name: /صالة ألعاب/ }).isDisabled());
+await page.getByRole("button", { name: /محل مواد غذائية/ }).click();
+await page.getByRole("button", { name: /نادي رياضي/ }).click();
+await page.getByRole("button", { name: "التالي" }).click();
+await page.waitForSelector("text=شن اسم نشاطك؟");
+await page.getByLabel("اسم النشاط").fill(`Salem Market ${phone.slice(-4)}`);
+await page.waitForSelector("text=الرابط متاح", { timeout: 8000 });
+await page.getByRole("button", { name: "التالي" }).click();
+await page.waitForSelector("h1:has-text('رُكن ماركت')");
+await page.getByRole("button", { name: "زيد عدد الكاشيرات" }).click();
+await page.getByText("نبيع جملة كمان").click();
+await page.screenshot({ path: `${SHOT}/ob-market.png`, fullPage: true });
+await page.getByRole("button", { name: "التالي" }).click();
+await page.waitForSelector("h1:has-text('رُكن فِت')");
+await page.getByRole("button", { name: "نساء" }).click();
+await page.locator("#trainers").fill("كوتش علي\nكوتش منى");
+await page.screenshot({ path: `${SHOT}/ob-gym.png`, fullPage: true });
+await page.getByRole("button", { name: "إنهاء" }).click();
+await page.waitForSelector("text=منظومتك جاهزة!");
+await page.screenshot({ path: `${SHOT}/ob-done.png`, fullPage: true });
+await page.getByRole("button", { name: "الذهاب للوحة التحكم" }).click();
+await page.waitForURL(/\/dashboard\/market/);
+check("بعد التسجيل يروح لماركت", page.url().includes("/dashboard/market"));
+await page.waitForSelector("text=إعدادك المبدئي");
+check("ملخص الإعداد: كاشيرين", await page.getByText("الكاشيرات: 2").count() > 0);
+await page.screenshot({ path: `${SHOT}/dash-market.png`, fullPage: true });
+await page.goto(`${BASE}/dashboard`); await page.waitForURL(/\/dashboard\/market/);
+check("الرئيسية تحول لماركت (بدون متجر)", page.url().endsWith("/dashboard/market"));
+await page.goto(`${BASE}/dashboard/orders`);
+await page.goto(`${BASE}/dashboard/menu`); await page.waitForSelector("h1:has-text('القائمة')");
+const menu = await page.locator("main").innerText();
+check("القائمة فيها فِت وماركت ومنظوماتي", menu.includes("رُكن فِت") && menu.includes("رُكن ماركت") && menu.includes("منظوماتي"));
+check("القائمة ما فيهاش الطلبيات والكوبونات", !menu.includes("الطلبيات") && !menu.includes("الكوبونات"));
+await page.goto(`${BASE}/dashboard/lines`);
+await page.screenshot({ path: `${SHOT}/dash-lines.png`, fullPage: true });
+await page.getByRole("button", { name: /ابدا تجربة مجانية/ }).first().click();
+await page.waitForURL((u) => u.pathname === "/dashboard" || u.pathname.startsWith("/dashboard"), { timeout: 8000 });
+await page.waitForTimeout(800);
+await page.goto(`${BASE}/dashboard/lines`);
+check("المتجر انضاف بتجربة", (await page.locator("main").innerText()).includes("رُكن ستور") && (await page.getByText("تجريبي").count()) >= 3);
+check("ما فيش أخطاء جافاسكربت", errs.length === 0, errs.join(" | "));
+await finish(browser);

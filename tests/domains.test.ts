@@ -33,8 +33,8 @@ const resolver = (o: { txt?: Record<string, string[][]>; cname?: Record<string, 
 beforeAll(async () => {
   ({ db, close } = await makeTestDb());
   [proPlan, basicPlan] = (await db.insert(plans).values([
-    { slug: "pro", nameAr: "احترافي", priceMonthly: 1, priceYearly: 1, limits: PRO },
-    { slug: "basic", nameAr: "أساسي", priceMonthly: 1, priceYearly: 1, limits: NO },
+    { slug: "pro", nameAr: "احترافي", price: 1, limits: PRO },
+    { slug: "basic", nameAr: "أساسي", price: 1, limits: NO },
   ]).returning()).map((p) => p.id) as [string, string];
 });
 afterAll(() => close());
@@ -73,7 +73,7 @@ describe("إضافة الدومين", () => {
 
   it("الباقة بدون دومين خاص، ودومين المنصة، وغير صالح", async () => {
     const s = await shop("dm-2", basicPlan);
-    expect(await addDomain(db, s.id, "shop.example.com", NO, ROOT, s.userId)).toEqual({ ok: false, error: expect.stringContaining("الاحترافية") });
+    expect(await addDomain(db, s.id, "shop.example.com", NO, ROOT, s.userId)).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
     const p = await shop("dm-3");
     expect(await addDomain(db, p.id, "shop.rukn.ly", PRO, ROOT, p.userId)).toEqual({ ok: false, error: expect.stringContaining("رُكن") });
     expect((await addDomain(db, p.id, "not a domain", PRO, ROOT, p.userId)).ok).toBe(false);

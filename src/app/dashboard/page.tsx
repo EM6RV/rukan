@@ -1,38 +1,63 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { isNull } from "drizzle-orm";
-import { Banknote, CheckCircle2, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
+import { eq, isNull } from "drizzle-orm";
+import { listExpiring } from "@/server/catalog/expiry";
+import { ordersThisMonth } from "@/server/entitlements";
+import { Banknote, BarChart3, Plus, ShoppingBag, CheckCircle2, Clapperboard, Circle, FolderTree, Inbox, Package, ReceiptText, RotateCcw, TriangleAlert } from "lucide-react";
+import { getDb } from "@/db";
 import { StoreLinkCard } from "@/components/dashboard/copy-link";
+import { PushToggle } from "@/components/dashboard/push-toggle";
 import { SalesChart } from "@/components/dashboard/sales-chart";
+import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
 import { getEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
 import { getDashboardStats } from "@/server/orders/stats";
-import { can } from "@/server/permissions";
+import { pushConfig } from "@/server/push";
+import { hasPermission } from "@/server/permissions";
 import { storeUrl } from "@/lib/store-url";
+import { currentRequest } from "@/server/request-origin";
 import { requireStoreContext } from "@/server/store-context";
+import { redirect } from "next/navigation";
+import { LINE_INFO, OPS_LINES } from "@/lib/product-lines";
 import { t } from "@/server/tenant";
 
 export const metadata: Metadata = { title: "الرئيسية" };
 
 export default async function DashboardHome() {
   const ctx = await requireStoreContext("dashboard");
+  // نشاط بدون متجر أونلاين: الرئيسية هي صفحة أول منظومة عنده
+  if (!ctx.lines.store.subscribed) {
+    const first = OPS_LINES.find((l) => ctx.lines[l].subscribed);
+    redirect(first ? LINE_INFO[first].home : "/dashboard/lines");
+  }
   const { scope, store, limits } = ctx;
 
-  const [stats, productCount, categoryCount, [settings]] = await Promise.all([
+  const ordersMonth = limits.maxOrdersPerMonth != null ? await ordersThisMonth(getDb(), store.id) : 0;
+  const [stats, productCount, categoryCount, , activeRates, enabledPayments, visitRows, orderCount, expiring] = await Promise.all([
     getDashboardStats(scope),
     scope.count(t.products, isNull(t.products.deletedAt)),
     scope.count(t.categories),
-    scope.from(t.storeSettings).limit(1),
+    Promise.resolve(null),
+    scope.count(t.deliveryRates, eq(t.deliveryRates.isActive, true)),
+    scope.count(t.storePaymentMethods, eq(t.storePaymentMethods.isEnabled, true)),
+    scope.count(t.storeVisits),
+    scope.count(t.orders),
+    listExpiring(scope),
   ]);
 
+  // «5 خطوات وتبدا تبيع»
   const checklist = [
     { done: !!store.logoMediaId, label: "ارفع لوجو متجرك", href: "/dashboard/settings" },
-    { done: categoryCount > 0, label: "أضف أول قسم", href: "/dashboard/categories" },
     { done: productCount > 0, label: "أضف أول منتج", href: "/dashboard/products/new" },
-    { done: !!settings?.whatsapp, label: "حط رقم واتساب للتواصل", href: "/dashboard/settings?tab=contact" },
+    { done: activeRates > 0, label: "حدد أسعار التوصيل لمدنك", href: "/dashboard/settings?tab=delivery" },
+    { done: enabledPayments > 0, label: "فعّل طريقة دفع (عند الاستلام أو تحويل)", href: "/dashboard/settings?tab=payment" },
+    { done: visitRows > 0 || orderCount > 0, label: "شارك رابط متجرك مع زباينك", href: "#store-link" },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
+  const push = hasPermission(ctx, "orders") ? pushConfig() : null;
+  const req = await currentRequest();
 
   return (
     <div className="space-y-6">
@@ -41,30 +66,43 @@ export default async function DashboardHome() {
         <p className="mt-1 text-muted">هذي لمحة سريعة عن متجرك «{store.name}».</p>
       </div>
 
+      {push && <PushToggle publicKey={push.publicKey} />}
+
+      <nav aria-label="وصول سريع" className="flex flex-wrap gap-2">
+        {([
+          ["orders", "/dashboard/orders/new", "طلبية يدوية", Plus], ["products", "/dashboard/products/new", "منتج جديد", Package],
+          ["orders", "/dashboard/orders?status=new", "الطلبيات الجديدة", ShoppingBag], ["reports", "/dashboard/reports", "التقارير", BarChart3],
+        ] as const).filter(([perm]) => hasPermission(ctx, perm)).map(([, href, label, Icon]) => (
+          <Link key={href} href={href} className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium transition-colors hover:bg-surface-2"><Icon className="size-4" aria-hidden /> {label}</Link>
+        ))}
+      </nav>
+
+      {expiring.length > 0 && hasPermission(ctx, "products") && (
+        <Link href="/dashboard/catalog" className="flex items-center gap-3 rounded-xl border border-gold/50 bg-gold/10 px-4 py-3 text-sm font-medium"><TriangleAlert className="size-5" aria-hidden /> {expiring.length} منتج قرب تنتهي صلاحيته</Link>
+      )}
+
       <section aria-label="المبيعات" className="space-y-4">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {/* مبيعات اليوم: البطاقة البطلة (كحلي) */}
-          <div className="relative col-span-2 isolate overflow-hidden rounded-2xl bg-navy p-5 text-white shadow-lift ring-1 ring-white/10">
-            <div aria-hidden className="pointer-events-none absolute -top-16 -start-10 -z-10 size-48 rounded-full bg-gold/25 blur-3xl" />
-            <div aria-hidden className="pointer-events-none absolute -bottom-20 -end-10 -z-10 size-48 rounded-full bg-teal/30 blur-3xl" />
-            <p className="text-sm font-medium text-white/75">مبيعات اليوم</p>
-            <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-gold md:text-4xl">{formatMoney(stats.sales.today.total)}</p>
-            <p className="mt-2 inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium tabular-nums ring-1 ring-white/15">{stats.sales.today.orders} طلبية</p>
-          </div>
+          {/* مبيعات اليوم: البطاقة البطلة */}
+          <Card className="col-span-2 p-5">
+            <p className="text-sm font-medium text-muted">مبيعات اليوم</p>
+            <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight md:text-4xl">{formatMoney(stats.sales.today.total)}</p>
+            <p className="mt-2 inline-flex items-center rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-medium tabular-nums">{stats.sales.today.orders} طلبية</p>
+          </Card>
           {([["آخر 7 أيام", stats.sales.week], ["آخر 30 يوم", stats.sales.month]] as const).map(([label, v]) => (
             <Card key={label} className="flex flex-col justify-between p-4"><p className="text-xs text-muted sm:text-sm">مبيعات {label}</p><p className="mt-2 text-lg font-bold tabular-nums tracking-tight sm:text-2xl">{formatMoney(v.total)}</p><p className="mt-1 text-xs tabular-nums text-muted">{v.orders} طلبية</p></Card>
           ))}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <HomeStat tone="gold" href="/dashboard/orders?status=new" icon={<Inbox className="size-5" />} label="طلبيات جديدة" value={String(stats.newOrders)} highlight={stats.newOrders > 0} />
-          {can(ctx.role, "couriers") && <HomeStat tone="teal" href="/dashboard/couriers" icon={<Banknote className="size-5" />} label="كاش عند المندوبين" value={formatMoney(stats.cashWithCouriers)} hint={stats.pendingCash > 0 ? `+ ${formatMoney(stats.pendingCash)} في الطريق` : undefined} />}
-          {can(ctx.role, "returns") && <HomeStat tone="danger" href="/dashboard/returns" icon={<RotateCcw className="size-5" />} label="نسبة المرتجعات (30 يوم)" value={stats.returnRate === null ? "—" : `${Math.round(stats.returnRate * 100)}%`} />}
-          {stats.pendingReceipts > 0 && <HomeStat tone="gold" href="/dashboard/orders?pay=bank_transfer" icon={<ReceiptText className="size-5" />} label="إيصالات بانتظار المراجعة" value={String(stats.pendingReceipts)} highlight />}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard href="/dashboard/orders?status=new" icon={<Inbox />} label="طلبيات جديدة" value={stats.newOrders} className={stats.newOrders > 0 ? "border-fg/30" : undefined} />
+          {hasPermission(ctx, "couriers") && store.useCouriers && <StatCard tone="teal" href="/dashboard/couriers" icon={<Banknote />} label="فلوسك عند المندوبين" value={formatMoney(stats.cashWithCouriers)} hint={stats.pendingCash > 0 ? `+ ${formatMoney(stats.pendingCash)} في الطريق` : undefined} />}
+          {hasPermission(ctx, "returns") && <StatCard tone="danger" href="/dashboard/returns" icon={<RotateCcw />} label="نسبة المرتجعات (30 يوم)" value={stats.returnRate === null ? "—" : `${Math.round(stats.returnRate * 100)}%`} />}
+          {stats.pendingReceipts > 0 && <StatCard href="/dashboard/orders?pay=bank_transfer" icon={<ReceiptText />} label="إيصالات بانتظار المراجعة" value={stats.pendingReceipts} className="border-fg/30" />}
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <Card><CardHeader title="المبيعات اليومية" description="آخر 7 أيام" /><CardBody><SalesChart data={stats.chart} /></CardBody></Card>
           <Card>
-            <CardHeader title="منتجات قربت تخلص" description={stats.lowStockCount ? `${stats.lowStockCount} منتج مخزونه 5 أو أقل` : undefined} />
+            <CardHeader title="منتجات قربت تخلص" description={stats.lowStockCount ? `${stats.lowStockCount} منتج وصل لحد التنبيه` : undefined} />
             {stats.lowStock.length === 0 ? <CardBody className="text-center text-sm text-muted">كل المنتجات مخزونها تمام.</CardBody> : (
               <ul className="divide-y divide-line">
                 {stats.lowStock.map((p) => (
@@ -76,21 +114,34 @@ export default async function DashboardHome() {
         </div>
       </section>
 
+      {hasPermission(ctx, "settings") && (
+        <Card>
+          <CardBody className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-2"><Clapperboard className="size-5" aria-hidden /></span>
+              <div><p className="font-semibold">نصمم لك ريلز ولوجو وهوية</p><p className="text-sm text-muted">اطلب تصميم لمتجرك، والسعر حسب الطلب{(limits.freeDesigns ?? 0) > 0 ? ". وباقتك فيها ريل أو لوجو مجاني." : "."}</p></div>
+            </div>
+            <ButtonLink href="/dashboard/design-services" variant="outline" size="sm">اطلب تصميم</ButtonLink>
+          </CardBody>
+        </Card>
+      )}
+
       <Card id="store-link" className="scroll-mt-20">
         <CardHeader title="رابط متجرك" description="شاركه في إنستغرام وتيك توك وواتساب." />
-        <CardBody><StoreLinkCard url={storeUrl(store.slug, getEnv())} name={store.name} /></CardBody>
+        <CardBody><StoreLinkCard url={storeUrl(store.slug, getEnv(), req)} name={store.name} /></CardBody>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Stat tone="teal" href="/dashboard/products" icon={<Package className="size-5" />} label="المنتجات" value={productCount} limit={limits.maxProducts} />
-        <Stat tone="gold" href="/dashboard/categories" icon={<FolderTree className="size-5" />} label="الأقسام" value={categoryCount} />
+        <StatCard href="/dashboard/products" icon={<Package />} label="المنتجات" value={productCount} usage={{ used: productCount, limit: limits.maxProducts, unit: "منتج" }} />
+        {limits.maxOrdersPerMonth != null && <StatCard href="/dashboard/orders" icon={<ShoppingBag />} label="طلبيات هذا الشهر" value={ordersMonth} usage={{ used: ordersMonth, limit: limits.maxOrdersPerMonth, unit: "طلبية" }} />}
+        <StatCard href="/dashboard/categories" icon={<FolderTree />} label="الأقسام" value={categoryCount} />
       </div>
 
       {doneCount < checklist.length && (
         <Card>
           <CardHeader title="ابدا من هنا" description={`${doneCount} من ${checklist.length} خلصت`} />
           <CardBody className="space-y-1 p-2">
-            <div className="mx-3 mb-2 h-2 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-gradient-to-l from-gold to-teal transition-all duration-500" style={{ width: `${(doneCount / checklist.length) * 100}%` }} /></div>
+            <div className="mx-3 mb-2 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-teal transition-all duration-500" style={{ width: `${(doneCount / checklist.length) * 100}%` }} /></div>
             {checklist.map((c) => (
               <Link key={c.label} href={c.href} className="flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-surface-2">
                 {c.done ? <CheckCircle2 className="size-5 text-success-fg" /> : <Circle className="size-5 text-muted" />}
@@ -101,37 +152,5 @@ export default async function DashboardHome() {
         </Card>
       )}
     </div>
-  );
-}
-
-const TONES = {
-  gold: { tile: "bg-gold/20 text-navy dark:text-gold", edge: "before:bg-gold" },
-  teal: { tile: "bg-teal/15 text-link-strong", edge: "before:bg-teal" },
-  danger: { tile: "bg-danger/15 text-danger-fg", edge: "before:bg-danger" },
-} as const;
-type Tone = keyof typeof TONES;
-
-function Stat({ href, icon, label, value, limit, tone = "gold" }: { href: string; icon: React.ReactNode; label: string; value: number; limit?: number | null; tone?: Tone }) {
-  return (
-    <Link href={href} className="group block">
-      <Card className="flex h-full items-center gap-4 p-5 transition-all duration-200 ease-out group-hover:-translate-y-0.5 group-hover:shadow-lift">
-        <div className={`flex size-12 items-center justify-center rounded-xl ${TONES[tone].tile}`}>{icon}</div>
-        <div>
-          <p className="text-sm text-muted">{label}</p>
-          <p className="text-2xl font-bold tabular-nums tracking-tight">{value}{limit ? <span className="text-sm font-normal text-muted"> / {limit}</span> : null}</p>
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
-function HomeStat({ href, icon, label, value, hint, highlight, tone = "gold" }: { href: string; icon: React.ReactNode; label: string; value: string; hint?: string; highlight?: boolean; tone?: Tone }) {
-  return (
-    <Link href={href} className="group block">
-      <Card className={`relative flex h-full items-center gap-3 overflow-hidden p-4 transition-all duration-200 ease-out before:absolute before:inset-y-0 before:start-0 before:w-1 group-hover:-translate-y-0.5 group-hover:shadow-lift ${TONES[tone].edge} ${highlight ? "border-gold bg-gold/10" : ""}`}>
-        <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${TONES[tone].tile}`}>{icon}</div>
-        <div className="min-w-0"><p className="truncate text-sm text-muted">{label}</p><p className="text-xl font-bold tabular-nums tracking-tight">{value}</p>{hint && <p className="text-xs tabular-nums text-muted">{hint}</p>}</div>
-      </Card>
-    </Link>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, TriangleAlert, Truck } from "lucide-react";
+import { Lock, MapPin, TriangleAlert, Truck } from "lucide-react";
 import { OrderStatusBadge, PaymentBadge } from "@/components/dashboard/order-status";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
@@ -15,7 +15,7 @@ import { enterDelay, enterItem } from "@/components/ui/motion";
 import { bulkAssignAction } from "./actions";
 
 export type Row = {
-  id: string; number: number; customerName: string; customerPhone: string; cityName: string; total: number; status: OrderStatus;
+  id: string; number: number; customerName: string; customerPhone: string; cityName: string; total: number; status: OrderStatus; locked?: boolean;
   paymentMethod: string; paymentStatus: string; courierName: string | null; createdAt: number; flagged: boolean; itemCount: number;
 };
 
@@ -43,7 +43,7 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
   return (
     <div className="space-y-3">
       {canBulk && selected.size > 0 && (
-        <div className="sticky top-14 z-20 animate-[fade-up_0.2s_ease-out_both] space-y-2 rounded-xl border border-gold/50 bg-surface p-3 shadow-lift lg:top-2">
+        <div className="sticky top-14 z-20 animate-[fade-up_0.2s_ease-out_both] space-y-2 rounded-xl border border-fg/20 bg-surface p-3 shadow-lift lg:top-2">
           <div className="flex flex-wrap items-end gap-2">
             <span className="pb-2.5 text-sm font-medium">{selected.size} محددة</span>
             <div className="min-w-40 flex-1">
@@ -60,10 +60,10 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
       )}
       <ul className="space-y-2">
         {rows.map((o, i) => (
-          <li key={o.id} style={enterDelay(i)} className={`${enterItem} flex items-stretch gap-2 rounded-2xl border bg-surface shadow-soft transition-colors hover:border-gold/60 ${selected.has(o.id) ? "border-gold bg-gold/5" : "border-line"}`}>
+          <li key={o.id} style={enterDelay(i)} className={`${enterItem} flex items-stretch gap-2 rounded-2xl border bg-surface shadow-soft transition-colors hover:border-fg/25 ${selected.has(o.id) ? "border-fg/40 bg-surface-2/60" : "border-line"}`}>
             {canBulk && (
               <label className="flex min-w-12 cursor-pointer items-center justify-center ps-1" aria-label={`تحديد الطلبية ${o.number}`}>
-                <input type="checkbox" className="size-5 accent-[var(--color-gold)]" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
+                <input type="checkbox" className="size-5 accent-[var(--color-teal)]" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
               </label>
             )}
             <Link href={`/dashboard/orders/${o.id}`} className="grid min-w-0 flex-1 gap-1.5 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -71,6 +71,7 @@ export function OrderTable({ rows, couriers, canBulk }: { rows: Row[]; couriers:
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold" dir="ltr">#{o.number}</span>
                   <OrderStatusBadge status={o.status} />
+                  {o.locked && <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium"><Lock className="size-3" aria-hidden /> فوق حد باقتك</span>}
                   {o.flagged && <span className="inline-flex items-center gap-1 text-xs font-medium text-danger-fg"><TriangleAlert className="size-3.5" aria-hidden /> زبون مزعج</span>}
                 </div>
                 <p className="truncate">{o.customerName} <span dir="ltr" className="ms-2 text-sm text-muted">{o.customerPhone}</span></p>

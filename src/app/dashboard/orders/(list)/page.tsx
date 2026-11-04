@@ -13,7 +13,10 @@ import { listCouriers } from "@/server/orders/couriers";
 import { listOrders } from "@/server/orders/manage";
 import { TZ_OFFSET_MS } from "@/server/orders/stats";
 import { requireStoreContext } from "@/server/store-context";
+import { PushToggle } from "@/components/dashboard/push-toggle";
+import { pushConfig } from "@/server/push";
 import { OrderTable } from "../order-table";
+import { CourierOrders } from "./courier-orders";
 
 export const metadata: Metadata = { title: "الطلبيات" };
 
@@ -32,11 +35,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const toStart = dayStart(sp.to);
   const filters = {
     status, q: sp.q, cityId: sp.city, courierId: sp.courier, payment: sp.pay === "cod" || sp.pay === "bank_transfer" ? sp.pay : undefined,
-    from, to: toStart !== undefined ? toStart + DAY - 1 : undefined, page: Number(sp.page) || 1, restrictCourierId: restrict,
+    from, to: toStart !== undefined ? toStart + DAY - 1 : undefined, page: Number(sp.page) || 1, restrictCourierId: restrict, maxOrdersPerMonth: ctx.limits.maxOrdersPerMonth,
   } as const;
   const [result, couriers, delivery] = await Promise.all([
     listOrders(ctx.scope, filters),
-    isCourier ? [] : listCouriers(ctx.scope),
+    listCouriers(ctx.scope),
     isCourier ? { rows: [] } : getDeliveryConfig(getDb(), ctx.scope),
   ]);
 
@@ -46,17 +49,21 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     const s = p.toString();
     return `/dashboard/orders${s ? `?${s}` : ""}`;
   };
+  const mine = isCourier ? couriers.find((c) => c.id === restrict) : undefined;
+  const push = isCourier ? pushConfig() : null;
   const hasFilters = !!(sp.q || sp.city || sp.courier || sp.pay || sp.from || sp.to);
 
   return (
     <div className="space-y-5">
-      <div><h1 className="text-2xl">الطلبيات</h1><p className="text-muted">{isCourier ? "الطلبيات المعيّنة لك." : "تابع طلبيات زباينك من أول ما توصل لين التوصيل."}</p></div>
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl">الطلبيات</h1><p className="text-muted">{isCourier ? "الطلبيات المعيّنة لك." : "تابع طلبيات زباينك من أول ما توصل لين التوصيل."}</p></div>{!isCourier && ctx.access.writable && <ButtonLink href="/dashboard/orders/new" size="sm">+ طلبية يدوية</ButtonLink>}</div>
+
+      {push && <PushToggle publicKey={push.publicKey} courier />}
 
       <nav aria-label="حالات الطلبيات" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        {[{ key: undefined, label: "الكل", n: result.allCount }, ...ORDER_STATUSES.map((s) => ({ key: s as string | undefined, label: ORDER_STATUS_LABELS[s], n: result.counts[s] ?? 0 }))].map((tab) => (
+        {[{ key: undefined, label: "الكل", n: result.allCount }, ...ORDER_STATUSES.filter((s) => s !== "with_courier" || ctx.store.useCouriers || status === s || (result.counts[s] ?? 0) > 0).map((s) => ({ key: s as string | undefined, label: ORDER_STATUS_LABELS[s], n: result.counts[s] ?? 0 }))].map((tab) => (
           <Link
             key={tab.key ?? "all"} href={href({ status: tab.key, page: undefined })} aria-current={status === tab.key ? "page" : undefined}
-            className={cn("flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors", status === tab.key ? "border-gold bg-gold/20" : "border-line bg-surface text-muted hover:text-fg")}
+            className={cn("flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors", status === tab.key ? "border-fg/60 bg-surface-2" : "border-line bg-surface text-muted hover:text-fg")}
           >
             {tab.label}<span className="rounded-full bg-surface-2 px-1.5 text-xs">{tab.n}</span>
           </Link>
@@ -74,7 +81,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
             <summary className="cursor-pointer text-sm font-medium text-link">فلاتر أكثر</summary>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Select name="city" label="المدينة" defaultValue={sp.city ?? ""}><option value="">كل المدن</option>{delivery.rows.filter((c) => c.isActive).map((c) => <option key={c.cityId} value={c.cityId}>{c.cityName}</option>)}</Select>
-              <Select name="courier" label="المندوب" defaultValue={sp.courier ?? ""}><option value="">الكل</option>{couriers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+              {ctx.store.useCouriers && <Select name="courier" label="المندوب" defaultValue={sp.courier ?? ""}><option value="">الكل</option>{couriers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>}
               <Select name="pay" label="الدفع" defaultValue={sp.pay ?? ""}><option value="">الكل</option><option value="cod">عند الاستلام</option><option value="bank_transfer">تحويل مصرفي</option></Select>
               <Input name="from" type="date" label="من تاريخ" defaultValue={sp.from ?? ""} />
               <Input name="to" type="date" label="إلى تاريخ" defaultValue={sp.to ?? ""} />
@@ -89,7 +96,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           action={hasFilters || status ? <ButtonLink variant="outline" href="/dashboard/orders">عرض كل الطلبيات</ButtonLink> : isCourier ? undefined : <ButtonLink href="/dashboard#store-link">شارك رابط متجرك</ButtonLink>} />
       ) : (
         <>
-          <OrderTable rows={result.items} couriers={couriers.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))} canBulk={!isCourier && ctx.access.writable} />
+          {isCourier
+            ? <CourierOrders rows={result.items} summary={{ pendingOrders: mine?.pendingOrders ?? 0, pendingCash: mine?.pendingCash ?? 0, balance: mine?.balance ?? 0 }} writable={ctx.access.writable} />
+            : <OrderTable rows={result.items} couriers={couriers.filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))} canBulk={ctx.access.writable && ctx.store.useCouriers} />}
           {result.pageCount > 1 && (
             <nav aria-label="الصفحات" className="flex items-center justify-center gap-3 text-sm">
               {result.page > 1 && <Link className="rounded-md border border-line px-3 py-2" href={href({ page: String(result.page - 1) })}>السابق</Link>}

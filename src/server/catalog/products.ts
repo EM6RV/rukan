@@ -4,7 +4,9 @@ import type { PlanLimits } from "@/db/schema/platform";
 import { slugify, uniqueSlug } from "@/lib/slugify";
 import { firstError } from "@/lib/validation";
 import { isFkViolation, isUniqueViolation } from "../db-errors";
+import { canUse } from "@/lib/entitlements";
 import { t, type StoreScope } from "../tenant";
+import { brandBelongs } from "./library";
 import { productInputSchema, type ProductData } from "./product-schema";
 import { fail, ok, type Result } from "./result";
 
@@ -83,18 +85,22 @@ export async function listProducts(
 export type ProductEditData = {
   id: string; name: string; description: string | null; price: number; compareAtPrice: number | null; costPrice: number | null;
   isFeatured: boolean; isVisible: boolean; categoryIds: string[]; imageMediaIds: string[];
+  brandId: string | null; tags: string[]; kind: "simple" | "bundle"; bundleItems: { variantId: string; quantity: number }[];
+  personalization: { label: string; maxChars: number; price: number } | null;
   options: { id: string; name: string; values: { id: string; value: string; colorHex: string | null }[] }[];
-  variants: { id: string; valueIds: string[]; sku: string | null; price: number | null; compareAtPrice: number | null; costPrice: number | null; stock: number; isActive: boolean }[];
+  variants: { id: string; valueIds: string[]; sku: string | null; price: number | null; compareAtPrice: number | null; costPrice: number | null; stock: number; isActive: boolean; expiresAt: number | null }[];
 };
 
 export async function getProductForEdit(scope: StoreScope, id: string): Promise<ProductEditData | null> {
   const [p] = await scope.from(t.products, and(eq(t.products.id, id), isNull(t.products.deletedAt))!).limit(1);
   if (!p) return null;
-  const [cats, imgs, opts, vars] = await Promise.all([
+  const [cats, imgs, opts, vars, tags, bundle] = await Promise.all([
     scope.from(t.productCategories, eq(t.productCategories.productId, id)),
     scope.from(t.productImages, eq(t.productImages.productId, id)).orderBy(t.productImages.position),
     scope.from(t.productOptions, eq(t.productOptions.productId, id)).orderBy(t.productOptions.position),
     scope.from(t.productVariants, eq(t.productVariants.productId, id)).orderBy(t.productVariants.position),
+    scope.from(t.productTags, eq(t.productTags.productId, id)),
+    scope.from(t.bundleItems, eq(t.bundleItems.bundleProductId, id)),
   ]);
   const optIds = opts.map((o) => o.id);
   const varIds = vars.map((v) => v.id);
@@ -105,6 +111,8 @@ export async function getProductForEdit(scope: StoreScope, id: string): Promise<
   return {
     id: p.id, name: p.name, description: p.description, price: p.price, compareAtPrice: p.compareAtPrice, costPrice: p.costPrice,
     isFeatured: p.isFeatured, isVisible: p.isVisible,
+    brandId: p.brandId, tags: tags.map((x) => x.tag).sort(), kind: p.kind, bundleItems: bundle.map((b) => ({ variantId: b.variantId, quantity: b.quantity })),
+    personalization: p.personalizationLabel ? { label: p.personalizationLabel, maxChars: p.personalizationMaxChars ?? 40, price: p.personalizationPrice } : null,
     categoryIds: cats.map((c) => c.categoryId),
     imageMediaIds: imgs.map((i) => i.mediaId),
     options: opts.map((o) => ({
@@ -113,7 +121,7 @@ export async function getProductForEdit(scope: StoreScope, id: string): Promise<
     })),
     variants: vars.map((v) => ({
       id: v.id, valueIds: links.filter((l) => l.variantId === v.id).map((l) => l.optionValueId),
-      sku: v.sku, price: v.price, compareAtPrice: v.compareAtPrice, costPrice: v.costPrice, stock: v.stock, isActive: v.isActive,
+      sku: v.sku, price: v.price, compareAtPrice: v.compareAtPrice, costPrice: v.costPrice, stock: v.stock, isActive: v.isActive, expiresAt: v.expiresAt?.getTime() ?? null,
     })),
   };
 }
@@ -133,12 +141,24 @@ export async function saveProduct(scope: StoreScope, input: unknown, ctx: SaveCt
     if (found !== data.categoryIds.length) return fail("قسم غير صحيح.");
   }
 
+  if (data.brandId && !(await brandBelongs(scope, data.brandId))) return fail("براند غير صحيح.");
+  if (data.kind === "bundle") {
+    if (!canUse(ctx.limits, "bundles")) return fail("الباقات المجمعة مش في باقتك. رقّي باقتك لتفعلها.");
+    const comps = await scope.from(t.productVariants, inArray(t.productVariants.id, data.bundleItems.map((b) => b.variantId)));
+    if (comps.length !== data.bundleItems.length) return fail("أحد مكونات الباقة غير صحيح.");
+    const parents = await scope.from(t.products, and(inArray(t.products.id, comps.map((c) => c.productId)), isNull(t.products.deletedAt))!);
+    if (parents.length !== new Set(comps.map((c) => c.productId)).size || parents.some((p) => p.kind === "bundle" || p.id === data.id)) return fail("المكونات لازم تكون منتجات عادية موجودة.");
+  }
+
   try {
     return await scope.transaction(async (tx) => {
       let productId = data.id;
       const base = {
         name: data.name, description: data.description, price: data.price, compareAtPrice: data.compareAtPrice,
         costPrice: data.costPrice, isFeatured: data.isFeatured, isVisible: data.isVisible,
+        brandId: data.brandId, kind: data.kind,
+        personalizationLabel: data.personalization?.label ?? null, personalizationMaxChars: data.personalization?.maxChars ?? null,
+        personalizationPrice: data.personalization?.price ?? 0,
       };
       if (productId) {
         const [row] = await tx.update(t.products, base, and(eq(t.products.id, productId), isNull(t.products.deletedAt)));
@@ -155,6 +175,10 @@ export async function saveProduct(scope: StoreScope, input: unknown, ctx: SaveCt
       }
 
       await syncCategories(tx, productId, data.categoryIds);
+      await tx.delete(t.productTags, eq(t.productTags.productId, productId));
+      if (data.tags.length) await tx.insert(t.productTags, data.tags.map((tag) => ({ productId: productId!, tag })));
+      await tx.delete(t.bundleItems, eq(t.bundleItems.bundleProductId, productId));
+      if (data.kind === "bundle") await tx.insert(t.bundleItems, data.bundleItems.map((b) => ({ bundleProductId: productId!, variantId: b.variantId, quantity: b.quantity })));
       await syncImages(tx, productId, data.imageMediaIds);
       await syncOptionsAndVariants(tx, productId, data, ctx);
       return ok({ id: productId });
@@ -227,7 +251,8 @@ async function syncOptionsAndVariants(tx: Tx, productId: string, data: ProductDa
   const keepVariantIds: string[] = [];
 
   for (const [position, v] of data.variants.entries()) {
-    const fields = { sku: v.sku, price: v.price, compareAtPrice: v.compareAtPrice, costPrice: v.costPrice, stock: v.stock, isActive: v.isActive, position };
+    const stock = data.kind === "bundle" ? 0 : v.stock; // مخزون الباقة يتحسب من مكوناتها
+    const fields = { sku: v.sku, price: v.price, compareAtPrice: v.compareAtPrice, costPrice: v.costPrice, stock, isActive: v.isActive, position, expiresAt: v.expiresAt ? new Date(v.expiresAt) : null };
     let variantId: string;
     const prev = v.id ? existingById.get(v.id) : undefined;
     if (v.id && !prev) throw new SaveError("متغير غير صحيح. حدّث الصفحة وجرّب مرة ثانية.");
@@ -235,11 +260,11 @@ async function syncOptionsAndVariants(tx: Tx, productId: string, data: ProductDa
       variantId = prev.id;
       await tx.update(t.productVariants, fields, eq(t.productVariants.id, variantId));
       await tx.delete(t.variantOptionValues, eq(t.variantOptionValues.variantId, variantId));
-      if (prev.stock !== v.stock) await logStock(tx, variantId, v.stock - prev.stock, "تعديل يدوي", ctx.actorUserId);
+      if (prev.stock !== stock) await logStock(tx, variantId, stock - prev.stock, "تعديل يدوي", ctx.actorUserId);
     } else {
       const [row] = await tx.insert(t.productVariants, { productId, ...fields });
       variantId = row!.id;
-      if (v.stock > 0) await logStock(tx, variantId, v.stock, "رصيد افتتاحي", ctx.actorUserId);
+      if (stock > 0) await logStock(tx, variantId, stock, "رصيد افتتاحي", ctx.actorUserId);
     }
     keepVariantIds.push(variantId);
     if (v.valueIds.length) {
@@ -276,8 +301,9 @@ export async function duplicateProduct(scope: StoreScope, id: string, ctx: SaveC
     name: `نسخة من ${src.name}`.slice(0, 120),
     description: src.description, price: src.price, compareAtPrice: src.compareAtPrice, costPrice: src.costPrice,
     isFeatured: false, isVisible: false, categoryIds: src.categoryIds, imageMediaIds: src.imageMediaIds,
+    brandId: src.brandId, tags: src.tags, kind: src.kind, bundleItems: src.bundleItems, personalization: src.personalization,
     options: src.options.map((o) => ({ id: optionMap.get(o.id)!, name: o.name, values: o.values.map((v) => ({ id: valueMap.get(v.id)!, value: v.value, colorHex: v.colorHex })) })),
-    variants: src.variants.map((v) => ({ valueIds: v.valueIds.map((x) => valueMap.get(x)!), sku: null, price: v.price, compareAtPrice: v.compareAtPrice, costPrice: v.costPrice, stock: v.stock, isActive: v.isActive })),
+    variants: src.variants.map((v) => ({ valueIds: v.valueIds.map((x) => valueMap.get(x)!), sku: null, price: v.price, compareAtPrice: v.compareAtPrice, costPrice: v.costPrice, stock: v.stock, isActive: v.isActive, expiresAt: v.expiresAt })),
   }, ctx);
 }
 

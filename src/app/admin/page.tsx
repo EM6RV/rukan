@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LINE_INFO } from "@/lib/product-lines";
 import Link from "next/link";
 import { Banknote, Rocket, ShoppingBag, Store, TrendingUp, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,7 @@ export default async function AdminHome() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {kpi.map(({ icon: Icon, label, value, hint }) => (
           <Card key={label} className="flex items-start gap-3 p-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gold/20"><Icon className="size-5" aria-hidden /></div>
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-2"><Icon className="size-5" aria-hidden /></div>
             <div className="min-w-0"><p className="text-sm text-muted">{label}</p><p className="text-xl font-bold">{value}</p>{hint && <p className="text-xs text-muted">{hint}</p>}</div>
           </Card>
         ))}
@@ -45,7 +46,7 @@ export default async function AdminHome() {
               {s.revenue.map((r, i) => (
                 <div key={r.month} className="flex flex-1 flex-col items-center gap-1.5">
                   <span className="text-xs text-muted">{r.total ? formatMoney(r.total).replace(" د.ل", "") : ""}</span>
-                  <div className={`w-full rounded-t-md ${i === s.revenue.length - 1 ? "bg-gold" : "bg-teal"}`} style={{ height: `${Math.max(3, (r.total / maxRev) * 120)}px`, opacity: r.total ? 1 : 0.25 }} title={`${r.month}: ${formatMoney(r.total)} (${r.payments} دفعة)`} />
+                  <div className={`w-full rounded-t-md ${i === s.revenue.length - 1 ? "bg-teal" : "bg-teal/45"}`} style={{ height: `${Math.max(3, (r.total / maxRev) * 120)}px`, opacity: r.total ? 1 : 0.25 }} title={`${r.month}: ${formatMoney(r.total)} (${r.payments} دفعة)`} />
                   <span className="text-xs text-muted">{r.month.slice(5)}</span>
                 </div>
               ))}
@@ -70,10 +71,10 @@ export default async function AdminHome() {
           <ul className="divide-y divide-line">
             {s.expiring.map((e) => {
               const wa = toWhatsappNumber(e.ownerPhone);
-              const msg = renewalMessage({ ownerName: e.ownerName, storeName: e.name, daysLeft: e.daysLeft, endDate: formatDate(e.endsAt), planName: e.planName });
+              const msg = renewalMessage({ ownerName: e.ownerName, storeName: e.name, daysLeft: e.daysLeft, endDate: formatDate(e.endsAt), planName: e.planName, lineName: e.line === "store" ? undefined : LINE_INFO[e.line].brand });
               return (
-                <li key={e.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
-                  <Link href={`/admin/stores/${e.id}`} className="min-w-0 flex-1"><p className="truncate font-semibold">{e.name}</p><p className="text-muted">{e.ownerName} · <span dir="ltr">{e.ownerPhone}</span></p></Link>
+                <li key={`${e.id}-${e.line}`} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+                  <Link href={`/admin/stores/${e.id}`} className="min-w-0 flex-1"><p className="truncate font-semibold">{e.name} <span className="font-normal text-muted">· {LINE_INFO[e.line].brand}</span></p><p className="text-muted">{e.ownerName} · <span dir="ltr">{e.ownerPhone}</span></p></Link>
                   <Badge tone={e.state === "expired" ? "danger" : e.state === "trial" ? "gold" : "teal"}>{e.state === "expired" ? "منتهي" : e.state === "trial" ? "تجريبي" : "نشط"} · {e.daysLeft <= 0 ? `من ${-e.daysLeft} يوم` : `${e.daysLeft} يوم`}</Badge>
                   {wa && <a href={waLink(wa, msg)} target="_blank" rel="noopener noreferrer" className="rounded-md bg-success px-3 py-1.5 font-semibold text-white hover:brightness-95">واتساب</a>}
                   <Link href={`/admin/stores/${e.id}#payment`} className="rounded-md border border-line px-3 py-1.5 font-medium hover:bg-surface-2">سجّل دفعة</Link>
@@ -83,8 +84,28 @@ export default async function AdminHome() {
           </ul>
         )}
       </Card>
+      <Card>
+        <CardHeader title="حسب المنظومة" description="عدد النشاطات، الدخل الشهري المتكرر، والتجارب اللي تحولت لاشتراك مدفوع." />
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="إحصائيات المنظومات">
+          <table className="w-full min-w-[36rem] text-sm">
+            <thead><tr className="border-b border-line text-start text-muted"><th className="px-5 py-2 text-start font-medium">المنظومة</th><th className="px-3 py-2 text-start font-medium">النشاطات</th><th className="px-3 py-2 text-start font-medium">نشط / تجريبي / منتهي</th><th className="px-3 py-2 text-start font-medium">الدخل الشهري</th><th className="px-3 py-2 text-start font-medium">دخل هذا الشهر</th><th className="px-3 py-2 text-start font-medium">تحولت لاشتراك</th></tr></thead>
+            <tbody className="divide-y divide-line">
+              {s.perLine.map((l) => (
+                <tr key={l.line}>
+                  <td className="px-5 py-2.5 font-semibold"><Link href={`/admin/stores?line=${l.line}`} className="hover:underline">{LINE_INFO[l.line].brand}</Link></td>
+                  <td className="px-3 py-2.5 tabular-nums">{l.total}</td>
+                  <td className="px-3 py-2.5 tabular-nums">{l.byState.active} / {l.byState.trial} / {l.byState.expired}</td>
+                  <td className="px-3 py-2.5 tabular-nums">{formatMoney(l.mrr)}</td>
+                  <td className="px-3 py-2.5 tabular-nums">{formatMoney(l.revenueThisMonth)}</td>
+                  <td className="px-3 py-2.5 tabular-nums">{l.converted}{l.total ? ` (${Math.round((l.converted / l.total) * 100)}%)` : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
       {s.byPlan.length > 0 && (
-        <Card><CardHeader title="المتاجر النشطة حسب الباقة" /><CardBody className="flex flex-wrap gap-2">{s.byPlan.map((p) => <Badge key={p.name} tone="neutral" className="text-sm">{p.name}: {p.count}</Badge>)}</CardBody></Card>
+        <Card><CardHeader title="الاشتراكات النشطة حسب الباقة" /><CardBody className="flex flex-wrap gap-2">{s.byPlan.map((p) => <Badge key={p.name} tone="neutral" className="text-sm">{p.name}: {p.count}</Badge>)}</CardBody></Card>
       )}
     </>
   );

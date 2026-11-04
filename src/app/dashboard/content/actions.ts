@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import type { Result } from "@/server/catalog/result";
 import { deletePage, reorderPages, saveHomeSections, savePage, saveStoreTexts } from "@/server/content-service";
 import { invalidateStore } from "@/server/storefront/data";
+import { auditStore } from "@/server/store-audit";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
 async function run<T>(fn: (ctx: StoreContext) => Promise<Result<T>>): Promise<Result<T>> {
@@ -13,6 +14,7 @@ async function run<T>(fn: (ctx: StoreContext) => Promise<Result<T>>): Promise<Re
   if (!auth.ok) return auth;
   const r = await fn(auth.ctx);
   if (r.ok) {
+    void auditStore(auth.ctx, "content.write");
     revalidatePath("/dashboard/content");
     revalidatePath("/dashboard/design");
     invalidateStore(auth.ctx.store);

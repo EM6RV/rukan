@@ -7,8 +7,9 @@ import { addDomain, removeDomain, verifyDomain } from "@/server/domains";
 import type { Result } from "@/server/catalog/result";
 import { saveDeliveryConfig } from "@/server/delivery-service";
 import { saveWhatsappTemplate } from "@/server/orders/whatsapp-templates";
-import { saveContactSettings, saveDesignSettings, saveGeneralSettings, savePaymentSettings, savePixelSettings, saveSeoSettings } from "@/server/settings-service";
+import { saveContactSettings, saveCouriersSetting, saveDesignSettings, saveGeneralSettings, savePaymentSettings, savePixelSettings, saveSeoSettings } from "@/server/settings-service";
 import { invalidateStore } from "@/server/storefront/data";
+import { auditStore } from "@/server/store-audit";
 import { actionContext, type StoreContext } from "@/server/store-context";
 
 async function run(fn: (ctx: StoreContext) => Promise<Result>): Promise<Result> {
@@ -16,6 +17,7 @@ async function run(fn: (ctx: StoreContext) => Promise<Result>): Promise<Result> 
   if (!auth.ok) return auth;
   const r = await fn(auth.ctx);
   if (r.ok) {
+    void auditStore(auth.ctx, "settings.write");
     revalidatePath("/dashboard", "layout");
     invalidateStore(auth.ctx.store);
   }
@@ -33,6 +35,10 @@ export async function savePaymentAction(input: unknown) {
 }
 export async function saveSeoAction(input: unknown) {
   return run((c) => saveSeoSettings(getDb(), c.store.id, input));
+}
+
+export async function saveCouriersSettingAction(input: unknown) {
+  return run((c) => saveCouriersSetting(getDb(), c.store.id, input));
 }
 
 export async function saveDeliveryAction(input: unknown) {

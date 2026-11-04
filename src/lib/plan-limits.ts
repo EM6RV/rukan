@@ -1,9 +1,8 @@
 import type { PlanLimits } from "@/db/schema/platform";
+import { STARTER_LIMITS } from "./plan-catalog";
 
-// لو المتجر ما عنده باقة (حالة نادرة) نطبق حدود «بداية».
-export const FALLBACK_LIMITS: PlanLimits = {
-  maxProducts: 50, maxStaff: 1, allTemplates: false, coupons: false, reports: false, customDomain: false, pixels: false, removeBranding: false,
-};
+// لو المتجر ما عنده باقة (حالة نادرة) نطبق حدود باقة «بداية».
+export const FALLBACK_LIMITS: PlanLimits = STARTER_LIMITS;
 
 /** القالب المتاح في كل الباقات */
-export const BASE_TEMPLATE = "simple";
+export const BASE_TEMPLATE = "naqa"; // القالب المتاح في كل الباقات (حتى المجانية)

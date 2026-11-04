@@ -3,9 +3,11 @@ import { Alexandria, IBM_Plex_Sans_Arabic } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
-const alexandria = Alexandria({ subsets: ["arabic", "latin"], variable: "--font-alexandria", display: "swap" });
+// الخطوط: نحمّل مسبقاً (preload) الحروف العربية بس. اللاتينية والأرقام تتحمل لما تحتاجها الصفحة (unicode-range)،
+// و swap يخلي النص يبان فوراً بخط النظام لين يوصل الخط.
+const alexandria = Alexandria({ subsets: ["arabic"], variable: "--font-alexandria", display: "swap" });
 const plex = IBM_Plex_Sans_Arabic({
-  subsets: ["arabic", "latin"],
+  subsets: ["arabic"],
   weight: ["400", "500", "600"],
   variable: "--font-plex",
   display: "swap",
@@ -15,6 +17,8 @@ export const metadata: Metadata = {
   title: "رُكن — ركنك في السوق… أونلاين.",
   description: "افتح متجرك الإلكتروني في دقيقتين: دفع عند الاستلام، مندوبين، مرتجعات، ومدن ليبيا جاهزة.",
   applicationName: "رُكن",
+  appleWebApp: { capable: true, title: "رُكن", statusBarStyle: "default" },
+  icons: { apple: "/icons/icon-192.png" },
 };
 
 export const viewport: Viewport = {
