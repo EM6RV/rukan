@@ -48,7 +48,7 @@ export function ImageUploader({ label, hint, kind, value, onChange, shape = "squ
           disabled={busy}
           aria-label={value ? "تغيير الصورة" : "رفع صورة"}
           className={cn(
-            "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-line bg-surface-2 text-muted transition-colors hover:border-fg/25 hover:text-fg",
+            "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-line bg-surface-2 text-muted transition-colors hover:border-gold hover:text-fg",
             shape === "square" ? "size-24" : "h-24 w-40",
           )}
         >

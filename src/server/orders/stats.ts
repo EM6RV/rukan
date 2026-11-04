@@ -1,5 +1,4 @@
-import { and, count, eq, inArray, sql } from "drizzle-orm";
-import { lowStockCondition } from "../catalog/low-stock";
+import { and, count, eq, inArray, lte, sql } from "drizzle-orm";
 import { t, type StoreScope } from "../tenant";
 import { listCouriers } from "./couriers";
 
@@ -33,7 +32,7 @@ export async function getDashboardStats(scope: StoreScope, now = Date.now()) {
     ) as Promise<{ day: number; total: number; n: number }[]>,
     listCouriers(scope),
     scope.aggregate(t.orders, { status: t.orders.status, n: count() }, { where: and(inArray(t.orders.status, ["delivered", "returned"]), sql`${t.orders.createdAt} >= ${monthStart}`), groupBy: [t.orders.status] }) as Promise<{ status: string; n: number }[]>,
-    scope.from(t.productVariants, lowStockCondition()),
+    scope.from(t.productVariants, and(eq(t.productVariants.isActive, true), lte(t.productVariants.stock, 5))!),
     scope.count(t.paymentReceipts, eq(t.paymentReceipts.status, "pending")),
   ]);
 
@@ -47,7 +46,7 @@ export async function getDashboardStats(scope: StoreScope, now = Date.now()) {
     lowByProduct.set(v.productId, { stock: Math.min(cur?.stock ?? Infinity, v.stock), variants: (cur?.variants ?? 0) + 1 });
   }
   const lowIds = [...lowByProduct.keys()];
-  const lowProducts = lowIds.length ? await scope.from(t.products, and(inArray(t.products.id, lowIds), eq(t.products.isVisible, true), eq(t.products.kind, "simple"), sql`${t.products.deletedAt} IS NULL`)!) : [];
+  const lowProducts = lowIds.length ? await scope.from(t.products, and(inArray(t.products.id, lowIds), eq(t.products.isVisible, true), sql`${t.products.deletedAt} IS NULL`)!) : [];
   const lowStock = lowProducts.map((p) => ({ id: p.id, name: p.name, stock: lowByProduct.get(p.id)!.stock, variants: lowByProduct.get(p.id)!.variants })).sort((a, b) => a.stock - b.stock);
 
   const dayIndex = Math.floor((today + TZ_OFFSET_MS) / DAY);

@@ -24,7 +24,7 @@ let tripoli: string, benghazi: string, sebha: string;
 type Shop = { id: string; scope: StoreScope; slug: string };
 
 async function makeShop(slug: string, opts: { planLimits?: PlanLimits; freeOver?: number | null; bank?: boolean } = {}): Promise<Shop> {
-  const [plan] = await db.insert(plans).values({ slug: `plan-${slug}`, nameAr: "x", price: 1, limits: opts.planLimits ?? GROWTH }).returning();
+  const [plan] = await db.insert(plans).values({ slug: `plan-${slug}`, nameAr: "x", priceMonthly: 1, priceYearly: 1, limits: opts.planLimits ?? GROWTH }).returning();
   const [u] = await db.insert(users).values({ phone: `0913${String(++n).padStart(6, "0")}`, name: "u", passwordHash: "x" }).returning();
   const r = await createStoreForUser(db, { userId: u!.id, name: slug, slug });
   if (!r.ok) throw new Error(r.error);
@@ -334,7 +334,7 @@ describe("استعلامات الواجهة", () => {
   it("المتجر: slug ودومين خاص متحقق وغير مكتمل الإعداد", async () => {
     const s = await makeShop("shop-sf", { planLimits: { ...GROWTH, customDomain: true } });
     const sf = (await loadStorefront(db, "SHOP-SF"))!;
-    expect(sf).toMatchObject({ id: s.id, name: "shop-sf", status: "trial", template: "naqa" });
+    expect(sf).toMatchObject({ id: s.id, name: "shop-sf", status: "trial", template: "simple" });
     expect(sf.pages.map((p) => p.slug)).toContain("about");
     expect(sf.payments.map((p) => p.method)).toEqual(["cod"]);
     expect(sf.limits.coupons).toBe(true);

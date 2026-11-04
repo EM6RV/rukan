@@ -3,9 +3,6 @@ import { z } from "zod";
 const money = z.number({ error: "السعر لازم يكون رقم" }).int("السعر غير صحيح").min(0, "اكتب سعر 0 أو أكثر").max(1_000_000_000, "السعر كبير بزيادة");
 const nullableMoney = money.nullish().transform((v) => v ?? null);
 
-export const tagsSchema = z.array(z.string().trim().min(1).max(30, "الوسم طويل (30 حرف)")).max(10, "الحد الأقصى 10 وسوم").default([])
-  .transform((tags) => [...new Set(tags.map((x) => x.replace(/^#/, "").trim()).filter(Boolean))]);
-
 export const MAX_OPTIONS = 3;
 export const MAX_VARIANTS = 100;
 export const MAX_IMAGES = 10;
@@ -31,7 +28,6 @@ const variant = z.object({
   costPrice: nullableMoney,
   stock: z.number({ error: "المخزون لازم يكون رقم" }).int("المخزون لازم يكون رقم صحيح").min(0, "المخزون ما يكونش بالسالب").max(1_000_000, "المخزون كبير بزيادة"),
   isActive: z.boolean().default(true),
-  expiresAt: z.number().int().positive().nullish().transform((v) => v ?? null),
 });
 
 export const productInputSchema = z
@@ -44,15 +40,6 @@ export const productInputSchema = z
     costPrice: nullableMoney,
     isFeatured: z.boolean().default(false),
     isVisible: z.boolean().default(true),
-    brandId: z.string().min(1).nullish().transform((v) => v ?? null),
-    tags: tagsSchema,
-    kind: z.enum(["simple", "bundle"]).default("simple"),
-    bundleItems: z.array(z.object({ variantId: z.string().min(1), quantity: z.number().int().min(1, "الكمية 1 على الأقل").max(50, "كمية كبيرة") })).max(20, "مكونات كثيرة").default([]),
-    personalization: z.object({
-      label: z.string().trim().min(1, "اكتب عنوان خانة التخصيص").max(40, "العنوان طويل"),
-      maxChars: z.number().int().min(1, "الحد الأدنى حرف").max(200, "الحد الأقصى 200 حرف"),
-      price: z.number().int().min(0, "السعر الإضافي 0 أو أكثر").max(100_000_000),
-    }).nullish().transform((v) => v ?? null),
     categoryIds: z.array(z.string()).max(20, "أقسام كثيرة").default([]),
     imageMediaIds: z.array(z.string()).max(MAX_IMAGES, `الحد الأقصى ${MAX_IMAGES} صور`).default([]),
     options: z.array(option).max(MAX_OPTIONS, `الحد الأقصى ${MAX_OPTIONS} خيارات`).default([]),
@@ -92,11 +79,6 @@ export const productInputSchema = z
       if (v.compareAtPrice !== null && v.compareAtPrice <= effective) add("السعر قبل التخفيض لازم يكون أكبر من السعر الحالي");
     }
     if (p.options.length === 0 && p.variants.length !== 1) add("منتج بدون خيارات له متغير واحد فقط");
-    if (p.kind === "bundle") {
-      if (p.bundleItems.length === 0) add("الباقة المجمعة لازم فيها منتج واحد على الأقل");
-      if (p.options.length > 0) add("الباقة المجمعة ما فيهاش خيارات");
-      if (new Set(p.bundleItems.map((b) => b.variantId)).size !== p.bundleItems.length) add("مكون مكرر في الباقة");
-    } else if (p.bundleItems.length > 0) add("المكونات خاصة بالباقات المجمعة");
   });
 
 export type ProductInput = z.input<typeof productInputSchema>;

@@ -74,7 +74,7 @@ export function ImportWizard({ writable, remaining }: { writable: boolean; remai
         <CardHeader title="2. ارفع الملف" />
         <CardBody className="space-y-4">
           <button type="button" disabled={!writable || pending} onClick={() => input.current?.click()}
-            className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-line px-4 py-8 text-muted transition-colors hover:border-fg/25 hover:text-fg disabled:opacity-50">
+            className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-line px-4 py-8 text-muted transition-colors hover:border-gold hover:text-fg disabled:opacity-50">
             <FileSpreadsheet className="size-8" />
             <span className="font-medium">{file ? file.name : "اضغط لاختيار ملف"}</span>
           </button>

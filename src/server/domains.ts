@@ -1,4 +1,3 @@
-import { canUse } from "@/lib/entitlements";
 import dns from "node:dns/promises";
 import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
@@ -30,14 +29,14 @@ export async function getStoreDomain(db: Db, storeId: string): Promise<DomainInf
   return r ? { id: r.id, domain: r.domain, status: r.status, token: r.id } : null;
 }
 
-const NO_PLAN = "الدومين الخاص متاح في الباقات الأعلى.";
+const NO_PLAN = "الدومين الخاص متاح في الباقة الاحترافية.";
 
 /**
  * يضيف دومين بحالة «pending». الحجز مؤقت: ما يصير حصري إلا بعد التحقق (TXT + توجيه)،
  * فأي طلب معلّق لمتجر ثاني يتم استبداله لما صاحب الدومين الحقيقي يضيفه.
  */
 export async function addDomain(db: Db, storeId: string, input: unknown, limits: Pick<PlanLimits, "customDomain">, rootDomain: string, actorUserId: string): Promise<Result<DomainInfo>> {
-  if (!canUse(limits, "customDomain")) return fail(NO_PLAN);
+  if (!limits.customDomain) return fail(NO_PLAN);
   const raw = z.string({ error: "اكتب الدومين" }).max(300).safeParse(input);
   if (!raw.success) return fail("اكتب الدومين");
   const domain = normalizeDomain(raw.data);

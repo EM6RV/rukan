@@ -1,12 +1,9 @@
-import { canUse } from "@/lib/entitlements";
 import { and, eq, sql } from "drizzle-orm";
 import { writeTransaction, type Db } from "@/db";
-import { cities, lineSubscriptions, media, plans, storeMembers, stores, type PlanLimits } from "@/db/schema/platform";
+import { cities, media, plans, storeMembers, stores, type PlanLimits } from "@/db/schema/platform";
 import { BUSINESS_PRESETS } from "@/lib/business-presets";
 import { BASE_TEMPLATE } from "@/lib/plan-limits";
-import type { BusinessType, StoreTemplate } from "@/lib/constants";
-import { LINE_INFO, type ProductLine } from "@/lib/product-lines";
-import { lineTrialDays, lineTrialPlan, syncStoreColumns } from "./lines";
+import { DEFAULT_TRIAL_DAYS, type BusinessType, type StoreTemplate } from "@/lib/constants";
 import { DEFAULT_FOOTER_TEXT, DEFAULT_THANKS_MESSAGE, defaultHomeSections, defaultPages } from "@/lib/store-defaults";
 import { DEFAULT_WHATSAPP_TEMPLATES } from "@/lib/whatsapp-defaults";
 import { firstError, slugSchema, storeNameSchema } from "@/lib/validation";
@@ -31,34 +28,18 @@ export async function checkSlugAvailable(db: Db, rawSlug: string, excludeStoreId
 
 // ===== الإنشاء =====
 
-/**
- * ينشئ النشاط (صف stores) مع اشتراك تجريبي لكل منظومة اختارها (افتراضياً المتجر الأونلاين بس).
- * المتجر: تجربة مجانية، أو الباقة المجانية للأبد لو الأدمن أطلقها واختارها.
- */
-export async function createStoreForUser(db: Db, input: { userId: string; name: string; slug: string; lines?: ProductLine[] }): Promise<Result<{ storeId: string }>> {
+export async function createStoreForUser(db: Db, input: { userId: string; name: string; slug: string }): Promise<Result<{ storeId: string }>> {
   const name = storeNameSchema.safeParse(input.name);
   if (!name.success) return fail(firstError(name.error));
   const slug = await checkSlugAvailable(db, input.slug);
   if (!slug.ok) return slug;
-  const lines = [...new Set(input.lines?.length ? input.lines : (["store"] as ProductLine[]))];
 
   const already = await db.select({ id: storeMembers.id }).from(storeMembers).where(eq(storeMembers.userId, input.userId)).get();
   if (already) return fail("عندك متجر بالفعل.");
 
-  const now = Date.now();
-  const subs: (typeof lineSubscriptions.$inferInsert)[] = [];
-  for (const line of lines) {
-    if (line === "store") {
-      const freeStart = (await getPlatformSetting<boolean>(db, "free_plan_enabled", false)) && (await getPlatformSetting<string>(db, "start_mode", "trial")) === "free";
-      const freePlan = freeStart ? await db.select({ id: plans.id }).from(plans).where(and(eq(plans.isFree, true), eq(plans.isActive, true), eq(plans.line, "store"))).get() : undefined;
-      if (freePlan) { subs.push({ storeId: "", line, planId: freePlan.id, status: "active", trialEndsAt: null }); continue; }
-    }
-    const plan = await lineTrialPlan(db, line);
-    subs.push({ storeId: "", line, planId: plan?.id ?? null, status: "trial", trialEndsAt: new Date(now + (await lineTrialDays(db, line)) * DAY) });
-  }
-  // نوع النشاط المبدئي: من المنظومة الأساسية لو ما فيش متجر أونلاين (المتجر يختار نوعه في المعالج)
-  const firstOps = lines.find((l) => l !== "store");
-  const businessType: BusinessType = lines.includes("store") || !firstOps ? "other" : LINE_INFO[firstOps].businessType;
+  const trialDays = await getPlatformSetting<number>(db, "trial_days", DEFAULT_TRIAL_DAYS);
+  const planSlug = await getPlatformSetting<string>(db, "trial_plan_slug", "growth");
+  const plan = await db.select({ id: plans.id }).from(plans).where(eq(plans.slug, planSlug)).get();
 
   try {
     return await writeTransaction(db, async (tx) => {
@@ -69,15 +50,13 @@ export async function createStoreForUser(db: Db, input: { userId: string; name: 
           slug: slug.data,
           name: name.data,
           ownerUserId: input.userId,
-          businessType,
-          template: BASE_TEMPLATE, // القالب الافتراضي للمتجر الجديد (المعالج يقترح غيره حسب النشاط)
+          planId: plan?.id ?? null,
+          trialEndsAt: new Date(Date.now() + trialDays * DAY),
           onboardingStep: 2,
         })
         .returning({ id: stores.id });
       const storeId = store!.id;
       await db2.insert(storeMembers).values({ storeId, userId: input.userId, role: "owner" });
-      await db2.insert(lineSubscriptions).values(subs.map((x) => ({ ...x, storeId })));
-      await syncStoreColumns(db2, storeId);
 
       const s = forStore(db2, storeId);
       await s.insert(t.storeSettings, { thanksMessage: DEFAULT_THANKS_MESSAGE, footerText: DEFAULT_FOOTER_TEXT });
@@ -126,7 +105,7 @@ export async function saveStoreBasics(db: Db, storeId: string, input: { name: st
 export async function saveBusinessType(db: Db, storeId: string, type: BusinessType, limits: PlanLimits): Promise<Result<{ template: StoreTemplate; primary: string; accent: string }>> {
   const preset = BUSINESS_PRESETS[type];
   if (!preset) return fail("نوع النشاط غير صحيح.");
-  const template = canUse(limits, "allTemplates") ? preset.template : BASE_TEMPLATE;
+  const template = limits.allTemplates ? preset.template : BASE_TEMPLATE;
   await bumpStep(db, storeId, 3, { businessType: type, template });
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: preset.palette.primary, accentColor: preset.palette.accent });
   return { ok: true, data: { template, primary: preset.palette.primary, accent: preset.palette.accent } };
@@ -144,7 +123,7 @@ export async function saveIdentity(
   input: { template: StoreTemplate; primaryColor: string; accentColor: string; logoMediaId: string | null },
   limits: PlanLimits,
 ): Promise<Result> {
-  if (!canUse(limits, "allTemplates") && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن الباقات الأعلى. رقّي باقتك لتستعمله.");
+  if (!limits.allTemplates && input.template !== BASE_TEMPLATE) return fail("هذا القالب ضمن باقة «نمو» وما فوق. رقّي باقتك لتستعمله.");
   if (!(await validateOwnMedia(db, storeId, input.logoMediaId))) return fail("ما قدرنا نقرا اللوجو. ارفع صورة JPG أو PNG أو WebP.");
   await bumpStep(db, storeId, 4, { template: input.template, logoMediaId: input.logoMediaId });
   await forStore(db, storeId).update(t.storeSettings, { primaryColor: input.primaryColor, accentColor: input.accentColor });
@@ -189,16 +168,10 @@ export async function saveDelivery(
   return { ok: true, data: undefined };
 }
 
-/** إنهاء المعالج: كل منظومة مشترك فيها خلصت خطواتها (المتجر: النوع والهوية والتوصيل، والباقي: المعالج القصير) */
 export async function completeOnboarding(db: Db, storeId: string): Promise<Result> {
   const store = await db.select().from(stores).where(eq(stores.id, storeId)).get();
   if (!store) return fail("ما لقينا المتجر. يمكن انحذف، حدّث الصفحة.");
-  const subs = await db.select({ line: lineSubscriptions.line, setup: lineSubscriptions.setup }).from(lineSubscriptions).where(eq(lineSubscriptions.storeId, storeId));
-  const hasStore = !subs.length || subs.some((x) => x.line === "store"); // نشاط قديم بدون سطور = متجر
-  if (hasStore && store.onboardingStep < 5) return fail("كمّل الخطوات اللي قبل.");
-  const pending = subs.find((x) => x.line !== "store" && !x.setup.done);
-  if (pending) return fail(`كمّل إعداد ${LINE_INFO[pending.line].brand} أول.`);
+  if (store.onboardingStep < 5) return fail("كمّل الخطوات اللي قبل.");
   await bumpStep(db, storeId, 6, { onboardedAt: store.onboardedAt ?? new Date() });
-  await db.update(lineSubscriptions).set({ setup: sql`json_set(${lineSubscriptions.setup}, '$.done', json('true'))` }).where(and(eq(lineSubscriptions.storeId, storeId), eq(lineSubscriptions.line, "store")));
   return { ok: true, data: undefined };
 }

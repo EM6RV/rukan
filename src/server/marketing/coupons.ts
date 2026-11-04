@@ -1,4 +1,3 @@
-import { canUse } from "@/lib/entitlements";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { PlanLimits } from "@/db/schema/platform";
@@ -14,7 +13,7 @@ export type CouponRow = {
   startsAt: number | null; expiresAt: number | null; isActive: boolean; state: CouponState; createdAt: number;
 };
 
-const NO_PLAN = "الكوبونات متاحة في الباقات الأعلى.";
+const NO_PLAN = "الكوبونات متاحة في باقة «نمو» وما فوق.";
 
 export function couponState(c: { isActive: boolean; startsAt: Date | null; expiresAt: Date | null; maxUses: number | null; usedCount: number }, now = Date.now()): CouponState {
   if (!c.isActive) return "disabled";
@@ -52,7 +51,7 @@ const schema = z.object({
 });
 
 export async function saveCoupon(scope: StoreScope, input: unknown, limits: Pick<PlanLimits, "coupons">, now = Date.now()): Promise<Result<{ id: string }>> {
-  if (!canUse(limits, "coupons")) return fail(NO_PLAN);
+  if (!limits.coupons) return fail(NO_PLAN);
   const parsed = schema.safeParse(input);
   if (!parsed.success) return fail(firstError(parsed.error));
   const { id, ...d } = parsed.data;

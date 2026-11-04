@@ -22,7 +22,7 @@ let tripoli: string, benghazi: string;
 type Shop = { id: string; scope: StoreScope; productId: string; variantId: string };
 
 async function makeShop(slug: string, stock = 20): Promise<Shop> {
-  const [plan] = await db.insert(plans).values({ slug: `p-${slug}`, nameAr: "x", price: 1, limits: GROWTH }).returning();
+  const [plan] = await db.insert(plans).values({ slug: `p-${slug}`, nameAr: "x", priceMonthly: 1, priceYearly: 1, limits: GROWTH }).returning();
   const [u] = await db.insert(users).values({ phone: `0914${String(++n).padStart(6, "0")}`, name: "u", passwordHash: "x" }).returning();
   const r = await createStoreForUser(db, { userId: u!.id, name: slug, slug });
   if (!r.ok) throw new Error(r.error);

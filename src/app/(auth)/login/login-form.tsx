@@ -12,7 +12,6 @@ export function LoginForm() {
     <form action={action} className="space-y-4">
       <PhoneInput name="phone" required autoFocus defaultValue={state?.values?.phone} />
       <PasswordInput name="password" label="كلمة السر" autoComplete="current-password" required />
-      <p className="-mt-1 text-sm"><Link href="/forgot-password" className="font-medium text-link hover:underline">نسيت كلمة السر؟</Link></p>
       {state?.error && (
         <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger-fg">{state.error}</p>
       )}

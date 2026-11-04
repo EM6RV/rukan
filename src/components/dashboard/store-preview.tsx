@@ -52,7 +52,7 @@ export function StorePreview({ slug, path = "", mode }: { slug: string; path?: s
         <h2 className="text-base">معاينة مباشرة</h2>
         <div className="flex rounded-md border border-line bg-surface p-0.5">
           {([["mobile", Smartphone, "موبايل"], ["desktop", Monitor, "كمبيوتر"]] as const).map(([k, Icon, label]) => (
-            <button key={k} type="button" onClick={() => setDevice(k)} aria-pressed={device === k} aria-label={label} className={cn("rounded px-2 py-1", device === k ? "bg-surface-2" : "text-muted")}><Icon className="size-4" /></button>
+            <button key={k} type="button" onClick={() => setDevice(k)} aria-pressed={device === k} aria-label={label} className={cn("rounded px-2 py-1", device === k ? "bg-gold/25" : "text-muted")}><Icon className="size-4" /></button>
           ))}
         </div>
       </div>

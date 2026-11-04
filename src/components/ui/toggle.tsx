@@ -13,7 +13,7 @@ export function Toggle({ checked, onChange, label, hint, disabled }: { checked: 
       </label>
       <button
         id={id} type="button" role="switch" aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)}
-        className={cn("relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50", checked ? "bg-teal" : "bg-line")}
+        className={cn("relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50", checked ? "bg-gold" : "bg-line")}
       >
         <span className={cn("absolute top-0.5 size-5 rounded-full bg-white shadow transition-all", checked ? "start-[1.375rem]" : "start-0.5")} />
       </button>

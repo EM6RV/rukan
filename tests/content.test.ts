@@ -131,13 +131,13 @@ describe("التصميم", () => {
     const ALL = { maxProducts: null, maxStaff: 3, allTemplates: true, coupons: true, reports: true, customDomain: false, pixels: true, removeBranding: false };
     const s = await shop("ds-1");
     const logo = await img(s.id);
-    const good = { template: "nabd", primaryColor: "#112233", accentColor: "#aabbcc", fontKey: "cairo", logoMediaId: logo };
+    const good = { template: "bold", primaryColor: "#112233", accentColor: "#aabbcc", fontKey: "cairo", logoMediaId: logo };
     expect((await saveDesignSettings(db, s.id, good, ALL)).ok).toBe(true);
     expect((await s.scope.from(t.storeSettings))[0]).toMatchObject({ primaryColor: "#112233", accentColor: "#aabbcc", fontKey: "cairo" });
-    expect((await db.select().from(stores).where(eq(stores.id, s.id)))[0]).toMatchObject({ template: "nabd", logoMediaId: logo });
+    expect((await db.select().from(stores).where(eq(stores.id, s.id)))[0]).toMatchObject({ template: "bold", logoMediaId: logo });
 
-    expect(await saveDesignSettings(db, s.id, { ...good, template: "makhmal" }, { ...ALL, allTemplates: false })).toEqual({ ok: false, error: expect.stringContaining("الباقات الأعلى") });
-    expect((await saveDesignSettings(db, s.id, { ...good, template: "naqa" }, { ...ALL, allTemplates: false })).ok).toBe(true);
+    expect(await saveDesignSettings(db, s.id, { ...good, template: "elegant" }, { ...ALL, allTemplates: false })).toEqual({ ok: false, error: expect.stringContaining("نمو") });
+    expect((await saveDesignSettings(db, s.id, { ...good, template: "simple" }, { ...ALL, allTemplates: false })).ok).toBe(true);
     expect((await saveDesignSettings(db, s.id, { ...good, fontKey: "comic-sans" }, ALL)).ok).toBe(false);
     expect((await saveDesignSettings(db, s.id, { ...good, primaryColor: "red" }, ALL)).ok).toBe(false);
     const other = await shop("ds-2");

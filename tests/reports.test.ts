@@ -23,7 +23,7 @@ let phoneSeq = 0;
 const DAY = 86_400_000;
 
 async function shop(slug: string) {
-  const [plan] = await db.insert(plans).values({ slug: `rp-${slug}`, nameAr: "x", price: 1, limits: LIMITS }).returning();
+  const [plan] = await db.insert(plans).values({ slug: `rp-${slug}`, nameAr: "x", priceMonthly: 1, priceYearly: 1, limits: LIMITS }).returning();
   const [u] = await db.insert(users).values({ phone: `0918${String(++seq).padStart(6, "0")}`, name: "u", passwordHash: "x" }).returning();
   const r = await createStoreForUser(db, { userId: u!.id, name: slug, slug });
   if (!r.ok) throw new Error(r.error);

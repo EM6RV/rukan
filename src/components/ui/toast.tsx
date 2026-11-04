@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 type Tone = "success" | "error" | "info";
-type ToastItem = { id: number; message: string; tone: Tone; leaving?: boolean };
+type ToastItem = { id: number; message: string; tone: Tone };
 type Ctx = { toast: (message: string, tone?: Tone) => void };
 
 const ToastContext = createContext<Ctx | null>(null);
@@ -28,11 +29,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const nextId = useRef(0);
 
-  // الخروج: نعلّمه «طالع» (حركة CSS قصيرة) وبعدين نشيله. بدون مكتبة حركة باش ما تتحمل في كل صفحة.
-  const dismiss = useCallback((id: number) => {
-    setItems((l) => l.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
-    setTimeout(() => setItems((l) => l.filter((t) => t.id !== id)), 160);
-  }, []);
+  const dismiss = useCallback((id: number) => setItems((l) => l.filter((t) => t.id !== id)), []);
   const toast = useCallback(
     (message: string, tone: Tone = "success") => {
       const id = ++nextId.current;
@@ -47,22 +44,28 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex flex-col items-center gap-2 px-4">
+        <AnimatePresence initial={false}>
           {items.map((t) => {
             const Icon = icons[t.tone];
             return (
-              <div
+              <motion.div
                 key={t.id}
                 role={t.tone === "error" ? "alert" : "status"}
-                className={cn("pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-xl border border-s-4 border-line bg-surface px-4 py-3 shadow-lift", barClass[t.tone], t.leaving ? "animate-[toast-out_0.16s_ease-in_both]" : "animate-[toast-in_0.2s_ease-out_both]")}
+                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className={cn("pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-xl border border-s-4 border-line bg-surface px-4 py-3 shadow-lift", barClass[t.tone])}
               >
                 <Icon className={cn("size-5 shrink-0", toneClass[t.tone])} aria-hidden />
                 <p className="flex-1 text-sm">{t.message}</p>
                 <button onClick={() => dismiss(t.id)} aria-label="إغلاق" className="text-muted hover:text-fg">
                   <X className="size-4" />
                 </button>
-              </div>
+              </motion.div>
             );
           })}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );
